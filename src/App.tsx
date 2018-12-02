@@ -13,6 +13,7 @@ interface IAppState {
   scriptName: string;
   acceptsInput: boolean;
   echoOutput: boolean;
+  json: string
 }
 
 
@@ -38,11 +39,17 @@ class App extends React.Component<{}, IAppState> {
         scriptName: "",
         Parameters: params,
         acceptsInput: false,
-        echoOutput: false
+        echoOutput: false,
+        json: ""
       }
 
   }
-
+  public onChange = (index: number, key: string, value: any): void => {
+    const param: ParameterModel = this.state.Parameters[index]
+    param[key]=value;
+    this.setState({json: this.stringify() })  
+    console.log(`OnChange [number=${index}] [name=${key}] [value=${value}]`)  
+  }
 
   private onAddParameter = () => {
     this.setState({ Parameters: [...this.state.Parameters, new ParameterModel()] })
@@ -76,7 +83,7 @@ class App extends React.Component<{}, IAppState> {
     return (
 
       <div className={divName} key={divName} ref={divName}>
-        <Parameter Model={parameter} />
+        <Parameter Model={parameter} onChange={this.onChange} index={index}/>
       </div>
 
 
@@ -96,7 +103,7 @@ class App extends React.Component<{}, IAppState> {
 
   public stringify = () => {
 
-    const jsonDoc = JSON.stringify(this.state.Parameters, null, 4);
+    const jsonDoc = JSON.stringify(this.state, null, 4);
     return jsonDoc;
   }
 
@@ -120,7 +127,7 @@ class App extends React.Component<{}, IAppState> {
           </div>
           <div>
             <div className="BottomHalf">
-              <textarea className="input_jsonDoc" id="jsonDoc" value={this.stringify()} readOnly={true} />
+              <textarea className="input_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
             </div>
           </div>
         </div>

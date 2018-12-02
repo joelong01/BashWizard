@@ -4,6 +4,8 @@ import ParameterModel from './ParameterModel';
 
 export interface IParameterProperties {
     Model: ParameterModel;
+    index: number;
+    onChange(index: number, name: string, newVal: any): void;
 }
 
 
@@ -34,11 +36,11 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
     }
 
    
-    public shouldComponentUpdate = (nextProps: Readonly<IParameterProperties>, nextState: Readonly<IParameterState>): boolean => {
+   /*  public shouldComponentUpdate = (nextProps: Readonly<IParameterProperties>, nextState: Readonly<IParameterState>): boolean => {
 
         return true;
 
-    }
+    } */
 
     public static defaultProps = {Model: new ParameterModel()}
    
@@ -46,19 +48,19 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
     private onBlur = (e: React.FormEvent<HTMLInputElement>) => {
         const key = e.currentTarget.id as string
         const val = e.currentTarget.value as string
-        console.log("changing key: %s to value %s", key, val)
         this.setState({ [key]: val })
-        this.dumpObject("state", this.state)
+        this.props.onChange(this.props.index, key, val)
+        
 
     }
-    private dumpObject = (msg: string, obj: object) => {
-        console.log("%s: %o", msg, obj);
-    }
+    // private dumpObject = (msg: string, obj: object) => {
+    //     console.log("%s: %o", msg, obj);
+    // }
     private onChecked = (e: React.FormEvent<HTMLInputElement>) => {
         const key = e.currentTarget.id as string
         const val = e.currentTarget.checked as boolean
         this.setState({ [key]: val })
-        this.dumpObject("state", this.state)
+        this.props.onChange(this.props.index, key, val)      
     }
 
     public render = () => {
