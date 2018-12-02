@@ -5,8 +5,6 @@ import { slide as Menu } from "react-burger-menu";
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
 
-
-
 interface IAppState {
   menuOpen: boolean;
   Parameters: ParameterModel[];
@@ -46,9 +44,9 @@ class App extends React.Component<{}, IAppState> {
   }
   public onChange = (index: number, key: string, value: any): void => {
     const param: ParameterModel = this.state.Parameters[index]
-    param[key]=value;
-    this.setState({json: this.stringify() })  
-    console.log(`OnChange [number=${index}] [name=${key}] [value=${value}]`)  
+    param[key] = value;
+    this.setState({ json: this.stringify() })
+    console.log(`OnChange [number=${index}] [name=${key}] [value=${value}]`)
   }
 
   private onAddParameter = () => {
@@ -83,7 +81,7 @@ class App extends React.Component<{}, IAppState> {
     return (
 
       <div className={divName} key={divName} ref={divName}>
-        <Parameter Model={parameter} onChange={this.onChange} index={index}/>
+        <Parameter Model={parameter} onChange={this.onChange} index={index} />
       </div>
 
 
@@ -108,30 +106,38 @@ class App extends React.Component<{}, IAppState> {
   }
 
   public render = () => {
+    /*jsx requires one parent element*/
     return (
       <div className="outer-container">
-        {this.renderMenu()}
-        <div className="LayoutRoot">
-          <div className="TopHalf">
-            <form className="Global_Input_Form">
-              <label style={{ marginLeft: "10px" }}>
-                Script Name:  <input id="scriptName" className="scriptName" type="text" defaultValue={this.state.scriptName} />
-              </label>
-              <label style={{ marginLeft: "10px" }}>
-                Accepts Input:  <input id="acceptsInput" className="acceptsInput" type="checkbox" defaultChecked={this.state.acceptsInput} />
-              </label>
-            </form>
-          </div>
-          <div className="Parameter_List">        
-            {this.renderParameters()}        
-          </div>
-          <div>
-            <div className="BottomHalf">
-              <textarea className="input_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
-            </div>
-          </div>
+        <div className="DIV_Menu">
+          {this.renderMenu()}
+        </div>
+        <form className="Global_Input_Form">
+          <label style={{ marginLeft: "10px" }}>
+            Script Name:  <input id="scriptName" className="scriptName" type="text" defaultValue={this.state.scriptName} />
+          </label>
+          <label style={{ marginLeft: "10px" }}>
+            Accepts Input:  <input id="acceptsInput" className="acceptsInput" type="checkbox" defaultChecked={this.state.acceptsInput} />
+          </label>
+        </form>
+        <div className="Parameter_List">
+          {this.renderParameters()}
+        </div>
+        <div className="DIV_Bash">
+          <textarea className="input_Bash" id="bashDoc" value={this.state.json} readOnly={true} />
+        </div>
+        <div className="DIV_Json">
+          <textarea className="input_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
+        </div>
+        <div className="DIV_EndOfBash">
+          <textarea className="input_end_of_bash" id="input_end_of_bash" value={this.state.json} readOnly={true} />
+        </div>
+        <div className="DIV_InputSettings">
+          <textarea className="input_settings" id="input_settings" value={this.state.json} readOnly={true} />
         </div>
       </div>
+
+
 
     );
   }

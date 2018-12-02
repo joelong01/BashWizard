@@ -1,103 +1,104 @@
 
 
-
+//
+//  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
 class ParameterModel {
 
     // public ChangeNotify: (propName:string, oldVal: any, newVal: any) => void;
-    private _defaultValue: string = "";
-    private _descriptionValue: string = "";
-    private _longName: string = "";
-    private _requiresInputString: boolean = false;
-    private _requiredParameter: boolean = false;
-    private _shortName: string = "";
-    private _variableName: string = "";
-    private _valueIfSet: string = "";
+    private Default: string = "";
+    private Description: string = "";
+    private LongParameter: string = "";
+    private RequiresInputString: boolean = false;
+    private RequiredParameter: boolean = false;
+    private ShortParameter: string = "";
+    private VariableName: string = "";
+    private ValueIfSet: string = "";
 
     get defaultValue(): string {
-        return this._defaultValue;
+        return this.Default;
     }
 
     set defaultValue(val: string) {
-        if (val !== this._defaultValue) {
+        if (val !== this.Default) {
           //  const oldVal:string = this._defaultValue;
-            this._defaultValue = val;
+            this.Default = val;
            // if (this.ChangeNotify !== null) this.ChangeNotify("defaultValue", oldVal, val);
         }
     }
 
     public get descriptionValue(): string {
-        return this._descriptionValue;
+        return this.Description;
     }
     public set descriptionValue(value: string) {
-        if (value !== this._descriptionValue){
+        if (value !== this.Description){
            // const oldVal:string = this._defaultValue;
-            this._descriptionValue = value;
+            this.Description = value;
           //  if (this.ChangeNotify !== null)this.ChangeNotify("descriptionValue", oldVal, value);
         }
     }
     public get longName(): string {
-        return this._longName;
+        return this.LongParameter;
     }
     public set longName(value: string) {
-        if (value !== this._longName){
+        if (value !== this.LongParameter){
           //  const oldVal:string = this._longName;
-            this._longName = value;
+            this.LongParameter = value;
           //  if (this.ChangeNotify !== null) this.ChangeNotify("longName", oldVal, value);
         }
     }
 
     public get shortName(): string {
-        return this._shortName;
+        return this.ShortParameter;
     }
     public set shortName(value: string) {
-        if (value !== this._shortName){
+        if (value !== this.ShortParameter){
           //  const oldVal:string = this._shortName;
-            this._shortName = value;
+            this.ShortParameter = value;
          //   if (this.ChangeNotify !== null) this.ChangeNotify("shortName", oldVal, value);
         }
     }
 
     public get requiresInputString(): boolean {
-        return this._requiresInputString;
+        return this.RequiresInputString;
     }
     public set requiresInputString(value: boolean) {
-        if (value !== this._requiresInputString){
+        if (value !== this.RequiresInputString){
          //   const oldVal:boolean = this._requiresInputString;
-            this._requiresInputString = value;
+            this.RequiresInputString = value;
            // if (this.ChangeNotify !== null) this.ChangeNotify("requiresInputString", oldVal, value);
         }
     }
 
     public get requiredParameter(): boolean {
-        return this._requiredParameter;
+        return this.RequiredParameter;
     }
     public set requiredParameter(value: boolean) {
-        if (value !== this._requiredParameter){
+        if (value !== this.RequiredParameter){
           //  const oldVal:boolean = this._requiredParameter;
-            this._requiredParameter = value;
+            this.RequiredParameter = value;
            // if (this.ChangeNotify !== null) this.ChangeNotify("requiredParameter", oldVal, value);
         }
     }
 
     get variableName():string {
-        return this._variableName;
+        return this.VariableName;
     }
 
     set variableName(val: string) {
-        if (val !== this._variableName) {
+        if (val !== this.VariableName) {
           //  const oldVal:string = this._variableName;
-            this._variableName = val;
+            this.VariableName = val;
          //   if (this.ChangeNotify !== null) this.ChangeNotify("variableName", oldVal, val);
         }
     }
     get valueIfSet():string {
-        return this._valueIfSet;
+        return this.ValueIfSet;
     }
 
     set valueIfSet(val: string) {
-        if (val !== this._valueIfSet) {
+        if (val !== this.ValueIfSet) {
          //   const oldVal:string = this._valueIfSet;
-            this._valueIfSet = val;
+            this.ValueIfSet = val;
          //   if (this.ChangeNotify !== null) this.ChangeNotify("valueIfSet", oldVal, val);
         }
     }

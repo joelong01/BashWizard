@@ -1,53 +1,111 @@
-.App {
-  text-align: left;
-}
-
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 80px;
-}
-
-.App-header {
-  background-color: #222;
-  height: 150px;
-  padding: 20px;
-  color: white;
-}
-
-.App-title {
-  font-size: 1.5em;
-}
-
-.App-intro {
-  font-size: large;
-}
-
-@keyframes App-logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-.topHalf
+.outer-container
 {
-  height: 250px;
+  margin-left: 0px;
+  background-color: transparent;
+  position: reletive;
 }
-.LayoutRoot
+.DIV_Menu
 {
-  margin-left: 50px;
-  margin-top: 7px;
-  width: 1000px;
+  width: 60px;
+  height: 100%;
+  background-color: #494949;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
-[class^="PARAMETER_DIV_"]
-{    
-    margin-top:10px;
-}
-.input_jsonDoc
+.Global_Input_Form
 {
-  font-family: monospace;
-  font-size: 10pt;
-  width: 600px;
+  width: 100%;
+  height: 50px;
+  position: absolute;
+  top: 15px;
+  left: 60px;
+  color:white;
 }
+
 .Parameter_List
 {
   height: 260px;
   overflow: auto;
+  color: white;
+  background: gray;
+  position: absolute;
+  top: 50px;
+  left: 60px;
+  margin-left: 20px;
+  margin-right: 20px;
+  width: calc(100% - 110px);
+  border: 2px green solid;
+
 }
+
+.DIV_Bash
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  left: 80px;
+  bottom: 200px;  
+  width: calc(50% - 75px);
+  height: calc(100% - 530px);
+  border: 1px black solid;
+  overflow: hidden;
+}
+.DIV_EndOfBash
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  bottom: 20px;
+  left: 80px;
+  width: calc(50% - 75px);
+  height:160px;
+  border: 1px black solid;
+  overflow: hidden;
+  
+}
+
+.DIV_Json
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  right: 25px;
+  bottom: 200px;  
+  width: calc(50% - 50px);
+  height: calc(100% - 530px);
+  border: 1px black solid;
+  overflow: hidden;
+}
+
+.DIV_InputSettings
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  bottom: 20px;
+  right: 25px;
+  width: calc(50% - 50px);
+  height: 160px;
+  border: 1px black solid;
+  overflow: hidden;
+}
+
+
+[class^="PARAMETER_DIV_"]
+{    
+    margin-top:10px;
+}
+[class^="input_"]
+{
+  overflow: auto;
+  font-family: monospace;
+  font-size: 10pt;
+  width: 100%;
+  height: 100%;
+  background-color:black;
+  color:white;
+}
+
+
+

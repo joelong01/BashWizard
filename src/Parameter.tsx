@@ -1,5 +1,6 @@
 import * as React from "react";
 import ParameterModel from './ParameterModel';
+import "./parameter.css"
 
 
 export interface IParameterProperties {
