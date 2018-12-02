@@ -1,5 +1,5 @@
 .App {
-  text-align: center;
+  text-align: left;
 }
 
 .App-logo {
@@ -25,4 +25,29 @@
 @keyframes App-logo-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+.topHalf
+{
+  height: 250px;
+}
+.LayoutRoot
+{
+  margin-left: 50px;
+  margin-top: 7px;
+  width: 1000px;
+}
+[class^="PARAMETER_DIV_"]
+{    
+    margin-top:10px;
+}
+.input_jsonDoc
+{
+  font-family: monospace;
+  font-size: 10pt;
+  width: 600px;
+}
+.Parameter_List
+{
+  height: 260px;
+  overflow: auto;
 }

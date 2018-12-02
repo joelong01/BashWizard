@@ -1,11 +1,11 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import './index.css';
-import Parameter from './Parameter';
 import registerServiceWorker from './registerServiceWorker';
+import App from "./App"
 
 ReactDOM.render(
-  <Parameter longName="test"/>,
+  <App/>,
   document.getElementById('root') as HTMLElement
 );
 registerServiceWorker();

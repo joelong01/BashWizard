@@ -13,7 +13,7 @@
     "jsx-no-lambda": false,
     "no-console": false,
     "ordered-imports": false, 
-    "prefer-const": false
-  
+    "prefer-const": false,
+    "variable-name": false
   }
 }
