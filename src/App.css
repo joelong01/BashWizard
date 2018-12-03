@@ -1,28 +1,114 @@
-.App {
-  text-align: center;
+.outer-container
+{
+  margin-left: 0px;
+  background-color: transparent;
+  position: reletive;
+}
+.DIV_Menu
+{
+  width: 60px;
+  height: 100%;
+  background-color: #494949;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.Global_Input_Form
+{
+  width: 100%;
+  height: 50px;
+  position: absolute;
+  top: 15px;
+  left: 60px;
+  color:white;
 }
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 80px;
-}
-
-.App-header {
-  background-color: #222;
-  height: 150px;
-  padding: 20px;
+.Parameter_List
+{
+  height: 260px;
+  overflow: auto;
   color: white;
+  background: gray;
+  position: absolute;
+  top: 50px;
+  left: 60px;
+  margin-left: 20px;
+  margin-right: 20px;
+  width: calc(100% - 110px);
+  border: 2px dark gray;
+
 }
 
-.App-title {
-  font-size: 1.5em;
+.DIV_Bash
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  left: 80px;
+  bottom: 200px;  
+  width: calc(50% - 75px);
+  height: calc(100% - 530px);
+  
+  overflow: hidden;
+}
+.DIV_EndOfBash
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  bottom: 20px;
+  left: 80px;
+  width: calc(50% - 75px);
+  height:160px;
+  
+  overflow: hidden;
+  
 }
 
-.App-intro {
-  font-size: large;
+.DIV_Json
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  right: 25px;
+  bottom: 200px;  
+  width: calc(50% - 50px);
+  height: calc(100% - 530px);
+  
+  overflow: hidden;
 }
 
-@keyframes App-logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.DIV_InputSettings
+{
+  color: transparent;
+  background: gray;
+  position: absolute;
+  bottom: 20px;
+  right: 25px;
+  width: calc(50% - 50px);
+  height: 160px;
+  
+  overflow: hidden;
 }
+
+
+[class^="PARAMETER_DIV_"]
+{    
+    margin-top:10px;
+    height: 85px;
+}
+[class^="input_"]
+{
+  overflow: auto;
+  font-family: monospace;
+  font-size: 10pt;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  background-color:black;
+  color:white;
+  border: 2px white solid;
+}
+
+
+
+

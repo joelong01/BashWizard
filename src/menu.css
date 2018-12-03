@@ -1,0 +1,87 @@
+
+[class^="Menu_"]
+{
+    margin: 10px;
+    
+}
+
+.Menu_LayoutRoot
+{
+    background: darkgray;
+    border: 1px solid black;
+    position: relative;
+}
+
+.bm-burger-button 
+{
+    position: fixed;
+    width: 36px;
+    height: 30px;
+    left: 10px;
+    top: 10px;
+   background: transparent;
+}
+.bm-burger-bars 
+{
+    background:white;
+    opacity: 1;
+}
+
+.bm-cross-button 
+{
+    height: 24px;
+    width: 24px;
+    position: fixed;
+    align-self: flex-end;
+    left: 270px; /* since the width is 300 */
+    top: 0px;
+    background: black;
+}
+
+.bm-cross {
+    background: white;
+  }
+
+
+.bm-overlay 
+{
+    background: rgb(0, 0, 0);    
+}
+
+  /* General sidebar styles */
+.bm-menu 
+{
+    background: lightgray;
+    padding: 0;
+    font-size: 1.15em;
+    
+}
+
+.menuItemGlyph
+{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 24px;
+    font-size: 22;
+    overflow: hidden;
+    float: left;
+    
+}
+.burgerItemButton
+{
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 24px;    
+    color: white;
+}
+
+.menuItemDiv
+{
+    margin-left: 10px;
+    margin-bottom: 10px;
+    margin-top: 0px;
+    position: reletive;
+}

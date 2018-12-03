@@ -1,0 +1,19 @@
+.ParameterForm
+{
+    background-color: darkgray;
+    color: white;
+    font-family: "Consolas UI", "Courier New", "console";
+    height: 100px;
+    margin-top: 20px;
+}
+[class^="DIV_ROW"]
+{
+    margin-bottom: 12px;
+}
+
+.DIV_BORDER
+{
+    height: 5px;
+    width: 100%;
+    background-color: transparent;
+}
