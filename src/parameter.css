@@ -1,10 +1,12 @@
 .ParameterForm
 {
-    background-color: darkgray;
+    background-color: transparent;
     color: white;
-    font-family: "Consolas UI", "Courier New", "console";
+    font-family: 'Courier New', Courier, monospace;
     height: 100px;
     margin-top: 20px;
+    border: 1px solid black;
+    width: calc(100% - 5px);
 }
 [class^="DIV_ROW"]
 {
@@ -17,3 +19,14 @@
     width: 100%;
     background-color: transparent;
 }
+ label
+ {
+     color: white;
+     font-family:  'Courier New', Courier, monospace;
+ }
+
+input[type=text] {
+    background-color: rgb(48, 48, 48);
+    color: white;
+    font-family:  'Courier New', Courier, monospace;
+  }

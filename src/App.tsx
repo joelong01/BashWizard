@@ -5,6 +5,8 @@ import { slide as Menu } from "react-burger-menu";
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
+import Splitter from 'm-react-splitters';
+import 'm-react-splitters/lib/splitters.css';
 
 interface IAppState {
   //
@@ -58,7 +60,7 @@ class App extends React.Component<{}, IAppState> {
   }
 
   private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    await this.setStateAsync({ScriptName: e.currentTarget.value})
+    await this.setStateAsync({ ScriptName: e.currentTarget.value })
     await this.setStateAsync({ json: this.stringify(), bash: this.toBash() })
     this.forceUpdate()
   }
@@ -87,7 +89,7 @@ class App extends React.Component<{}, IAppState> {
     let inputDeclarations: string = ""
     let parseInputFile: string = ""
     let requiredFilesIf: string = ""
-    
+
 
     for (let param of this.state.Parameters) {
       //
@@ -95,7 +97,7 @@ class App extends React.Component<{}, IAppState> {
       let required: string = (param.requiredParameter) ? "Required" : "Optional";
       usageLine += `${param.shortParameter} | --${param.longParameter}`
       usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${param.longParameter} ${required} ${param.descriptionValue}\"${nl}`
-      
+
       //
       // the  echoInput function
       echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${param.longParameter} \$${param.variableName}\"${nl}`
@@ -237,18 +239,18 @@ class App extends React.Component<{}, IAppState> {
         break;
       case "CreateLogFile":
         {
-          
+
           let p: ParameterModel = new ParameterModel()
           p.longParameter = "log-directory",
-          p.shortParameter = "l",
-          p.descriptionValue = "directory for the log file.  the log file name will be based on the script name",
-          p.variableName = "logDirectory",
-          p.defaultValue = "\"./\"",
-          p.requiresInputString = true,
-          p.requiredParameter = false,
-          p.valueIfSet = "$2"
+            p.shortParameter = "l",
+            p.descriptionValue = "directory for the log file.  the log file name will be based on the script name",
+            p.variableName = "logDirectory",
+            p.defaultValue = "\"./\"",
+            p.requiresInputString = true,
+            p.requiredParameter = false,
+            p.valueIfSet = "$2"
           await this.setStateAsync({ CreateLogFile: val, Parameters: [...this.state.Parameters, p] });
-          
+
         }
         break;
       case "TeeToLogFile":
@@ -279,7 +281,7 @@ class App extends React.Component<{}, IAppState> {
     /* css for this is in ./menu.css */
 
     return (
-      <Menu id="burgerMenu" isOpen={this.state.menuOpen}
+      <Menu id="burgerMenu" isOpen={this.state.menuOpen} noOverlay={true}
         pageWrapId={"page-wrap"} outerContainerId={"outer-container"}>
         <div className="Menu_LayoutRoot">
 
@@ -323,47 +325,77 @@ class App extends React.Component<{}, IAppState> {
 
   public render = () => {
     /*jsx requires one parent element*/
+    /* outer-container required for the Menu */
     return (
       <div className="outer-container">
         <div className="DIV_Menu">
           {this.renderMenu()}
         </div>
-        <form className="Global_Input_Form">
-          <label style={{ marginLeft: "10px" }}>
-            Script Name:  <input id="scriptName" className="scriptName" type="text" defaultValue={this.state.ScriptName} onChange={this.changedScriptName} />
-          </label>
-          <label style={{ marginLeft: "10px" }}>
-            Echo Input:  <input id="EchoInput" className="EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
-          </label>
-          <label style={{ marginLeft: "10px" }}>
-            Create Log File:  <input id="CreateLogFile" className="CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
-          </label>
-          <label style={{ marginLeft: "10px" }}>
-            Tee to Log file:  <input id="TeeToLogFile" className="TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
-          </label>
-          <label style={{ marginLeft: "10px" }}>
-            Accepts Input File:  <input id="AcceptsInputFile" className="AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
-          </label>
-        </form>
-        <div className="Parameter_List">
-          {this.renderParameters()}
-        </div>
-        <div className="DIV_Bash">
-          <textarea className="input_Bash" id="bashDoc" value={this.state.bash} readOnly={true} />
-        </div>
-        <div className="DIV_Json">
-          <textarea className="input_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
-        </div>
-        <div className="DIV_EndOfBash">
-          <textarea className="input_end_of_bash" id="input_end_of_bash" value={this.state.endOfBash} readOnly={true} />
-        </div>
-        <div className="DIV_InputSettings">
-          <textarea className="input_settings" id="input_settings" value={this.state.input} readOnly={true} />
-        </div>
+        <Splitter className="SPLITTER_TopBottom"
+          position="horizontal"
+          primaryPaneMaxHeight="100%"
+          primaryPaneMinHeight="10%"
+          primaryPaneHeight="400px"
+          dispatchResize={true}
+          postPoned={false}>
+          <div className="DIV_Top">
+            <div className="Global_Input_Form">
+              <label className="LABEL_ScriptName">
+                Script Name:  <input id="scriptName" className="INPUT_scriptName" type="text" defaultValue={this.state.ScriptName} onChange={this.changedScriptName} />
+              </label>
+              <label className="LABEL_EchoInput">
+                Echo Input:  <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
+              </label>
+              <label className="LABEL_CreateLogFile">
+                Create Log File:  <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
+              </label>
+              <label className="LABEL_TeeToLogFile">
+                Tee to Log file:  <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
+              </label>
+              <label className="LABEL_AcceptsInputFile">
+                Accepts Input File:  <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
+              </label>
+            </div>
+            <div className="Parameter_List">
+              {this.renderParameters()}
+            </div>
+          </div>
+          <div className="DIV_Bottom">
+            <Splitter className="SPLITTER_BottomLeftRight" position="vertical"
+              primaryPaneMaxWidth="100%"
+              primaryPaneMinWidth="100px"
+              primaryPaneWidth="50%"
+              postPoned={false}>
+
+              <div className="DIV_BottomLeft">
+                <div className="DIV_Bash">
+                  <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} />
+                </div>
+                <div className="DIV_EndOfBash">
+                  <textarea className="TEXTAREA_end_of_bash" id="input_end_of_bash" value={this.state.endOfBash} readOnly={true} />
+                </div>
+              </div>
+              <div className="DIV_BottomRight">
+                <Splitter className="SPLITTER_JsonInput" position="horizontal"
+                  postPoned={false}
+                  primaryPaneHeight="80%"
+                  primaryPaneMinHeight="10%"
+                  primaryPaneMaxHeight="95%"
+                >
+                  <div className="DIV_Json">
+                    <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
+                  </div>
+
+                  <div className="DIV_InputSettings">
+                    <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} />
+                  </div>
+                </Splitter>
+
+              </div>
+            </Splitter>
+          </div>
+        </Splitter>
       </div>
-
-
-
     );
   }
 }

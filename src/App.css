@@ -1,8 +1,12 @@
 .outer-container
 {
   margin-left: 0px;
-  background-color: transparent;
-  position: reletive;
+  background-color: black;
+  position: absolute;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+
 }
 .DIV_Menu
 {
@@ -13,102 +17,147 @@
   top: 0;
   left: 0;
 }
-.Global_Input_Form
+
+.SPLITTER_TopBottom
 {
-  width: 100%;
-  height: 50px;
-  position: absolute;
-  top: 15px;
   left: 60px;
-  color:white;
+  width: calc(100% - 60px);
 }
 
-.Parameter_List
+
+
+.DIV_Top
 {
-  height: 260px;
-  overflow: auto;
-  color: white;
-  background: gray;
-  position: absolute;
-  top: 50px;
-  left: 60px;
-  margin-left: 20px;
-  margin-right: 20px;
-  width: calc(100% - 110px);
-  border: 2px dark gray;
-
+  
+  width: calc(100% - 4px);
+  margin-left: 0px;
+  margin-right: 0px;
+  position: relative;
+  background-color: transparent;
+  height: calc(100% - 4px);
+  border: 2px solid darkgray;
+  left: 0px;
 }
+    .Global_Input_Form
+    {
+      width: 100%;
+      height: 50px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      position: absolute;
+      color:white;
+      
+    }
+    .Parameter_List
+    {
+      height: calc(100% - 55px);
+      overflow: auto;
+      background: gray;
+      color: white;
+      position: absolute;
+      top: 55px;
+      width: 100%;
+      border: 2px dark darkgray;
 
-.DIV_Bash
+    }
+
+.DIV_Bottom
 {
-  color: transparent;
-  background: gray;
-  position: absolute;
-  left: 80px;
-  bottom: 200px;  
-  width: calc(50% - 75px);
-  height: calc(100% - 530px);
-  
-  overflow: hidden;
+  position: relative;
+  width: calc(100% - 4px);   
+  background-color: transparent;
+  height: calc(100% - 4px);
+  border: 2px solid darkgray;
+  left: 0px;
+  top: 0px;
 }
-.DIV_EndOfBash
-{
-  color: transparent;
-  background: gray;
-  position: absolute;
-  bottom: 20px;
-  left: 80px;
-  width: calc(50% - 75px);
-  height:160px;
-  
-  overflow: hidden;
-  
-}
+  .DIV_BottomLeft
+  {
+    background: transparent;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+        .DIV_Bash
+        {
+          background: gray;
+          position: absolute;
+          width: 100%;
+          height: calc(100% - 174px);
+          overflow: auto;
+        }
+        .DIV_EndOfBash
+        {
+          background: gray;
+          position: absolute;
+          bottom: 0px;
+          left: 0px;
+          margin-left: 0px;
+          width: 100%;
+          height:160px;  
+          overflow: auto;
+          
+        }
+  .SPLITTER_JsonInput
+  {
+    background-color:transparent;
+  }
+  .DIV_BottomRight
+  {
+    background: gray;
+    position: absolute;
+    width: 100%;
+    height: 100%;    
+    overflow: auto;
+  }
+    .DIV_Json
+    {
+      
+      background: gray;
+      position: absolute;      
+      width: 100%;
+      height: 100%;      
+      overflow: hidden;
+    }
 
-.DIV_Json
-{
-  color: transparent;
-  background: gray;
-  position: absolute;
-  right: 25px;
-  bottom: 200px;  
-  width: calc(50% - 50px);
-  height: calc(100% - 530px);
-  
-  overflow: hidden;
-}
-
-.DIV_InputSettings
-{
-  color: transparent;
-  background: gray;
-  position: absolute;
-  bottom: 20px;
-  right: 25px;
-  width: calc(50% - 50px);
-  height: 160px;
-  
-  overflow: hidden;
-}
-
+    .DIV_InputSettings
+    {
+      background: gray;
+      position: absolute;      
+      width: 100%;
+      height: 100%;      
+      overflow: auto;
+    }
 
 [class^="PARAMETER_DIV_"]
 {    
     margin-top:10px;
     height: 85px;
 }
-[class^="input_"]
+[class^="LABEL_"]
 {
-  overflow: auto;
   font-family: monospace;
-  font-size: 10pt;
-  width: calc(100% - 8px);
-  height: calc(100% - 8px);
-  background-color:black;
+  font-size: 10pt;  
+  background-color:transparent;
   color:white;
-  border: 2px white solid;
+  margin-left: 10px;
 }
 
+input[type=checkbox], input[type=radio] {
+  vertical-align: middle;
+  position: relative;
+  bottom: 1px;
+}
 
+[class^="TEXTAREA_"]
+{
+  width: 100%;
+  height: 100%;
+  font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+  color: white;  
+  background-color: black;
+}
 
 

@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "fs": "0.0.1-security",
+    "m-react-splitters": "^1.1.0",
     "njv": "^2.0.0",
     "react": "^16.6.3",
     "react-burger-menu": "^2.5.4",
