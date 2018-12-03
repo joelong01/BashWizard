@@ -36,10 +36,10 @@ class ParameterModel {
           //  if (this.ChangeNotify !== null)this.ChangeNotify("descriptionValue", oldVal, value);
         }
     }
-    public get longName(): string {
+    public get longParameter(): string {
         return this.LongParameter;
     }
-    public set longName(value: string) {
+    public set longParameter(value: string) {
         if (value !== this.LongParameter){
           //  const oldVal:string = this._longName;
             this.LongParameter = value;
@@ -47,10 +47,10 @@ class ParameterModel {
         }
     }
 
-    public get shortName(): string {
+    public get shortParameter(): string {
         return this.ShortParameter;
     }
-    public set shortName(value: string) {
+    public set shortParameter(value: string) {
         if (value !== this.ShortParameter){
           //  const oldVal:string = this._shortName;
             this.ShortParameter = value;

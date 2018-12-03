@@ -11,14 +11,7 @@ export interface IParameterProperties {
 
 
 interface IParameterState {
-    defaultValue?: string;
-    descriptionValue?: string;
-    longName?: string;
-    requiresInputString?: boolean;
-    requiredParameter?: boolean;
-    shortName?: string;
-    variableName?: string;
-    valueIfSet?: string;
+   data: ParameterModel;
 
 }
 
@@ -26,9 +19,7 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
     constructor(props: IParameterProperties) {
         super(props);
         this.state = {
-            defaultValue: props.Model!.defaultValue, descriptionValue: props.Model!.descriptionValue, longName: props.Model!.longName,
-            requiresInputString: props.Model!.requiresInputString, requiredParameter: props.Model!.requiredParameter, shortName: props.Model!.shortName,
-            variableName: props.Model!.variableName, valueIfSet: props.Model!.valueIfSet
+           data: this.props.Model
         };
 
         this.onBlur = this.onBlur.bind(this);
@@ -49,7 +40,8 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
     private onBlur = (e: React.FormEvent<HTMLInputElement>) => {
         const key = e.currentTarget.id as string
         const val = e.currentTarget.value as string
-        this.setState({ [key]: val })
+        const data: ParameterModel = this.state.data;
+        data[key] = val;        
         this.props.onChange(this.props.index, key, val)
         
 
@@ -60,7 +52,8 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
     private onChecked = (e: React.FormEvent<HTMLInputElement>) => {
         const key = e.currentTarget.id as string
         const val = e.currentTarget.checked as boolean
-        this.setState({ [key]: val })
+        const data: ParameterModel = this.state.data;
+        data[key] = val;
         this.props.onChange(this.props.index, key, val)      
     }
 
@@ -69,36 +62,37 @@ class Parameter extends React.PureComponent<IParameterProperties, IParameterStat
         return (
 
 
-            <div>
+            <div className="DIV_OUTER">
                 <form className="ParameterForm">
-                    <div>
+                    <div className="DIV_BORDER"/>
+                    <div className="DIV_ROW1">
                         <label style={{ marginLeft: "10px" }}>
-                            Long Name:  <input id="longName" className="longName" type="text" defaultValue={this.state.longName} onBlur={this.onBlur} />
+                            Long Name:  <input id="longName" className="longName" type="text" defaultValue={this.state.data.longParameter} onBlur={this.onBlur} />
                         </label>
                         <label style={{ marginLeft: "14px" }}>
-                            Short Name:  <input id="shortName" type="text" defaultValue={this.state.shortName} onBlur={this.onBlur} />
+                            Short Name:  <input id="shortName" type="text" defaultValue={this.state.data.shortParameter} onBlur={this.onBlur} />
                         </label>
                         <label style={{ marginLeft: "10px" }}>
-                            Variable Name:  <input id="variableName" type="text" defaultValue={this.state.variableName} onBlur={this.onBlur} />
+                            Variable Name:  <input id="variableName" type="text" defaultValue={this.state.data.variableName} onBlur={this.onBlur} />
                         </label>
                     </div>
-                    <div>
+                    <div className="DIV_ROW2">
                         <label style={{ marginLeft: "29px" }}>
-                            Default:  <input id="defaultValue" type="text" defaultValue={this.state.defaultValue} onBlur={this.onBlur} />
+                            Default:  <input id="defaultValue" type="text" defaultValue={this.state.data.defaultValue} onBlur={this.onBlur} />
                         </label>
                         <label style={{ marginLeft: "5px" }}>
-                            Description:  <input id="descriptionValue" type="text" defaultValue={this.state.descriptionValue} onBlur={this.onBlur} />
+                            Description:  <input id="descriptionValue" type="text" defaultValue={this.state.data.descriptionValue} onBlur={this.onBlur} />
                         </label>
                         <label style={{ marginLeft: "19px" }}>
-                            Value if Set:  <input id="valueIfSet" type="text" defaultValue={this.state.valueIfSet} onBlur={this.onBlur} />
+                            Value if Set:  <input id="valueIfSet" type="text" defaultValue={this.state.data.valueIfSet} onBlur={this.onBlur} />
                         </label>
                     </div>
-                    <div style={{ marginLeft: "337px" }}>
+                    <div className="DIV_ROW3" style={{ marginLeft: "337px" }}>
                         <label>
-                            Requires Input String:  <input id="requiresInputString" type="checkbox" defaultChecked={this.state.requiresInputString} onChange={this.onChecked} />
+                            Requires Input String:  <input id="requiresInputString" type="checkbox" defaultChecked={this.state.data.requiresInputString} onChange={this.onChecked} />
                         </label>
                         <label style={{ marginLeft: "10px" }}>
-                            Required Parameter:  <input id="requiredParameter" type="checkbox" defaultChecked={this.state.requiredParameter} onChange={this.onChecked} />
+                            Required Parameter:  <input id="requiredParameter" type="checkbox" defaultChecked={this.state.data.requiredParameter} onChange={this.onChecked} />
                         </label>
                     </div>
                    

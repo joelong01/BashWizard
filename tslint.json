@@ -4,7 +4,8 @@
     "exclude": [
       "config/**/*.js",
       "node_modules/**/*.ts",
-      "coverage/lcov-report/*.js"
+      "coverage/lcov-report/*.js",
+      "src/Templates/*.sh"
     ]
   },
   "rules": {
@@ -14,6 +15,8 @@
     "no-console": false,
     "ordered-imports": false, 
     "prefer-const": false,
-    "variable-name": false
+    "variable-name": false,
+    "no-debugger": false
+    
   }
 }
