@@ -132,6 +132,13 @@ if __REQUIRED_FILES_IF__; then
 	usage
 	exit 2
 fi
+`,
+endOfBash:
+`
+# --- YOUR SCRIPT ENDS HERE ---
+time=$(date +"%m/%d/%y @ %r")
+echo "ended: $time" 
+} | tee -a "\${LOG_FILE}"
 `
 
 }

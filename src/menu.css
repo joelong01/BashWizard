@@ -7,7 +7,7 @@
 
 .Menu_LayoutRoot
 {
-    background: darkgray;
+    background-color: #494949;
     border: 1px solid black;
     position: relative;
 }
@@ -51,7 +51,7 @@
   /* General sidebar styles */
 .bm-menu 
 {
-    background: lightgray;
+    background-color: #494949;
     padding: 0;
     font-size: 1.15em;
     
