@@ -1,5 +1,8 @@
 import * as React from "react";
 import ParameterModel from './ParameterModel';
+import "./App.css"
+import "./index.css"
+import "./menu.css"
 import "./parameter.css"
 
 

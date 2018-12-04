@@ -1,6 +1,9 @@
+import "./react-bootstrap.css"
+import "./App.css"
+import "./index.css"
+import "./menu.css"
+import "./parameter.css"
 import * as React from 'react';
-import './App.css';
-import "./menu.css";
 import { slide as Menu } from "react-burger-menu";
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
@@ -9,6 +12,8 @@ import Splitter from 'm-react-splitters';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
 import { camelCase } from "lodash";
+import {Button, ButtonGroup, Glyphicon} from "react-bootstrap";
+
 
 interface IAppState {
   //
@@ -365,7 +370,24 @@ class App extends React.Component<{}, IAppState> {
                         </div>
             <button className="burgerItemButton" onClick={this.onAddParameter}>Add Parameter</button>
           </div>
-
+          <div className="DIV_ButtonGroup">
+          
+            <ButtonGroup vertical={true} bsSize={"large"}>
+              <Button>
+                <Glyphicon glyph="align-left" />
+              </Button>
+              <Button>
+                <Glyphicon glyph="align-center" />
+              </Button>
+              <Button>
+                <Glyphicon glyph="align-right" />
+              </Button>
+              <Button>
+                <Glyphicon glyph="align-justify" />
+              </Button>
+            </ButtonGroup>
+          
+          </div>
         </div>
       </Menu >
     );

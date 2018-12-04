@@ -97,7 +97,8 @@
         }
         .TEXTAREA_Bash
         {
-          font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+          font-family: 'Consolas', 'Courier New', Courier, monospace;      
+          font-size: 10px;
           color: white;  
           background-color: black;
           overflow: auto;
@@ -110,7 +111,8 @@
         }
         .DIV_EndOfBash
         {
-          font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+          font-family: 'Consolas', 'Courier New', Courier, monospace;      
+          font-size: 10px;
           color: white;  
           background-color: black;
           position: absolute;
@@ -124,7 +126,8 @@
         }
         .TEXTAREA_EndOfBash
         {
-          font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+          font-family: 'Consolas', 'Courier New', Courier, monospace;      
+          font-size: 10px;
           color: white;  
           background-color: black;
           overflow: auto;
@@ -158,7 +161,8 @@
     }
     .TEXTAREA_jsonDoc
     {
-      font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+      font-family: 'Consolas', 'Courier New', Courier, monospace;      
+      font-size: 10px;
       color: white;  
       background-color: black;
       overflow: auto;
@@ -180,7 +184,8 @@
     }
     .TEXTAREA_settings
     {
-      font-family: 'Consolas' 'FixedSys' 'Courier New', Courier, monospace;
+      font-family: 'Consolas', 'Courier New', Courier, monospace;      
+      font-size: 10px;
       color: white;  
       background-color: black;
       overflow: auto;
@@ -198,8 +203,8 @@
 }
 [class^="LABEL_"]
 {
-  font-family: monospace;
-  font-size: 10pt;  
+ font-family: 'Consolas', 'Courier New', Courier, monospace;
+  font-size: 16px;
   background-color:transparent;
   color:white;
   margin-left: 10px;
