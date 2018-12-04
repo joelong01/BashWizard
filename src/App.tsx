@@ -1,12 +1,14 @@
 import * as React from 'react';
 import './App.css';
 import "./menu.css";
-import { slide as Menu } from "react-burger-menu";
+import { reveal as Menu } from "react-burger-menu";
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
 import Splitter from 'm-react-splitters';
-import 'm-react-splitters/lib/splitters.css';
+import trim from 'lodash-es/trim';
+import trimEnd from 'lodash-es/trimEnd';
+import { camelCase } from "lodash";
 
 interface IAppState {
   //
@@ -43,8 +45,8 @@ class App extends React.Component<{}, IAppState> {
         menuOpen: false,
         json: bashTemplates.beginTee,
         bash: bashTemplates.bashTemplate,
-        input: bashTemplates.logTemplate,
-        endOfBash: bashTemplates.parseInputTemplate,
+        input: "",
+        endOfBash: bashTemplates.endOfBash,
         // these do not get replaced
         ScriptName: "",
         EchoInput: false,
@@ -55,13 +57,11 @@ class App extends React.Component<{}, IAppState> {
 
       }
 
-    this.onChange = this.onChange.bind(this)
-
   }
 
-  private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    await this.setStateAsync({ ScriptName: e.currentTarget.value })
-    await this.setStateAsync({ json: this.stringify(), bash: this.toBash() })
+  private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {   
+    await this.setStateAsync({ ScriptName: e.currentTarget.value}) 
+    await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
     this.forceUpdate()
   }
   private Tabs = (n: number): string => {
@@ -96,7 +96,7 @@ class App extends React.Component<{}, IAppState> {
       // usage
       let required: string = (param.requiredParameter) ? "Required" : "Optional";
       usageLine += `${param.shortParameter} | --${param.longParameter}`
-      usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${param.longParameter} ${required} ${param.descriptionValue}\"${nl}`
+      usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${param.longParameter} ${required} ${param.description}\"${nl}`
 
       //
       // the  echoInput function
@@ -116,7 +116,7 @@ class App extends React.Component<{}, IAppState> {
       inputCase += `${this.Tabs(3)};;\n`
 
       // declare variables
-      inputDeclarations += `declare ${param.variableName}=${param.defaultValue}\n`
+      inputDeclarations += `declare ${param.variableName}=${param.default}\n`
       if (this.state.AcceptsInputFile && param.variableName !== "inputFile") {
         // parse input file
         parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
@@ -186,19 +186,11 @@ class App extends React.Component<{}, IAppState> {
 
   }
 
-  //
-  //  a call back from the Parameter component whenever a value changes
-  public onChange = (index: number, key: string, value: any): void => {
-
-    this.setState({ json: this.stringify() })
-    console.log(`OnChange [number=${index}] [name=${key}] [value=${value}]`)
-  }
-
-  private onAddParameter = () => {
-    this.setState({ Parameters: [...this.state.Parameters, new ParameterModel()] })
+  private onAddParameter = (): void => {
+    this.addParameter(new ParameterModel());
   }
   private jsonReplacer = (name: string, value: any) => {
-    if (name === "json" || name === "menuOpen" || name === "endOfBash" || name === "bash" || name === "input") {
+    if (name === "json" || name === "menuOpen" || name === "endOfBash" || name === "bash" || name === "input" || name === "propertyChangedNotify") {
       return undefined;
     }
 
@@ -208,6 +200,77 @@ class App extends React.Component<{}, IAppState> {
 
     const jsonDoc = JSON.stringify(this.state, this.jsonReplacer, 4);
     return jsonDoc;
+  }
+
+  private toInput = () => {
+    const nl: string = "\n";
+    let sb: string = `${this.Tabs(1)}\"${this.state.ScriptName}\": { ${nl}`
+    let paramKeyValuePairs: string = "";
+    const quotes: string = '"'
+    for (let param of this.state.Parameters) {
+      let defValue: string = param.default;
+      defValue = trim(defValue);
+      defValue = trimEnd(defValue, quotes);
+      defValue = defValue.replace("\\", "\\\\");
+      paramKeyValuePairs += `${this.Tabs(2)}\"${param.longParameter}\": \"${defValue}\",${nl}`
+    };
+    //  delete trailing "," "\n" and spaces
+    paramKeyValuePairs = trimEnd(paramKeyValuePairs, ',\n');
+    
+    
+    sb += paramKeyValuePairs;
+    sb += `${nl}${this.Tabs(1)}}`
+    return sb
+  }
+
+  private deleteParameter = async (index: number) => {
+    if (index === -1) {
+      return;
+    }
+
+    let array: ParameterModel[] = [...this.state.Parameters]
+    array.splice(index, 1);
+    await this.setStateAsync({ Parameters: array })
+  }
+
+  private deleteParameterByLongName = async (longName: string) => {
+    let index: number = 0;
+    for (index = 0; index < this.state.Parameters.length; index++) {
+      if (this.state.Parameters[index].longParameter === longName) {
+        await this.deleteParameter(index);
+        return;
+      }
+    }
+  }
+
+  private parameterExists = (longName: string): boolean => {
+    for (let parameter of this.state.Parameters) {
+      if (parameter.longParameter === longName) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
+    if (name === "longParameter") {
+      if (parameter.shortParameter === "") {
+        parameter.shortParameter = parameter.longParameter.substring(0, 1) // TODO: need to make sure this is ok
+      }
+      if (parameter.variableName === "") {
+        parameter.variableName = camelCase(parameter.longParameter);
+      }
+    }
+
+
+    await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+
+  }
+
+  private addParameter = async (p: ParameterModel) => {
+    await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
+    p.registerNotify(this.onPropertyChanged)
+    await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
   }
 
   private onChecked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,16 +285,22 @@ class App extends React.Component<{}, IAppState> {
     switch (key) {
       case "AcceptsInputFile":
         {
-          let p: ParameterModel = new ParameterModel()
-          p.defaultValue = "";
-          p.descriptionValue = "the name of the input file. pay attention to $PWD when setting this"
-          p.longParameter = "input-file"
-          p.shortParameter = "i"
-          p.requiresInputString = true;
-          p.requiredParameter = false;
-          p.valueIfSet = "$2"
-          p.variableName = "inputFile"
-          await this.setStateAsync({ CreateLogFile: val, Parameters: [...this.state.Parameters, p] });
+          await this.setStateAsync({ CreateLogFile: val })
+          if (val === true) {
+            let p: ParameterModel = new ParameterModel()
+            p.default = "";
+            p.description = "the name of the input file. pay attention to $PWD when setting this"
+            p.longParameter = "input-file"
+            p.shortParameter = "i"
+            p.requiresInputString = true;
+            p.requiredParameter = false;
+            p.valueIfSet = "$2"
+            p.variableName = "inputFile"
+            await this.addParameter(p);
+          }
+          else {
+            await this.deleteParameterByLongName("input-file")
+          }
         }
         break;
       case "EchoInput":
@@ -239,18 +308,23 @@ class App extends React.Component<{}, IAppState> {
         break;
       case "CreateLogFile":
         {
-
-          let p: ParameterModel = new ParameterModel()
-          p.longParameter = "log-directory",
-            p.shortParameter = "l",
-            p.descriptionValue = "directory for the log file.  the log file name will be based on the script name",
-            p.variableName = "logDirectory",
-            p.defaultValue = "\"./\"",
-            p.requiresInputString = true,
-            p.requiredParameter = false,
-            p.valueIfSet = "$2"
-          await this.setStateAsync({ CreateLogFile: val, Parameters: [...this.state.Parameters, p] });
-
+          await this.setStateAsync({ CreateLogFile: val }); // update the state of the checkbox
+          if (val === true) { // adding it
+            if (!this.parameterExists("log-directory")) {
+              let p: ParameterModel = new ParameterModel()
+              p.longParameter = "log-directory",
+                p.shortParameter = "l",
+                p.description = "directory for the log file.  the log file name will be based on the script name",
+                p.variableName = "logDirectory",
+                p.default = "\"./\"",
+                p.requiresInputString = true,
+                p.requiredParameter = false,
+                p.valueIfSet = "$2"
+              await this.addParameter(p);
+            }
+          } else { // removing it
+            await this.deleteParameterByLongName("log-directory")
+          }
         }
         break;
       case "TeeToLogFile":
@@ -284,7 +358,6 @@ class App extends React.Component<{}, IAppState> {
       <Menu id="burgerMenu" isOpen={this.state.menuOpen} noOverlay={true}
         pageWrapId={"page-wrap"} outerContainerId={"outer-container"}>
         <div className="Menu_LayoutRoot">
-
           <div className="menuItemDiv">
             <div className="menuItemGlyph">
               +
@@ -304,7 +377,7 @@ class App extends React.Component<{}, IAppState> {
     return (
 
       <div className={divName} key={divName} ref={divName}>
-        <Parameter Model={parameter} onChange={this.onChange} index={index} />
+        <Parameter Model={parameter} index={index} />
       </div>
 
 
@@ -327,74 +400,76 @@ class App extends React.Component<{}, IAppState> {
     /*jsx requires one parent element*/
     /* outer-container required for the Menu */
     return (
-      <div className="outer-container">
-        <div className="DIV_Menu">
+      <div className="outer-container" id="outer-container">
+        <div className="DIV_Menu" >
           {this.renderMenu()}
         </div>
-        <Splitter className="SPLITTER_TopBottom"
-          position="horizontal"
-          primaryPaneMaxHeight="100%"
-          primaryPaneMinHeight="10%"
-          primaryPaneHeight="400px"
-          dispatchResize={true}
-          postPoned={false}>
-          <div className="DIV_Top">
-            <div className="Global_Input_Form">
-              <label className="LABEL_ScriptName">
-                Script Name:  <input id="scriptName" className="INPUT_scriptName" type="text" defaultValue={this.state.ScriptName} onChange={this.changedScriptName} />
-              </label>
-              <label className="LABEL_EchoInput">
-                Echo Input:  <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
-              </label>
-              <label className="LABEL_CreateLogFile">
-                Create Log File:  <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
-              </label>
-              <label className="LABEL_TeeToLogFile">
-                Tee to Log file:  <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
-              </label>
-              <label className="LABEL_AcceptsInputFile">
-                Accepts Input File:  <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
-              </label>
-            </div>
-            <div className="Parameter_List">
-              {this.renderParameters()}
-            </div>
-          </div>
-          <div className="DIV_Bottom">
-            <Splitter className="SPLITTER_BottomLeftRight" position="vertical"
-              primaryPaneMaxWidth="100%"
-              primaryPaneMinWidth="100px"
-              primaryPaneWidth="50%"
-              postPoned={false}>
-
-              <div className="DIV_BottomLeft">
-                <div className="DIV_Bash">
-                  <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} />
-                </div>
-                <div className="DIV_EndOfBash">
-                  <textarea className="TEXTAREA_end_of_bash" id="input_end_of_bash" value={this.state.endOfBash} readOnly={true} />
-                </div>
+        <div id="page-wrap" className="page-wrap">
+          <Splitter className="SPLITTER-TopBottom"
+            position="horizontal"
+            primaryPaneMaxHeight="100%"
+            primaryPaneMinHeight="10%"
+            primaryPaneHeight="400px"
+            dispatchResize={true}
+            postPoned={false}>
+            <div className="DIV_Top">
+              <div className="Global_Input_Form">
+                <label className="LABEL_ScriptName">
+                  Script Name:  <input id="scriptName" className="INPUT_scriptName" type="text" defaultValue={this.state.ScriptName} onBlur={this.changedScriptName} />
+                </label>
+                <label className="LABEL_EchoInput">
+                  Echo Input:  <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
+                </label>
+                <label className="LABEL_CreateLogFile">
+                  Create Log File:  <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
+                </label>
+                <label className="LABEL_TeeToLogFile">
+                  Tee to Log file:  <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
+                </label>
+                <label className="LABEL_AcceptsInputFile">
+                  Accepts Input File:  <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
+                </label>
               </div>
-              <div className="DIV_BottomRight">
-                <Splitter className="SPLITTER_JsonInput" position="horizontal"
-                  postPoned={false}
-                  primaryPaneHeight="80%"
-                  primaryPaneMinHeight="10%"
-                  primaryPaneMaxHeight="95%"
-                >
-                  <div className="DIV_Json">
-                    <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
-                  </div>
-
-                  <div className="DIV_InputSettings">
-                    <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} />
-                  </div>
-                </Splitter>
-
+              <div className="Parameter_List">
+                {this.renderParameters()}
               </div>
-            </Splitter>
-          </div>
-        </Splitter>
+            </div>
+            <div className="DIV_Bottom">
+              <Splitter className="SPLITTER_BottomLeftRight" position="vertical"
+                primaryPaneMaxWidth="100%"
+                primaryPaneMinWidth="100px"
+                primaryPaneWidth="50%"
+                postPoned={false}>
+
+                <div className="DIV_BottomLeft">
+                  <div className="DIV_Bash">
+                    <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} />
+                  </div>
+                  <div className="DIV_EndOfBash">
+                    <textarea className="TEXTAREA_end_of_bash" id="input_end_of_bash" value={this.state.endOfBash} readOnly={true} />
+                  </div>
+                </div>
+                <div className="DIV_BottomRight">
+                  <Splitter className="SPLITTER_JsonInput" position="horizontal"
+                    postPoned={false}
+                    primaryPaneHeight="80%"
+                    primaryPaneMinHeight="10%"
+                    primaryPaneMaxHeight="95%"
+                  >
+                    <div className="DIV_Json">
+                      <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
+                    </div>
+
+                    <div className="DIV_InputSettings">
+                      <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} />
+                    </div>
+                  </Splitter>
+
+                </div>
+              </Splitter>
+            </div>
+          </Splitter>
+        </div>
       </div>
     );
   }

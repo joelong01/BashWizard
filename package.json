@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@types/lodash-es": "^4.17.1",
     "fs": "0.0.1-security",
+    "lodash-es": "^4.17.11",
     "m-react-splitters": "^1.1.0",
     "njv": "^2.0.0",
     "react": "^16.6.3",

@@ -1,10 +1,12 @@
 
+type INotifyPropertyChanged = (parameter:ParameterModel, property: string) => void;
+
 
 //
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
 class ParameterModel {
 
-    // public ChangeNotify: (propName:string, oldVal: any, newVal: any) => void;
+    
     private Default: string = "";
     private Description: string = "";
     private LongParameter: string = "";
@@ -13,37 +15,47 @@ class ParameterModel {
     private ShortParameter: string = "";
     private VariableName: string = "";
     private ValueIfSet: string = "";
+    private propertyChangedNotify: INotifyPropertyChanged[] = []
 
-    get defaultValue(): string {
+    
+
+    public registerNotify(callback: INotifyPropertyChanged) {
+        this.propertyChangedNotify.push(callback);
+    }
+    public NotifyPropertyChanged(property: string): void {
+        for (const notify of this.propertyChangedNotify) {
+            notify(this, property)
+        }
+
+    }
+    get default(): string {
         return this.Default;
     }
 
-    set defaultValue(val: string) {
-        if (val !== this.Default) {
-          //  const oldVal:string = this._defaultValue;
-            this.Default = val;
-           // if (this.ChangeNotify !== null) this.ChangeNotify("defaultValue", oldVal, val);
+    set default(value: string) {
+        if (value !== this.Default) {
+
+            this.Default = value;
+            this.NotifyPropertyChanged("default")
         }
     }
 
-    public get descriptionValue(): string {
+    public get description(): string {
         return this.Description;
     }
-    public set descriptionValue(value: string) {
-        if (value !== this.Description){
-           // const oldVal:string = this._defaultValue;
+    public set description(value: string) {
+        if (value !== this.Description) {
             this.Description = value;
-          //  if (this.ChangeNotify !== null)this.ChangeNotify("descriptionValue", oldVal, value);
+            this.NotifyPropertyChanged("description")
         }
     }
     public get longParameter(): string {
         return this.LongParameter;
     }
     public set longParameter(value: string) {
-        if (value !== this.LongParameter){
-          //  const oldVal:string = this._longName;
+        if (value !== this.LongParameter) {
             this.LongParameter = value;
-          //  if (this.ChangeNotify !== null) this.ChangeNotify("longName", oldVal, value);
+            this.NotifyPropertyChanged("longParameter")
         }
     }
 
@@ -51,10 +63,9 @@ class ParameterModel {
         return this.ShortParameter;
     }
     public set shortParameter(value: string) {
-        if (value !== this.ShortParameter){
-          //  const oldVal:string = this._shortName;
+        if (value !== this.ShortParameter) {
             this.ShortParameter = value;
-         //   if (this.ChangeNotify !== null) this.ChangeNotify("shortName", oldVal, value);
+            this.NotifyPropertyChanged("shortParameter")
         }
     }
 
@@ -62,10 +73,9 @@ class ParameterModel {
         return this.RequiresInputString;
     }
     public set requiresInputString(value: boolean) {
-        if (value !== this.RequiresInputString){
-         //   const oldVal:boolean = this._requiresInputString;
+        if (value !== this.RequiresInputString) {
             this.RequiresInputString = value;
-           // if (this.ChangeNotify !== null) this.ChangeNotify("requiresInputString", oldVal, value);
+            this.NotifyPropertyChanged("requiresInputString")
         }
     }
 
@@ -73,36 +83,33 @@ class ParameterModel {
         return this.RequiredParameter;
     }
     public set requiredParameter(value: boolean) {
-        if (value !== this.RequiredParameter){
-          //  const oldVal:boolean = this._requiredParameter;
+        if (value !== this.RequiredParameter) {
             this.RequiredParameter = value;
-           // if (this.ChangeNotify !== null) this.ChangeNotify("requiredParameter", oldVal, value);
+            this.NotifyPropertyChanged("requiredParameter")
         }
     }
 
-    get variableName():string {
+    get variableName(): string {
         return this.VariableName;
     }
 
-    set variableName(val: string) {
-        if (val !== this.VariableName) {
-          //  const oldVal:string = this._variableName;
-            this.VariableName = val;
-         //   if (this.ChangeNotify !== null) this.ChangeNotify("variableName", oldVal, val);
+    set variableName(value: string) {
+        if (value !== this.VariableName) {
+            this.VariableName = value;
+            this.NotifyPropertyChanged("variableName")
         }
     }
-    get valueIfSet():string {
+    get valueIfSet(): string {
         return this.ValueIfSet;
     }
 
-    set valueIfSet(val: string) {
-        if (val !== this.ValueIfSet) {
-         //   const oldVal:string = this._valueIfSet;
-            this.ValueIfSet = val;
-         //   if (this.ChangeNotify !== null) this.ChangeNotify("valueIfSet", oldVal, val);
+    set valueIfSet(value: string) {
+        if (value !== this.ValueIfSet) {
+            this.ValueIfSet = value;
+            this.NotifyPropertyChanged("valueIfSet")
         }
     }
-   
+
 }
 
 export default ParameterModel;
