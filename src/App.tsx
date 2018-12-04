@@ -1,7 +1,7 @@
 import * as React from 'react';
 import './App.css';
 import "./menu.css";
-import { reveal as Menu } from "react-burger-menu";
+import { slide as Menu } from "react-burger-menu";
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
@@ -43,8 +43,8 @@ class App extends React.Component<{}, IAppState> {
         //
         //  these get replaced in this.stringify
         menuOpen: false,
-        json: bashTemplates.beginTee,
-        bash: bashTemplates.bashTemplate,
+        json: "",
+        bash: "",
         input: "",
         endOfBash: bashTemplates.endOfBash,
         // these do not get replaced
@@ -59,8 +59,8 @@ class App extends React.Component<{}, IAppState> {
 
   }
 
-  private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {   
-    await this.setStateAsync({ ScriptName: e.currentTarget.value}) 
+  private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await this.setStateAsync({ ScriptName: e.currentTarget.value })
     await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
     this.forceUpdate()
   }
@@ -216,8 +216,8 @@ class App extends React.Component<{}, IAppState> {
     };
     //  delete trailing "," "\n" and spaces
     paramKeyValuePairs = trimEnd(paramKeyValuePairs, ',\n');
-    
-    
+
+
     sb += paramKeyValuePairs;
     sb += `${nl}${this.Tabs(1)}}`
     return sb
@@ -267,6 +267,7 @@ class App extends React.Component<{}, IAppState> {
 
   }
 
+
   private addParameter = async (p: ParameterModel) => {
     await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
     p.registerNotify(this.onPropertyChanged)
@@ -285,7 +286,7 @@ class App extends React.Component<{}, IAppState> {
     switch (key) {
       case "AcceptsInputFile":
         {
-          await this.setStateAsync({ CreateLogFile: val })
+          await this.setStateAsync({ AcceptsInputFile: val })
           if (val === true) {
             let p: ParameterModel = new ParameterModel()
             p.default = "";
@@ -442,12 +443,8 @@ class App extends React.Component<{}, IAppState> {
                 postPoned={false}>
 
                 <div className="DIV_BottomLeft">
-                  <div className="DIV_Bash">
-                    <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} />
-                  </div>
-                  <div className="DIV_EndOfBash">
-                    <textarea className="TEXTAREA_end_of_bash" id="input_end_of_bash" value={this.state.endOfBash} readOnly={true} />
-                  </div>
+                  <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
+                  <textarea className="TEXTAREA_EndOfBash" id="TEXTAREA_EndOfBash" value={this.state.endOfBash} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
                 </div>
                 <div className="DIV_BottomRight">
                   <Splitter className="SPLITTER_JsonInput" position="horizontal"
@@ -456,13 +453,8 @@ class App extends React.Component<{}, IAppState> {
                     primaryPaneMinHeight="10%"
                     primaryPaneMaxHeight="95%"
                   >
-                    <div className="DIV_Json">
-                      <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} />
-                    </div>
-
-                    <div className="DIV_InputSettings">
-                      <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} />
-                    </div>
+                    <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
+                    <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
                   </Splitter>
 
                 </div>
