@@ -1,11 +1,16 @@
 {
-  "extends": ["tslint:recommended", "tslint-react", "tslint-config-prettier"],
+  "extends": [
+    "tslint:recommended",
+    "tslint-react",
+    "tslint-config-prettier"
+  ],
   "linterOptions": {
     "exclude": [
       "config/**/*.js",
       "node_modules/**/*.ts",
       "coverage/lcov-report/*.js",
-      "src/Templates/*.sh"
+      "src/images/*.*"
+      
     ]
   },
   "rules": {
@@ -13,12 +18,9 @@
     "member-ordering": false,
     "jsx-no-lambda": false,
     "no-console": false,
-    "ordered-imports": false, 
+    "ordered-imports": false,
     "prefer-const": false,
     "variable-name": false,
-    "no-debugger": false,
-    "no-unused-variable": false
-    
+    "no-debugger": false
   }
-   
 }

@@ -1,10 +1,12 @@
 import "./react-bootstrap.css"
 import "./App.css"
 import "./index.css"
-import "./menu.css"
 import "./parameter.css"
+import "./menu.css"
 import * as React from 'react';
-import { slide as Menu } from "react-burger-menu";
+import {BurgerMenu} from './menu';
+import {MenuModel} from "./menuModel"
+import svgFiles from "./images"
 import Parameter from './Parameter';
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
@@ -12,7 +14,6 @@ import Splitter from 'm-react-splitters';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
 import { camelCase } from "lodash";
-// import {Button, Glyphicon, ButtonGroup} from "react-bootstrap";
 
 
 interface IAppState {
@@ -23,6 +24,7 @@ interface IAppState {
   bash: string;
   endOfBash: string;
   input: string;
+  menuItems: MenuModel[];
 
   //
   //  these get stringified
@@ -39,15 +41,79 @@ interface IAppState {
 
 
 class App extends React.Component<{}, IAppState> {
+  private myMenu = React.createRef<BurgerMenu>()
   constructor(props: {}) {
     super(props);
+  //#region menu creation
+    const menu:MenuModel[] = []
+    let menuItem: MenuModel  = new MenuModel();
+    menuItem.Icon = svgFiles.FileNew;
+    menuItem.Text = "New Script";
+    menuItem.onClicked = this.menuNewScript;
+    menu.unshift(menuItem);
+
+    menuItem=new MenuModel();
+    menuItem.isSeperator = true;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.FileOpen;
+    menuItem.Text = "Open Bash Wizard File";
+    menuItem.onClicked = this.menuOpenScript;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.FileSave;
+    menuItem.Text = "Save Bash Wizard File";
+    menuItem.onClicked = this.menuSaveBashWizardFile;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.FileSaveAs;
+    menuItem.Text = "Save As Bash Wizard File";
+    menuItem.onClicked = this.menuSaveAsBashWizardFile;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.SaveToBash;
+    menuItem.Text = "Save to Bash Script";
+    menuItem.onClicked = this.menuSaveToBash;
+    menu.unshift(menuItem);
+    
+    menuItem=new MenuModel();
+    menuItem.isSeperator = true;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.AddParameter;
+    menuItem.Text = "Add Parameter";
+    menuItem.onClicked = this.menuAddParameter;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.DeleteParameter;
+    menuItem.Text = "Delete Parameter";
+    menuItem.onClicked = this.menuDeleteParameter;
+    menu.unshift(menuItem);
+
+    menuItem=new MenuModel();
+    menuItem.isSeperator = true;
+    menu.unshift(menuItem);
+
+    menuItem = new MenuModel();
+    menuItem.Icon = svgFiles.DebugInfo;
+    menuItem.Text = "VS Code Debug Settings";
+    menuItem.onClicked = this.menuDebugInfo;
+    menu.unshift(menuItem);
+//#endregion
     const params: ParameterModel[] = []
 
     this.state =
       {
         //
         //  these get replaced in this.stringify
-        menuOpen: false,
+        menuOpen: true,
+        menuItems: menu,
         json: "",
         bash: "",
         input: "",
@@ -63,7 +129,46 @@ class App extends React.Component<{}, IAppState> {
       }
 
   }
+  private menuDebugInfo = (): void => {
+    console.log("menuDebugInfo")
+    this.myMenu.current!.isOpen = false;
 
+  }
+  private menuSaveAsBashWizardFile = (): void => {
+    console.log("menuSaveAsScript")
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuSaveToBash = (): void => {
+    console.log("menuSaveToBash")
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuOpenScript = (): void => {
+    console.log("menuOpenScript")
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuAddParameter = (): void => {
+    console.log("menuAddParameter")
+    this.addParameter(new ParameterModel());
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuDeleteParameter = (): void => {
+    console.log("menuDeleteParameter")
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuNewScript = (): void => {
+    console.log("menuNewScript")
+    this.myMenu.current!.isOpen = false;
+
+  }
+  private menuSaveBashWizardFile = (): void => {
+    console.log("menuSaveScript")
+    this.myMenu.current!.isOpen = false;
+  }
   private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {
     await this.setStateAsync({ ScriptName: e.currentTarget.value })
     await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
@@ -191,9 +296,6 @@ class App extends React.Component<{}, IAppState> {
 
   }
 
-  private onAddParameter = (): void => {
-    this.addParameter(new ParameterModel());
-  }
   private jsonReplacer = (name: string, value: any) => {
     if (name === "json" || name === "menuOpen" || name === "endOfBash" || name === "bash" || name === "input" || name === "propertyChangedNotify") {
       return undefined;
@@ -357,30 +459,7 @@ class App extends React.Component<{}, IAppState> {
 
     });
   }
-  private renderMenu = () => {
-    /* css for this is in ./menu.css */
 
-    return (
-      <Menu id="burgerMenu" isOpen={this.state.menuOpen} noOverlay={true}
-        pageWrapId={"page-wrap"} outerContainerId={"outer-container"}>
-        <div className="Menu_LayoutRoot">
-          <div className="menuItemDiv">
-            <div className="menuItemGlyph">
-              +
-                        </div>
-            <button className="burgerItemButton" onClick={this.onAddParameter}>Add Parameter</button>
-          </div>
-          
-          <div className="DIVMENU_Button">
-            <button className="MENU_Button">
-              <label className="fa fa-home" /> 
-              <span className="MENU_Span">Home</span>
-            </button>
-          </div>
-        </div>
-      </Menu >
-    );
-  }
 
   private renderOneParameter = (parameter: ParameterModel, index: number): JSX.Element => {
 
@@ -413,10 +492,8 @@ class App extends React.Component<{}, IAppState> {
     /* outer-container required for the Menu */
     return (
       <div className="outer-container" id="outer-container">
-        <div className="DIV_Menu" >
-          {this.renderMenu()}
-        </div>
-        <div id="page-wrap" className="page-wrap">
+        <BurgerMenu ref={this.myMenu} isOpen={this.state.menuOpen} Items={this.state.menuItems} />        
+        <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
           <Splitter className="SPLITTER-TopBottom"
             position="horizontal"
             primaryPaneMaxHeight="100%"

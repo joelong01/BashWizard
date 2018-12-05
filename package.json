@@ -14,7 +14,6 @@
     "popper.js": "^1.14.6",
     "react": "^16.6.3",
     "react-bootstrap": "^0.32.4",
-    "react-burger-menu": "^2.5.4",
     "react-dom": "^16.6.3",
     "react-scripts-ts": "^4.0.8",
     "react-splitter-layout": "^3.0.1"
