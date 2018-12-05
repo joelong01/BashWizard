@@ -98,7 +98,7 @@
         .TEXTAREA_Bash
         {
           font-family: 'Consolas', 'Courier New', Courier, monospace;      
-          font-size: 10px;
+          font-size: 14px;
           color: white;  
           background-color: black;
           overflow: auto;
@@ -112,7 +112,7 @@
         .DIV_EndOfBash
         {
           font-family: 'Consolas', 'Courier New', Courier, monospace;      
-          font-size: 10px;
+          font-size: 14px;
           color: white;  
           background-color: black;
           position: absolute;
@@ -127,7 +127,7 @@
         .TEXTAREA_EndOfBash
         {
           font-family: 'Consolas', 'Courier New', Courier, monospace;      
-          font-size: 10px;
+          font-size: 14px;
           color: white;  
           background-color: black;
           overflow: auto;
@@ -162,7 +162,7 @@
     .TEXTAREA_jsonDoc
     {
       font-family: 'Consolas', 'Courier New', Courier, monospace;      
-      font-size: 10px;
+      font-size: 14px;
       color: white;  
       background-color: black;
       overflow: auto;
@@ -185,7 +185,7 @@
     .TEXTAREA_settings
     {
       font-family: 'Consolas', 'Courier New', Courier, monospace;      
-      font-size: 10px;
+      font-size: 14px;
       color: white;  
       background-color: black;
       overflow: auto;
@@ -208,12 +208,18 @@
   background-color:transparent;
   color:white;
   margin-left: 10px;
+  font-weight: 100;
 }
 
 input[type=checkbox], input[type=radio] {
   vertical-align: middle;
   position: relative;
   bottom: 1px;
+  font-weight: 100;
 }
 
+.glyphButton
+{
+  background-color: blue;
+}
 

@@ -16,7 +16,7 @@
     "react-bootstrap": "^0.32.4",
     "react-burger-menu": "^2.5.4",
     "react-dom": "^16.6.3",
-    "react-scripts-ts": "3.1.0",
+    "react-scripts-ts": "^4.0.8",
     "react-splitter-layout": "^3.0.1"
   },
   "scripts": {
@@ -32,5 +32,11 @@
     "@types/react-burger-menu": "^2.2.1",
     "@types/react-dom": "^16.0.11",
     "typescript": "^3.2.1"
-  }
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }

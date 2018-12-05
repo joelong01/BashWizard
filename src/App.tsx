@@ -12,7 +12,7 @@ import Splitter from 'm-react-splitters';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
 import { camelCase } from "lodash";
-import {Button, ButtonGroup, Glyphicon} from "react-bootstrap";
+// import {Button, Glyphicon, ButtonGroup} from "react-bootstrap";
 
 
 interface IAppState {
@@ -370,23 +370,12 @@ class App extends React.Component<{}, IAppState> {
                         </div>
             <button className="burgerItemButton" onClick={this.onAddParameter}>Add Parameter</button>
           </div>
-          <div className="DIV_ButtonGroup">
           
-            <ButtonGroup vertical={true} bsSize={"large"}>
-              <Button>
-                <Glyphicon glyph="align-left" />
-              </Button>
-              <Button>
-                <Glyphicon glyph="align-center" />
-              </Button>
-              <Button>
-                <Glyphicon glyph="align-right" />
-              </Button>
-              <Button>
-                <Glyphicon glyph="align-justify" />
-              </Button>
-            </ButtonGroup>
-          
+          <div className="DIVMENU_Button">
+            <button className="MENU_Button">
+              <label className="fa fa-home" /> 
+              <span className="MENU_Span">Home</span>
+            </button>
           </div>
         </div>
       </Menu >
@@ -438,7 +427,7 @@ class App extends React.Component<{}, IAppState> {
             <div className="DIV_Top">
               <div className="Global_Input_Form">
                 <label className="LABEL_ScriptName">
-                  Script Name:  <input id="scriptName" className="INPUT_scriptName" type="text" defaultValue={this.state.ScriptName} onBlur={this.changedScriptName} />
+                  Script Name:  <input id="scriptName" className="INPUT_scriptName" spellCheck={false} type="text" defaultValue={this.state.ScriptName} onBlur={this.changedScriptName} />
                 </label>
                 <label className="LABEL_EchoInput">
                   Echo Input:  <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
@@ -465,8 +454,8 @@ class App extends React.Component<{}, IAppState> {
                 postPoned={false}>
 
                 <div className="DIV_BottomLeft">
-                  <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
-                  <textarea className="TEXTAREA_EndOfBash" id="TEXTAREA_EndOfBash" value={this.state.endOfBash} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
+                  <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} spellCheck={false} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
+                  <textarea className="TEXTAREA_EndOfBash" id="TEXTAREA_EndOfBash" spellCheck={false} value={this.state.endOfBash} readOnly={true} onFocus={(e) => {e.currentTarget.select();}} />
                 </div>
                 <div className="DIV_BottomRight">
                   <Splitter className="SPLITTER_JsonInput" position="horizontal"
@@ -475,8 +464,8 @@ class App extends React.Component<{}, IAppState> {
                     primaryPaneMinHeight="10%"
                     primaryPaneMaxHeight="95%"
                   >
-                    <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
-                    <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
+                    <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} spellCheck={false} readOnly={false} onFocus={(e) => {e.currentTarget.select();}} onChange= { (e: React.ChangeEvent<HTMLTextAreaElement>) => this.setState({json: e.currentTarget.value})}  />
+                    <textarea className="TEXTAREA_settings" id="input_settings"  value={this.state.input} spellCheck={false} readOnly={true} onFocus={(e) => {e.currentTarget.select();}}/>
                   </Splitter>
 
                 </div>
