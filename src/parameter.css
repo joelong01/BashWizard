@@ -1,4 +1,4 @@
-.ParameterForm
+[class^="ParameterForm"]
 {
     background-color: transparent;
     color: white;
@@ -9,6 +9,13 @@
     border: 1px solid black;
     width: calc(100% - 5px);
 }
+
+.ParameterForm_Selected
+{
+    border: 2px white solid;
+    
+}
+
 [class^="DIV_ROW"]
 {
     margin: 0px;
