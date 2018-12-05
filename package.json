@@ -4,14 +4,18 @@
   "private": true,
   "dependencies": {
     "@types/lodash-es": "^4.17.1",
+    "@types/popper.js": "^1.11.0",
+    "@types/react-bootstrap": "^0.32.15",
     "fs": "0.0.1-security",
+    "jquery": "^3.3.1",
     "lodash-es": "^4.17.11",
     "m-react-splitters": "^1.1.0",
     "njv": "^2.0.0",
+    "popper.js": "^1.14.6",
     "react": "^16.6.3",
-    "react-burger-menu": "^2.5.4",
+    "react-bootstrap": "^0.32.4",
     "react-dom": "^16.6.3",
-    "react-scripts-ts": "3.1.0",
+    "react-scripts-ts": "^4.0.8",
     "react-splitter-layout": "^3.0.1"
   },
   "scripts": {
@@ -27,5 +31,11 @@
     "@types/react-burger-menu": "^2.2.1",
     "@types/react-dom": "^16.0.11",
     "typescript": "^3.2.1"
-  }
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }
