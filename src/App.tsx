@@ -7,13 +7,16 @@ import * as React from 'react';
 import { BurgerMenu } from './menu';
 import { MenuModel } from "./menuModel"
 import svgFiles from "./images"
-import { Parameter, SelectedState } from './Parameter';
+import { ParameterView } from './ParameterView';
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
 import Splitter from 'm-react-splitters';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
-import { camelCase } from "lodash";
+import { camelCase } from "lodash-es";
+import { uniqueId } from 'lodash-es';
+
+
 
 
 interface IAppState {
@@ -25,8 +28,8 @@ interface IAppState {
     endOfBash: string;
     input: string;
     menuItems: MenuModel[];
-    SelectedParameter?: Parameter;
-    ParameterItems:Parameter[];
+    SelectedParameter?: ParameterModel;
+
 
     //
     //  these get stringified
@@ -129,31 +132,26 @@ class App extends React.Component<{}, IAppState> {
                 TeeToLogFile: false,
                 AcceptsInputFile: false,
                 Parameters: params,
-                ParameterItems: []
+
 
             }
 
     }
 
-    public focusCallback = (focusItem: Parameter): void => {
-         
-        if (this.state.SelectedParameter !== undefined)
-        {
-            this.state.SelectedParameter.Select(SelectedState.NotSelected)
-        }
-        this.setState({ SelectedParameter: focusItem })
-        if (focusItem !== undefined) {
-            console.log(`focusedItem.LongParam = ${focusItem.Model.longParameter}`)
-        }
-        else {
-            console.log("nothing has focus")
-        }
-    }
-
 
     //#region menu handlers
-    private menuDebugInfo = (): void => {
+    private menuDebugInfo = async () => {
         console.log("menuDebugInfo")
+        let p: ParameterModel = new ParameterModel()
+        p.longParameter = "a"
+        await this.addParameter(p)
+        p = new ParameterModel()
+        p.longParameter = "b"
+        await this.addParameter(p)
+        p = new ParameterModel()
+        p.longParameter = "c"
+        await this.addParameter(p)
+
         this.myMenu.current!.isOpen = false;
 
     }
@@ -180,11 +178,32 @@ class App extends React.Component<{}, IAppState> {
         console.log("children: %o", this.props.children)
 
     }
-    private menuDeleteParameter = (): void => {
-        console.log("menuDeleteParameter")
+    private menuDeleteParameter = async () => {
         this.myMenu.current!.isOpen = false;
         if (this.state.SelectedParameter !== undefined) {
-            this.deleteParameter(this.state.Parameters.indexOf(this.state.SelectedParameter.Model))
+            const toDelete:ParameterModel = this.state.SelectedParameter;
+            this.state.SelectedParameter.selected = false;
+            let index: number = this.state.Parameters.indexOf(this.state.SelectedParameter)
+            if (index !== -1) {
+                await this.deleteParameter(toDelete) // after this point the state has been changed
+                //
+                //  highlight the item previous to the deleted one, unless it was the first one
+                const newLength = this.state.Parameters.length;
+                if (newLength === 0) {
+                    return;
+                }
+                if (index === newLength) {
+                    index--;
+                }
+
+                //
+                //  select the first one if the first one was deleted, otherwise select the previous one
+                this.state.Parameters[index].selected = true;
+            }
+            else
+            {
+                console.log ("index of selected item is -1!")
+            }
         }
 
     }
@@ -324,14 +343,21 @@ class App extends React.Component<{}, IAppState> {
         return sbBashScript;
 
     }
-
+    //
+    //  this is an "opt in" replacer -- if you want something in the json you have to add it here
     private jsonReplacer = (name: string, value: any) => {
-        if (name === "json" || name === "menuOpen" || name === "endOfBash" || name === "bash" || name === "input" ||
-            name === "propertyChangedNotify" || name === "menuItems" || name === "SelectedParameter" || name ==="ParameterItems") {
-            return undefined;
+
+        if (name === "" || name === "ScriptName" || name === "EchoInput" || name === "CreateLogFile" || name === "TeeToLogFile" || name === "AcceptsInputFile" || name === "Parameters") {
+            return value;
+        }
+        //
+        //  JSON.strinfigy passes in indexes as strings for array elements                
+        if (!isNaN(Number(name))) {
+            return value;
         }
 
-        return value;
+        return ParameterModel.jsonReplacer(name, value);
+
     }
     public stringify = () => {
 
@@ -360,21 +386,29 @@ class App extends React.Component<{}, IAppState> {
         return sb
     }
 
-    private deleteParameter = async (index: number) => {
-        if (index === -1) {
+    private deleteParameter = async (parameter: ParameterModel) => {
+        if (parameter === undefined) {
+            console.log("WARNING:  ATTEMPTING TO DELETE AN UNDEFINED PARAMETER")
+            return;
+        }
+        let array: ParameterModel[] = [...this.state.Parameters]
+        const index:number = array.indexOf(parameter)
+        if (index === -1)
+        {
+            console.log("WARNING: PARAMETER NOT FOUND IN ARRAY TO DELETE")
             return;
         }
 
-        let array: ParameterModel[] = [...this.state.Parameters]
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
+        
     }
 
     private deleteParameterByLongName = async (longName: string) => {
         let index: number = 0;
         for (index = 0; index < this.state.Parameters.length; index++) {
             if (this.state.Parameters[index].longParameter === longName) {
-                await this.deleteParameter(index);
+                await this.deleteParameter(this.state.Parameters[index]);
                 return;
             }
         }
@@ -390,34 +424,57 @@ class App extends React.Component<{}, IAppState> {
     }
 
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
-        if (name === "longParameter" && !this._settingState) {
+        if (this._settingState === true) {
+            return;
+        }
+        try {
+            console.log(`updating model [name=${name}] [Model=${parameter}]`)
             this._settingState = true;
-            if (parameter.shortParameter === "") {
-                parameter.shortParameter = parameter.longParameter.substring(0, 1) // TODO: need to make sure this is ok
+            if (name === "selected") {
+                if (this.state.SelectedParameter !== undefined) {
+                    this.state.SelectedParameter.selected = false; // old selected no longer selected
+                }
+                await this.setStateAsync({ SelectedParameter: parameter })
+                return;
             }
-            if (parameter.variableName === "") {
-                parameter.variableName = camelCase(parameter.longParameter);
+            if (name === "longParameter") {
+                //
+                //  attempt to autofill short name and variable name
+                //  
+                if (parameter.shortParameter === "") {
+                    parameter.shortParameter = parameter.longParameter.substring(0, 1) // TODO: need to make sure this is ok
+                }
+                if (parameter.variableName === "") {
+                    parameter.variableName = camelCase(parameter.longParameter);
+                }
+
             }
+            await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+            return;
+        }
+        finally {
             this._settingState = false
         }
-
-
-        await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
 
     }
 
 
     private addParameter = async (p: ParameterModel) => {
-        await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
+
+        // const list:ParameterModel[] = [p, ...this.state.Parameters]
+        const list: ParameterModel[] = this.state.Parameters.concat(p);
+        this.setStateAsync({ Parameters: list })
+        // await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
         p.registerNotify(this.onPropertyChanged)
+        p.selected = true;
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+
     }
 
     private onChecked = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
         const key = e.currentTarget.id as string
         let val = e.currentTarget.checked as boolean
-        console.log(`[${key} = "${val}]`)
         if (val === undefined) {
             val = false;
         }
@@ -493,14 +550,20 @@ class App extends React.Component<{}, IAppState> {
     }
 
 
-    private renderOneParameter = (parameter: ParameterModel, index: number): JSX.Element => {
+    private renderOneParameter = (parameter: ParameterModel): JSX.Element => {
 
-        let divName = "PARAMETER_DIV_" + index.toString();
+        // this took *hours* to track down.  do not *ever* use the index as the key
+        // react will use the key to render.  say you have 3 items -- with key=0, 1, 2
+        // you delete the key=1 leaving 0 and 2.  but then you run render() again and you 
+        // get key 0 and 1 again ...and the item you just deleted is still referenced as item 1
+        // and it'll look like you deleted the wrong item.  
 
+        let uniqueName = uniqueId("PARAMETER_DIV_")
+        console.log(`uniqueId: ${uniqueName}`)
         return (
 
-            <div className={divName} key={divName} ref={divName}>
-                <Parameter Model={parameter} index={index} SelectedCallback={this.focusCallback} />
+            <div className={uniqueName} key={uniqueName} ref={uniqueName}>
+                <ParameterView Model={parameter} Name={uniqueName} />
             </div>
 
 
@@ -509,10 +572,9 @@ class App extends React.Component<{}, IAppState> {
 
     public renderParameters = () => {
 
-        let i: number = 0;
         let parameterList: JSX.Element[] = []
         for (let p of this.state.Parameters) {
-            parameterList.unshift(this.renderOneParameter(p, i++))
+            parameterList.push(this.renderOneParameter(p))
         }
         return parameterList;
 

@@ -16,11 +16,29 @@ class ParameterModel {
     private VariableName: string = "";
     private ValueIfSet: string = "";
     private propertyChangedNotify: INotifyPropertyChanged[] = []
+    private _selected: boolean;
 
-    
+    //
+    //  this is an "opt in" replacer -- if you want something in the json you have to add it here
+    public static jsonReplacer (name: string, value: any) {
+        if (name === "Default" || name === "Description"|| name === "LongParameter"|| name === "RequiresInputString"|| name === "RequiredParameter"|| name === "ShortParameter"|| name === "VariableName"|| name === "ValueIfSet")
+        {            
+            return value;            
+        }        
+        return undefined;
+    }
 
     public registerNotify(callback: INotifyPropertyChanged) {
         this.propertyChangedNotify.push(callback);
+    }
+    public removeNotify(callback: INotifyPropertyChanged){
+        const index:number = this.propertyChangedNotify.indexOf(callback)
+        if (index === -1)
+        {
+            throw new Error("attempt to remove a callback that wasn't in the callback array")
+        }
+        this.propertyChangedNotify.splice(index, 1)
+        console.log(`there are now  ${this.propertyChangedNotify.length} items to notify`)
     }
     public NotifyPropertyChanged(property: string): void {
         for (const notify of this.propertyChangedNotify) {
@@ -37,6 +55,18 @@ class ParameterModel {
 
             this.Default = value;
             this.NotifyPropertyChanged("default")
+        }
+    }
+
+    get selected(): boolean {
+        return this._selected;
+    }
+
+    set selected(value: boolean) {
+        if (value !== this._selected) {
+
+            this._selected = value;
+            this.NotifyPropertyChanged("selected")
         }
     }
 
