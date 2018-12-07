@@ -233,116 +233,120 @@ class App extends React.Component<{}, IAppState> {
 
     private toBash = (): string => {
 
+        try {
+            let sbBashScript: string = bashTemplates.bashTemplate;
+            let logTemplate: string = bashTemplates.logTemplate;
+            let parseInputTemplate: string = bashTemplates.parseInputTemplate;
+            let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
 
-        let sbBashScript: string = bashTemplates.bashTemplate;
-        let logTemplate: string = bashTemplates.logTemplate;
-        let parseInputTemplate: string = bashTemplates.parseInputTemplate;
-        let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
+            let nl: string = "\n"
+            let usageLine: string = `${this.Tabs(1)}echo \"Usage: $0 `
+            let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`
+            let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`
+            let shortOptions: string = ""
+            let longOptions: string = ""
+            let inputCase: string = ""
+            let inputDeclarations: string = ""
+            let parseInputFile: string = ""
+            let requiredFilesIf: string = ""
+            const toPad: number = this.longestParameter() + 5;
 
-        let nl: string = "\n"
-        let usageLine: string = `${this.Tabs(1)}echo \"Usage: $0 `
-        let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`
-        let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`
-        let shortOptions: string = ""
-        let longOptions: string = ""
-        let inputCase: string = ""
-        let inputDeclarations: string = ""
-        let parseInputFile: string = ""
-        let requiredFilesIf: string = ""
-        const toPad: number = this.longestParameter() + 5;
+            for (let param of this.state.Parameters) {
+                //
+                // usage
+                let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
+                usageLine += `${param.shortParameter} | --${param.longParameter}`
+                usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
 
-        for (let param of this.state.Parameters) {
+                //
+                // the  echoInput function
+                echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
+
+
+                //
+                //  OPTIONS, LONGOPTS
+                let colon: string = (param.requiresInputString) ? ":" : "";
+                shortOptions += `${param.shortParameter}${colon}`
+                longOptions += `${param.longParameter}${colon},`
+
+                // input Case
+                inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})\n`
+                inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}\n`
+                inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1\n`
+                inputCase += `${this.Tabs(3)};;\n`
+
+                // declare variables
+                inputDeclarations += `declare ${param.variableName}=${param.default}\n`
+                if (this.state.AcceptsInputFile && param.variableName !== "inputFile") {
+                    // parse input file
+                    parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
+                }
+
+                // if statement for the required files
+
+                if (param.requiredParameter) {
+                    requiredFilesIf += `[ -z \"\${${param.variableName}}\" ] || `
+                }
+
+            }
             //
-            // usage
-            let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
-            usageLine += `${param.shortParameter} | --${param.longParameter}`
-            usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
+            //  phase 2 - fix up any of the string created above         
 
-            //
-            // the  echoInput function
-            echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
+            usageLine += "\""
 
+            //  remove last line
+            longOptions = longOptions.slice(0, -1);
+            inputCase = inputCase.slice(0, -1)
+            usageInfo = usageInfo.slice(0, -1)
 
-            //
-            //  OPTIONS, LONGOPTS
-            let colon: string = (param.requiresInputString) ? ":" : "";
-            shortOptions += `${param.shortParameter}${colon}`
-            longOptions += `${param.longParameter}${colon},`
-
-            // input Case
-            inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})\n`
-            inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}\n`
-            inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1\n`
-            inputCase += `${this.Tabs(3)};;\n`
-
-            // declare variables
-            inputDeclarations += `declare ${param.variableName}=${param.default}\n`
-            if (this.state.AcceptsInputFile && param.variableName !== "inputFile") {
-                // parse input file
-                parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
+            if (requiredFilesIf.length > 0) {
+                requiredFilesIf = requiredFilesIf.slice(0, -4); // removes the " || " at the end
+                requiredVariablesTemplate = requiredVariablesTemplate.replace("__REQUIRED_FILES_IF__", requiredFilesIf)
+            }
+            else {
+                requiredVariablesTemplate = "";
             }
 
-            // if statement for the required files
-
-            if (param.requiredParameter) {
-                requiredFilesIf += `[ -z \"\${${param.variableName}}\" ] || `
+            if (this.state.CreateLogFile) {
+                logTemplate = logTemplate.replace("__LOG_FILE_NAME__", this.state.ScriptName + ".log");
+            }
+            else {
+                logTemplate = ""
             }
 
+            //
+            //  phase 3 - replace the strings in the templates
+            sbBashScript = sbBashScript.replace("__USAGE_LINE__", usageLine);
+            sbBashScript = sbBashScript.replace("__USAGE__", usageInfo);
+            sbBashScript = sbBashScript.replace("__ECHO__", echoInput);
+            sbBashScript = sbBashScript.replace("__SHORT_OPTIONS__", shortOptions);
+            sbBashScript = sbBashScript.replace("__LONG_OPTIONS__", longOptions);
+            sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
+            sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
+
+            let inputOverridesRequired: string = (this.state.AcceptsInputFile) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
+
+            if (parseInputFile.length > 0) {
+                parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
+                parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
+                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
+            }
+            else {
+                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
+            }
+
+            sbBashScript = sbBashScript.replace("__BEGIN_TEE__", this.state.TeeToLogFile ? bashTemplates.beginTee : "");
+
+
+            sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
+            sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
+            sbBashScript = sbBashScript.replace("__ECHO_INPUT__", this.state.EchoInput ? "echoInput" : "");
+            return sbBashScript;
         }
-        //
-        //  phase 2 - fix up any of the string created above         
-
-        usageLine += "\""
-
-        //  remove last line
-        longOptions = longOptions.slice(0, -1);
-        inputCase = inputCase.slice(0, -1)
-        usageInfo = usageInfo.slice(0, -1)
-
-        if (requiredFilesIf.length > 0) {
-            requiredFilesIf = requiredFilesIf.slice(0, -4); // removes the " || " at the end
-            requiredVariablesTemplate = requiredVariablesTemplate.replace("__REQUIRED_FILES_IF__", requiredFilesIf)
+        catch (e) {
+            return `something went wrong.  ${e}`
         }
-        else {
-            requiredVariablesTemplate = "";
-        }
-
-        if (this.state.CreateLogFile) {
-            logTemplate = logTemplate.replace("__LOG_FILE_NAME__", this.state.ScriptName + ".log");
-        }
-        else {
-            logTemplate = ""
-        }
-
-        //
-        //  phase 3 - replace the strings in the templates
-        sbBashScript = sbBashScript.replace("__USAGE_LINE__", usageLine);
-        sbBashScript = sbBashScript.replace("__USAGE__", usageInfo);
-        sbBashScript = sbBashScript.replace("__ECHO__", echoInput);
-        sbBashScript = sbBashScript.replace("__SHORT_OPTIONS__", shortOptions);
-        sbBashScript = sbBashScript.replace("__LONG_OPTIONS__", longOptions);
-        sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
-        sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
-
-        let inputOverridesRequired: string = (this.state.AcceptsInputFile) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
-        sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
-
-        if (parseInputFile.length > 0) {
-            parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
-            parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
-            sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
-        }
-        else {
-            sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
-        }
-
-        sbBashScript = sbBashScript.replace("__BEGIN_TEE__", this.state.TeeToLogFile ? bashTemplates.beginTee : "");
-
-
-        sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
-        sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
-        sbBashScript = sbBashScript.replace("__ECHO_INPUT__", this.state.EchoInput ? "echoInput" : "");
-        return sbBashScript;
 
     }
     //
@@ -475,7 +479,7 @@ class App extends React.Component<{}, IAppState> {
                 //
                 //  attempt to autofill short name and variable name
                 //  
-                if (parameter.shortParameter === "") {
+                if (parameter.shortParameter === "" || parameter.shortParameter === "Short Parameter") {
 
                     // tslint:disable-next-line:prefer-for-of
                     for (let i = 0; i < parameter.longParameter.length; i++) {
@@ -495,7 +499,7 @@ class App extends React.Component<{}, IAppState> {
                     this.setState({ bash: validMessage + "\npick a short name that works..." })
                     return;
                 }
-                if (parameter.variableName === "") {
+                if (parameter.variableName === "" || parameter.variableName === "Variable Name") {
                     parameter.variableName = camelCase(parameter.longParameter);
                 }
 
