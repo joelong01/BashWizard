@@ -172,8 +172,7 @@ class App extends React.Component<{}, IAppState> {
         console.log("menuAddParameter")
 
         this.addParameter(new ParameterModel());
-        this.myMenu.current!.isOpen = false;
-        console.log("children: %o", this.props.children)
+        this.myMenu.current!.isOpen = false;        
 
     }
     private menuDeleteParameter = async () => {
@@ -456,12 +455,14 @@ class App extends React.Component<{}, IAppState> {
         }
         return "";
     }
+    //
+    //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
         if (this._settingState === true) {
             return;
         }
         try {
-            console.log(`updating model [name=${name}] [Model=${parameter}]`)
+            console.log(`App.onPropertyChanged: [name=${name}] [value=${parameter[name]}]`)
             this._settingState = true;
             if (name === "selected") {
                 if (this.state.SelectedParameter !== undefined) {
@@ -509,8 +510,9 @@ class App extends React.Component<{}, IAppState> {
                 }
 
             }
-            await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
-            return;
+            this.setState({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+
+
         }
         finally {
             this._settingState = false
@@ -527,6 +529,7 @@ class App extends React.Component<{}, IAppState> {
         // await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
         p.registerNotify(this.onPropertyChanged)
         p.selected = true;
+        p.uniqueName = uniqueId("PARAMETER_DIV_")
         const validMessage: string = this.validateParameters()
         if (validMessage !== "") {
             this.setState({ bash: validMessage })
@@ -619,14 +622,25 @@ class App extends React.Component<{}, IAppState> {
         // react will use the key to render.  say you have 3 items -- with key=0, 1, 2
         // you delete the key=1 leaving 0 and 2.  but then you run render() again and you 
         // get key 0 and 1 again ...and the item you just deleted is still referenced as item 1
-        // and it'll look like you deleted the wrong item.  
+        // and it'll look like you deleted the wrong item.         
+        //
+        //  AND!!!
+        //
+        //
+        //  another n hours of my life I won't get back:  if you always create a uniqueId, then
+        //  whenever you change state, you'll get a new object.  this manifests itself by the
+        //  the form looking like TAB doesn't work.  or onBlur() doesn't work.  you type a character
+        //  (which causes the <App/> to update state) and the form stops taking input
+        //
+        //  the solution is to store the unique name and generate one when you create a new ParameterModel
+        //  
+        //  leasson:  the name is really a name.  treat it like one.
+        //
 
-        let uniqueName = uniqueId("PARAMETER_DIV_")
-        console.log(`uniqueId: ${uniqueName}`)
         return (
 
-            <div className={uniqueName} key={uniqueName} ref={uniqueName}>
-                <ParameterView Model={parameter} Name={uniqueName} />
+            <div className={parameter.uniqueName} key={parameter.uniqueName} ref={parameter.uniqueName}>
+                <ParameterView Model={parameter} Name={parameter.uniqueName} />
             </div>
 
 
@@ -646,7 +660,7 @@ class App extends React.Component<{}, IAppState> {
 
     public render = () => {
         /*jsx requires one parent element*/
-        /* outer-container required for the Menu */
+        console.log("rendereing App")
         return (
             <div className="outer-container" id="outer-container">
                 <BurgerMenu ref={this.myMenu} isOpen={this.state.menuOpen} Items={this.state.menuItems} />

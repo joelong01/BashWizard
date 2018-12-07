@@ -24,7 +24,7 @@ interface IParameterState {
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
     // private firstInputBox = React.createRef<HTMLInputElement>()
-    private LongParameterRef = React.createRef<FormControl>()
+    // private LongParameterRef = React.createRef<FormControl>()
     constructor(props: IParameterProperties) {
         super(props);
 
@@ -32,8 +32,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             Model: this.props.Model
         };
 
-        this.onBlur = this.onBlur.bind(this);
-        this.onChecked = this.onChecked.bind(this);
         this._updatingModel = false;
 
     }
@@ -61,13 +59,17 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     // }
 
     public onPropertyChanged = async (model: ParameterModel, name: string) => {
-        console.log(`ParameterView.onPropertyChanged: [${name}=${model}]`)
+        
+        console.log(`ParameterView.onPropertyChanged: [${name}=${model[name]}]`)
         if (name === "selected") {
+            //
+            //  ideally we'd push the focus to the first element in the form...
             console.log(`selected property changed. longname: ${this.Model.longParameter}. Selected: ${model.selected}`)
+            this.forceUpdate();
         }
     }
-    private onBlur = async (e: any) => {
-        console.log("onBlur.  e: %o", e)
+    private onBlur = async (e: any) => {        
+        e.bubbles = true;
         if (this._updatingModel) {
             return;
         }
@@ -78,10 +80,8 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             if (key !== undefined) {
                 const val = e.currentTarget.value as string
                 const parameterModel: ParameterModel = this.state.Model;
-                parameterModel[key] = val;
-                console.log(`updating model [${key}=${val}]`)
+                parameterModel[key] = val;                
                 this.state.Model.NotifyPropertyChanged(key!);
-
             }
         }
         finally {
@@ -90,38 +90,13 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
     }
 
-    // private onBlur2 = async (e: any, key: string, ref: any) => {
-    //     debugger;
-
-    //     console.log("onBlur.  e: %o", e)
-    //     if (this._updatingModel) {
-    //         return;
-    //     }
-    //     try {
-    //         ref.onBlur(e)
-    //         this._updatingModel = true;
-    //         const val = e.currentTarget.value;
-    //         console.log(`updating model [${key}=${val}]`)
-    //         const parameterModel: ParameterModel = this.state.Model;
-    //         parameterModel[key] = val;
-    //         this.state.Model.NotifyPropertyChanged(key!);
-
-    //     }
-    //     finally {
-    //         this._updatingModel = false;
-    //     }
-    // }
-
-    // private dumpObject = (msg: string, obj: object) => {
-    //     console.log("%s: %o", msg, obj);
-    // }
-    private onChecked = (e: React.FormEvent<FormControl>) => {
-        // const key = e.currentTarget.id as string // we have very carefully arranged this so that the id === key
-        // // const val = e.currentTarget.checked as boolean
-        // const val = e.currentTarget.value;
-        // const data: ParameterModel = this.state.Model;
-        // data[key] = val;
-        // this.state.Model.NotifyPropertyChanged(key);
+   
+    private onChecked = (e: any) => {
+        const key = e.currentTarget.id as string // we have very carefully arranged this so that the id === key
+        const val = e.currentTarget.checked as boolean        
+        const data: ParameterModel = this.state.Model;
+        data[key] = val;
+        this.state.Model.NotifyPropertyChanged(key);
         console.log("")
     }
 
@@ -135,12 +110,15 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //         correctly
     //  4. "App" can also set the focus by calling the Model (e.g. when the first one is created or one is deleted)
     //
-    private formFocus = () => {
+    private formFocus = (e: React.FocusEvent<FormControl>) => {
 
         // let the model know it is selected so the event sinks can notify
         this.state.Model.selected = true;
-
+        console.log(`ParameterView.formFocus. [name=${this.state.Model.uniqueName}] [e=%o]`, e)
     }
+
+    
+    // }
 
     // private wait = async (ms: number) => {
     //     //   util.log ("waiting for %s ms", ms);
@@ -158,37 +136,34 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
         return (
 
-            <Form className={formClassName} onFocus={this.formFocus}  >
+            <Form className={formClassName} onFocus={this.formFocus} >
 
                 <Row className="ROW_ONE">
                     <Col>
                         <ControlLabel>Long Parameter </ControlLabel>
-                        <FormControl ref={this.LongParameterRef} type="text" id="longParameter" 
-                            placeholder={"Long Parameter"} defaultValue={this.state.Model.longParameter} onBlur={this.onBlur} />
-                            {/* onBlur={(e) => this.onBlur2(e, "LongParameter", this.LongParameterRef)}  */}
+                        <FormControl id="longParameter" type="text" placeholder={"Long Parameter"} defaultValue={this.state.Model.longParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} autoFocus={true}  />
                     </Col>
                     <Col>
                         <ControlLabel >Short Parameter</ControlLabel>
-                        <FormControl id="shortParameter" type="text" placeholder={"Short Parameter"} defaultValue={this.state.Model.shortParameter} onBlur={this.onBlur} />
-                        {/* onBlur={this.onBlur} */}
+                        <FormControl id="shortParameter" type="text" placeholder={"Short Parameter"} defaultValue={this.state.Model.shortParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
                     </Col>
                     <Col>
                         <ControlLabel>Variable Name</ControlLabel>
-                        <FormControl id="variableName" type="text" placeholder={"Variable Name"} defaultValue={this.state.Model.variableName} onBlur={this.onBlur} />
+                        <FormControl id="variableName" type="text" placeholder={"Variable Name"} defaultValue={this.state.Model.variableName} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
                     </Col>
                 </Row>
                 <Row className="ROW_TWO">
                     <Col>
                         <ControlLabel>Default</ControlLabel>
-                        <FormControl id="default" type="text" placeholder={"Default"} defaultValue={this.state.Model.default} onBlur={this.onBlur} />
+                        <FormControl id="default" type="text" placeholder={"Default"} defaultValue={this.state.Model.default} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
                     </Col>
                     <Col>
                         <ControlLabel>Description</ControlLabel>
-                        <FormControl id="description" type="text" placeholder={"Description"} defaultValue={this.state.Model.description} onBlur={this.onBlur} />
+                        <FormControl id="description" type="text" placeholder={"Description"} defaultValue={this.state.Model.description} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
                     </Col>
                     <Col>
                         <ControlLabel>Value if Set</ControlLabel>
-                        <FormControl id="valueIfSet" type="text" placeholder={"Value if set (e.g. $2"} defaultValue={this.state.Model.valueIfSet} onBlur={this.onBlur} />
+                        <FormControl id="valueIfSet" type="text" placeholder={"Value if set (e.g. $2"} defaultValue={this.state.Model.valueIfSet} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
                     </Col>
                 </Row>
                 <Row className="ROW_THREE">
