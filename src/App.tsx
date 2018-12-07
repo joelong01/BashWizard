@@ -172,7 +172,7 @@ class App extends React.Component<{}, IAppState> {
         console.log("menuAddParameter")
 
         this.addParameter(new ParameterModel());
-        this.myMenu.current!.isOpen = false;        
+        this.myMenu.current!.isOpen = false;
 
     }
     private menuDeleteParameter = async () => {
@@ -451,6 +451,13 @@ class App extends React.Component<{}, IAppState> {
             }
             if (this.keyValueCount("variableName", param.variableName) !== 1) {
                 return `you already have ${param.shortParameter} as a Variable Name`
+            }
+
+            if (param.requiresInputString && param.valueIfSet !== "$2") {
+                return `parameter ${param.longParameter} has Required Input String = true but hasn't set the Value if Set to $2.  this is an invalid combination`
+            }
+            if (!param.requiresInputString && param.valueIfSet === "$2") {
+                return `parameter ${param.longParameter} has Required Input String = false but has set the Value if Set to $2.  this is an invalid combination`
             }
         }
         return "";
