@@ -142,11 +142,7 @@
       height: 100%;  
     }
 
-[class^="PARAMETER_DIV_"]
-{    
-    margin-top:10px;
-    height: 85px;
-}
+
 [class^="LABEL_"]
 {
  font-family: 'Consolas', 'Courier New', Courier, monospace;

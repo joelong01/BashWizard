@@ -172,8 +172,7 @@ class App extends React.Component<{}, IAppState> {
         console.log("menuAddParameter")
 
         this.addParameter(new ParameterModel());
-        this.myMenu.current!.isOpen = false;
-        console.log("children: %o", this.props.children)
+        this.myMenu.current!.isOpen = false;        
 
     }
     private menuDeleteParameter = async () => {
@@ -233,116 +232,120 @@ class App extends React.Component<{}, IAppState> {
 
     private toBash = (): string => {
 
+        try {
+            let sbBashScript: string = bashTemplates.bashTemplate;
+            let logTemplate: string = bashTemplates.logTemplate;
+            let parseInputTemplate: string = bashTemplates.parseInputTemplate;
+            let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
 
-        let sbBashScript: string = bashTemplates.bashTemplate;
-        let logTemplate: string = bashTemplates.logTemplate;
-        let parseInputTemplate: string = bashTemplates.parseInputTemplate;
-        let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
+            let nl: string = "\n"
+            let usageLine: string = `${this.Tabs(1)}echo \"Usage: $0 `
+            let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`
+            let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`
+            let shortOptions: string = ""
+            let longOptions: string = ""
+            let inputCase: string = ""
+            let inputDeclarations: string = ""
+            let parseInputFile: string = ""
+            let requiredFilesIf: string = ""
+            const toPad: number = this.longestParameter() + 5;
 
-        let nl: string = "\n"
-        let usageLine: string = `${this.Tabs(1)}echo \"Usage: $0 `
-        let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`
-        let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`
-        let shortOptions: string = ""
-        let longOptions: string = ""
-        let inputCase: string = ""
-        let inputDeclarations: string = ""
-        let parseInputFile: string = ""
-        let requiredFilesIf: string = ""
-        const toPad: number = this.longestParameter() + 5;
+            for (let param of this.state.Parameters) {
+                //
+                // usage
+                let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
+                usageLine += `${param.shortParameter} | --${param.longParameter}`
+                usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
 
-        for (let param of this.state.Parameters) {
+                //
+                // the  echoInput function
+                echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
+
+
+                //
+                //  OPTIONS, LONGOPTS
+                let colon: string = (param.requiresInputString) ? ":" : "";
+                shortOptions += `${param.shortParameter}${colon}`
+                longOptions += `${param.longParameter}${colon},`
+
+                // input Case
+                inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})\n`
+                inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}\n`
+                inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1\n`
+                inputCase += `${this.Tabs(3)};;\n`
+
+                // declare variables
+                inputDeclarations += `declare ${param.variableName}=${param.default}\n`
+                if (this.state.AcceptsInputFile && param.variableName !== "inputFile") {
+                    // parse input file
+                    parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
+                }
+
+                // if statement for the required files
+
+                if (param.requiredParameter) {
+                    requiredFilesIf += `[ -z \"\${${param.variableName}}\" ] || `
+                }
+
+            }
             //
-            // usage
-            let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
-            usageLine += `${param.shortParameter} | --${param.longParameter}`
-            usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
+            //  phase 2 - fix up any of the string created above         
 
-            //
-            // the  echoInput function
-            echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
+            usageLine += "\""
 
+            //  remove last line
+            longOptions = longOptions.slice(0, -1);
+            inputCase = inputCase.slice(0, -1)
+            usageInfo = usageInfo.slice(0, -1)
 
-            //
-            //  OPTIONS, LONGOPTS
-            let colon: string = (param.requiresInputString) ? ":" : "";
-            shortOptions += `${param.shortParameter}${colon}`
-            longOptions += `${param.longParameter}${colon},`
-
-            // input Case
-            inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})\n`
-            inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}\n`
-            inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1\n`
-            inputCase += `${this.Tabs(3)};;\n`
-
-            // declare variables
-            inputDeclarations += `declare ${param.variableName}=${param.default}\n`
-            if (this.state.AcceptsInputFile && param.variableName !== "inputFile") {
-                // parse input file
-                parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
+            if (requiredFilesIf.length > 0) {
+                requiredFilesIf = requiredFilesIf.slice(0, -4); // removes the " || " at the end
+                requiredVariablesTemplate = requiredVariablesTemplate.replace("__REQUIRED_FILES_IF__", requiredFilesIf)
+            }
+            else {
+                requiredVariablesTemplate = "";
             }
 
-            // if statement for the required files
-
-            if (param.requiredParameter) {
-                requiredFilesIf += `[ -z \"\${${param.variableName}}\" ] || `
+            if (this.state.CreateLogFile) {
+                logTemplate = logTemplate.replace("__LOG_FILE_NAME__", this.state.ScriptName + ".log");
+            }
+            else {
+                logTemplate = ""
             }
 
+            //
+            //  phase 3 - replace the strings in the templates
+            sbBashScript = sbBashScript.replace("__USAGE_LINE__", usageLine);
+            sbBashScript = sbBashScript.replace("__USAGE__", usageInfo);
+            sbBashScript = sbBashScript.replace("__ECHO__", echoInput);
+            sbBashScript = sbBashScript.replace("__SHORT_OPTIONS__", shortOptions);
+            sbBashScript = sbBashScript.replace("__LONG_OPTIONS__", longOptions);
+            sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
+            sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
+
+            let inputOverridesRequired: string = (this.state.AcceptsInputFile) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
+
+            if (parseInputFile.length > 0) {
+                parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
+                parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
+                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
+            }
+            else {
+                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
+            }
+
+            sbBashScript = sbBashScript.replace("__BEGIN_TEE__", this.state.TeeToLogFile ? bashTemplates.beginTee : "");
+
+
+            sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
+            sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
+            sbBashScript = sbBashScript.replace("__ECHO_INPUT__", this.state.EchoInput ? "echoInput" : "");
+            return sbBashScript;
         }
-        //
-        //  phase 2 - fix up any of the string created above         
-
-        usageLine += "\""
-
-        //  remove last line
-        longOptions = longOptions.slice(0, -1);
-        inputCase = inputCase.slice(0, -1)
-        usageInfo = usageInfo.slice(0, -1)
-
-        if (requiredFilesIf.length > 0) {
-            requiredFilesIf = requiredFilesIf.slice(0, -4); // removes the " || " at the end
-            requiredVariablesTemplate = requiredVariablesTemplate.replace("__REQUIRED_FILES_IF__", requiredFilesIf)
+        catch (e) {
+            return `something went wrong.  ${e}`
         }
-        else {
-            requiredVariablesTemplate = "";
-        }
-
-        if (this.state.CreateLogFile) {
-            logTemplate = logTemplate.replace("__LOG_FILE_NAME__", this.state.ScriptName + ".log");
-        }
-        else {
-            logTemplate = ""
-        }
-
-        //
-        //  phase 3 - replace the strings in the templates
-        sbBashScript = sbBashScript.replace("__USAGE_LINE__", usageLine);
-        sbBashScript = sbBashScript.replace("__USAGE__", usageInfo);
-        sbBashScript = sbBashScript.replace("__ECHO__", echoInput);
-        sbBashScript = sbBashScript.replace("__SHORT_OPTIONS__", shortOptions);
-        sbBashScript = sbBashScript.replace("__LONG_OPTIONS__", longOptions);
-        sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
-        sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
-
-        let inputOverridesRequired: string = (this.state.AcceptsInputFile) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
-        sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
-
-        if (parseInputFile.length > 0) {
-            parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
-            parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
-            sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
-        }
-        else {
-            sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
-        }
-
-        sbBashScript = sbBashScript.replace("__BEGIN_TEE__", this.state.TeeToLogFile ? bashTemplates.beginTee : "");
-
-
-        sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
-        sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
-        sbBashScript = sbBashScript.replace("__ECHO_INPUT__", this.state.EchoInput ? "echoInput" : "");
-        return sbBashScript;
 
     }
     //
@@ -452,12 +455,14 @@ class App extends React.Component<{}, IAppState> {
         }
         return "";
     }
+    //
+    //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
         if (this._settingState === true) {
             return;
         }
         try {
-            console.log(`updating model [name=${name}] [Model=${parameter}]`)
+            console.log(`App.onPropertyChanged: [name=${name}] [value=${parameter[name]}]`)
             this._settingState = true;
             if (name === "selected") {
                 if (this.state.SelectedParameter !== undefined) {
@@ -475,7 +480,7 @@ class App extends React.Component<{}, IAppState> {
                 //
                 //  attempt to autofill short name and variable name
                 //  
-                if (parameter.shortParameter === "") {
+                if (parameter.shortParameter === "" || parameter.shortParameter === "Short Parameter") {
 
                     // tslint:disable-next-line:prefer-for-of
                     for (let i = 0; i < parameter.longParameter.length; i++) {
@@ -495,7 +500,7 @@ class App extends React.Component<{}, IAppState> {
                     this.setState({ bash: validMessage + "\npick a short name that works..." })
                     return;
                 }
-                if (parameter.variableName === "") {
+                if (parameter.variableName === "" || parameter.variableName === "Variable Name") {
                     parameter.variableName = camelCase(parameter.longParameter);
                 }
 
@@ -505,8 +510,9 @@ class App extends React.Component<{}, IAppState> {
                 }
 
             }
-            await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
-            return;
+            this.setState({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+
+
         }
         finally {
             this._settingState = false
@@ -523,6 +529,7 @@ class App extends React.Component<{}, IAppState> {
         // await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
         p.registerNotify(this.onPropertyChanged)
         p.selected = true;
+        p.uniqueName = uniqueId("PARAMETER_DIV_")
         const validMessage: string = this.validateParameters()
         if (validMessage !== "") {
             this.setState({ bash: validMessage })
@@ -615,14 +622,25 @@ class App extends React.Component<{}, IAppState> {
         // react will use the key to render.  say you have 3 items -- with key=0, 1, 2
         // you delete the key=1 leaving 0 and 2.  but then you run render() again and you 
         // get key 0 and 1 again ...and the item you just deleted is still referenced as item 1
-        // and it'll look like you deleted the wrong item.  
+        // and it'll look like you deleted the wrong item.         
+        //
+        //  AND!!!
+        //
+        //
+        //  another n hours of my life I won't get back:  if you always create a uniqueId, then
+        //  whenever you change state, you'll get a new object.  this manifests itself by the
+        //  the form looking like TAB doesn't work.  or onBlur() doesn't work.  you type a character
+        //  (which causes the <App/> to update state) and the form stops taking input
+        //
+        //  the solution is to store the unique name and generate one when you create a new ParameterModel
+        //  
+        //  leasson:  the name is really a name.  treat it like one.
+        //
 
-        let uniqueName = uniqueId("PARAMETER_DIV_")
-        console.log(`uniqueId: ${uniqueName}`)
         return (
 
-            <div className={uniqueName} key={uniqueName} ref={uniqueName}>
-                <ParameterView Model={parameter} Name={uniqueName} />
+            <div className={parameter.uniqueName} key={parameter.uniqueName} ref={parameter.uniqueName}>
+                <ParameterView Model={parameter} Name={parameter.uniqueName} />
             </div>
 
 
@@ -642,7 +660,7 @@ class App extends React.Component<{}, IAppState> {
 
     public render = () => {
         /*jsx requires one parent element*/
-        /* outer-container required for the Menu */
+        console.log("rendereing App")
         return (
             <div className="outer-container" id="outer-container">
                 <BurgerMenu ref={this.myMenu} isOpen={this.state.menuOpen} Items={this.state.menuItems} />

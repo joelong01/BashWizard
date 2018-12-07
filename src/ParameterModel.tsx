@@ -16,7 +16,10 @@ class ParameterModel {
     private VariableName: string = "";
     private ValueIfSet: string = "";
     private propertyChangedNotify: INotifyPropertyChanged[] = []
+    //
+    // not stringified
     private _selected: boolean;
+    private _uniqueName: string;
 
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
@@ -29,7 +32,8 @@ class ParameterModel {
     }
 
     public registerNotify(callback: INotifyPropertyChanged) {
-        this.propertyChangedNotify.push(callback);
+      this.propertyChangedNotify.push(callback);
+      console.log("ParameterModel.registryNotify")
     }
     public removeNotify(callback: INotifyPropertyChanged){
         const index:number = this.propertyChangedNotify.indexOf(callback)
@@ -41,7 +45,9 @@ class ParameterModel {
         console.log(`there are now  ${this.propertyChangedNotify.length} items to notify`)
     }
     public NotifyPropertyChanged(property: string): void {
-        for (const notify of this.propertyChangedNotify) {
+        console.log(`Model changed: [${property}=${this[property]}]`)
+
+        for (const notify of this.propertyChangedNotify) {            
             notify(this, property)
         }
 
@@ -55,6 +61,19 @@ class ParameterModel {
 
             this.Default = value;
             this.NotifyPropertyChanged("default")
+        }
+    }
+
+    get uniqueName(): string {
+        return this._uniqueName;
+    }
+
+    set uniqueName(value: string) {
+        if (value !== this._uniqueName) {
+
+            this._uniqueName = value;
+            // uniqueName does not need to be propagated
+            // this.NotifyPropertyChanged("uniqueName")
         }
     }
 

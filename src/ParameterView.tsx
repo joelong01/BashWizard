@@ -4,6 +4,8 @@ import "./App.css"
 import "./index.css"
 import "./menu.css"
 import "./parameter.css"
+import "./react-bootstrap.css"
+import { Form, ControlLabel, FormControl, Row, Col, Checkbox } from "react-bootstrap"
 
 
 export type selectedCallback = (focusedParameter?: ParameterView) => void; // "binding" to the focused parameter
@@ -21,7 +23,8 @@ interface IParameterState {
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
-    private firstInputBox = React.createRef<HTMLInputElement>()
+    // private firstInputBox = React.createRef<HTMLInputElement>()
+    // private LongParameterRef = React.createRef<FormControl>()
     constructor(props: IParameterProperties) {
         super(props);
 
@@ -29,8 +32,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             Model: this.props.Model
         };
 
-        this.onBlur = this.onBlur.bind(this);
-        this.onChecked = this.onChecked.bind(this);
         this._updatingModel = false;
 
     }
@@ -39,7 +40,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         this.props.Model.registerNotify(this.onPropertyChanged)
 
     }
-    
+
     public componentWillUnmount() {
         this.props.Model.removeNotify(this.onPropertyChanged)
     }
@@ -58,39 +59,45 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     // }
 
     public onPropertyChanged = async (model: ParameterModel, name: string) => {
-        console.log(`ParameterView.onPropertyChanged: [${name}=${model}]`)
+        
+        console.log(`ParameterView.onPropertyChanged: [${name}=${model[name]}]`)
         if (name === "selected") {
+            //
+            //  ideally we'd push the focus to the first element in the form...
             console.log(`selected property changed. longname: ${this.Model.longParameter}. Selected: ${model.selected}`)
+            this.forceUpdate();
         }
     }
-    private onBlur = async (e: React.FormEvent<HTMLInputElement>) => {
+    private onBlur = async (e: any) => {        
+        e.bubbles = true;
         if (this._updatingModel) {
             return;
         }
         try {
 
             this._updatingModel = true;
-            const key = e.currentTarget.id as string
-            const val = e.currentTarget.value as string
-            const parameterModel: ParameterModel = this.state.Model;
-            parameterModel[key] = val;
-            console.log(`updating model [${key}=${val}]`)
-            this.state.Model.NotifyPropertyChanged(key);
-
+            const key = e.currentTarget.id;
+            if (key !== undefined) {
+                const val = e.currentTarget.value as string
+                const parameterModel: ParameterModel = this.state.Model;
+                parameterModel[key] = val;                
+                this.state.Model.NotifyPropertyChanged(key!);
+            }
         }
         finally {
             this._updatingModel = false;
+            this.forceUpdate()
         }
     }
-    // private dumpObject = (msg: string, obj: object) => {
-    //     console.log("%s: %o", msg, obj);
-    // }
-    private onChecked = (e: React.FormEvent<HTMLInputElement>) => {
+
+   
+    private onChecked = (e: any) => {
         const key = e.currentTarget.id as string // we have very carefully arranged this so that the id === key
-        const val = e.currentTarget.checked as boolean
+        const val = e.currentTarget.checked as boolean        
         const data: ParameterModel = this.state.Model;
         data[key] = val;
         this.state.Model.NotifyPropertyChanged(key);
+        console.log("")
     }
 
     //
@@ -103,12 +110,15 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //         correctly
     //  4. "App" can also set the focus by calling the Model (e.g. when the first one is created or one is deleted)
     //
-    private formFocus = () => {
+    private formFocus = (e: React.FocusEvent<FormControl>) => {
 
         // let the model know it is selected so the event sinks can notify
         this.state.Model.selected = true;
-
+        console.log(`ParameterView.formFocus. [name=${this.state.Model.uniqueName}] [e=%o]`, e)
     }
+
+    
+    // }
 
     // private wait = async (ms: number) => {
     //     //   util.log ("waiting for %s ms", ms);
@@ -126,44 +136,48 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
         return (
 
+            <Form className={formClassName} onFocus={this.formFocus} >
 
-            <div className="DIV_OUTER">
-                <form className={formClassName} onFocus={this.formFocus} tabIndex={0}>
-                    <div className="DIV_BORDER" />
-                    <div className="DIV_ROW1">
-                        <label style={{ marginLeft: "10px" }}>
-                            Long Name:  <input id="longParameter" tabIndex={1} ref={this.firstInputBox} className="longName" type="text" defaultValue={this.state.Model.longParameter} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                        <label style={{ marginLeft: "14px" }}>
-                            Short Name:  <input id="shortParameter" tabIndex={2} type="text" defaultValue={this.state.Model.shortParameter} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                        <label style={{ marginLeft: "10px" }}>
-                            Variable Name:  <input id="variableName" tabIndex={3}  type="text" defaultValue={this.state.Model.variableName} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                    </div>
-                    <div className="DIV_ROW2">
-                        <label style={{ marginLeft: "29px" }}>
-                            Default:  <input id="default" type="text"  tabIndex={4} defaultValue={this.state.Model.default} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                        <label style={{ marginLeft: "5px" }}>
-                            Description:  <input id="description" type="text" tabIndex={5}  defaultValue={this.state.Model.description} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                        <label style={{ marginLeft: "19px" }}>
-                            Value if Set:  <input id="valueIfSet" type="text" tabIndex={6}  defaultValue={this.state.Model.valueIfSet} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
-                        </label>
-                    </div>
-                    <div className="DIV_ROW3" style={{ marginLeft: "337px" }}>
-                        <label>
-                            Requires Input String:  <input id="requiresInputString" tabIndex={7}  type="checkbox" defaultChecked={this.state.Model.requiresInputString} onChange={this.onChecked} />
-                        </label>
-                        <label style={{ marginLeft: "10px" }}>
-                            Required Parameter:  <input id="requiredParameter"  tabIndex={8}  type="checkbox" defaultChecked={this.state.Model.requiredParameter} onChange={this.onChecked} />
-                        </label>
-                    </div>
+                <Row className="ROW_ONE">
+                    <Col>
+                        <ControlLabel>Long Parameter </ControlLabel>
+                        <FormControl id="longParameter" type="text" placeholder={"Long Parameter"} defaultValue={this.state.Model.longParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} autoFocus={true}  />
+                    </Col>
+                    <Col>
+                        <ControlLabel >Short Parameter</ControlLabel>
+                        <FormControl id="shortParameter" type="text" placeholder={"Short Parameter"} defaultValue={this.state.Model.shortParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                    </Col>
+                    <Col>
+                        <ControlLabel>Variable Name</ControlLabel>
+                        <FormControl id="variableName" type="text" placeholder={"Variable Name"} defaultValue={this.state.Model.variableName} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                    </Col>
+                </Row>
+                <Row className="ROW_TWO">
+                    <Col>
+                        <ControlLabel>Default</ControlLabel>
+                        <FormControl id="default" type="text" placeholder={"Default"} defaultValue={this.state.Model.default} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                    </Col>
+                    <Col>
+                        <ControlLabel>Description</ControlLabel>
+                        <FormControl id="description" type="text" placeholder={"Description"} defaultValue={this.state.Model.description} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                    </Col>
+                    <Col>
+                        <ControlLabel>Value if Set</ControlLabel>
+                        <FormControl id="valueIfSet" type="text" placeholder={"Value if set (e.g. $2"} defaultValue={this.state.Model.valueIfSet} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                    </Col>
+                </Row>
+                <Row className="ROW_THREE">
+                    <Col>
+                        <Checkbox inline={true} id="requiresInputString" type="checkbox" defaultChecked={this.state.Model.requiresInputString} onChange={this.onChecked}>Requires Input String</Checkbox>
+                    </Col>
+                    <Col>
+                        <Checkbox inline={true} id="requiredParameter" type="checkbox" defaultChecked={this.state.Model.requiredParameter} onChange={this.onChecked}>Required Parameter</Checkbox>
+                    </Col>
+                </Row>
 
-                </form>
-            </div>
-        );
+            </Form >
+        )
+
     }
 
 }
