@@ -1,9 +1,10 @@
-import * as React from "react";
+import React from 'react';
 import ParameterModel from './ParameterModel';
 import "./App.css"
 import "./index.css"
 import "./menu.css"
 import "./parameter.css"
+
 
 export type selectedCallback = (focusedParameter?: ParameterView) => void; // "binding" to the focused parameter
 
@@ -20,23 +21,26 @@ interface IParameterState {
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
+    private firstInputBox = React.createRef<HTMLInputElement>()
     constructor(props: IParameterProperties) {
         super(props);
-       
+
         this.state = {
-            Model: this.props.Model    
+            Model: this.props.Model
         };
 
         this.onBlur = this.onBlur.bind(this);
         this.onChecked = this.onChecked.bind(this);
         this._updatingModel = false;
+
     }
 
     public componentWillMount() {
         this.props.Model.registerNotify(this.onPropertyChanged)
-    }
 
-    public componentWillUnmount(){
+    }
+    
+    public componentWillUnmount() {
         this.props.Model.removeNotify(this.onPropertyChanged)
     }
 
@@ -44,29 +48,27 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         return this.state.Model;
     }
 
-    private setStateAsync = (newState: object) => {
-        return new Promise((resolve, reject) => {
-            this.setState(newState, () => {
-                resolve();
-            });
+    // private setStateAsync = (newState: object) => {
+    //     return new Promise((resolve, reject) => {
+    //         this.setState(newState, () => {
+    //             resolve();
+    //         });
 
-        });
-    }
+    //     });
+    // }
 
     public onPropertyChanged = async (model: ParameterModel, name: string) => {
         console.log(`ParameterView.onPropertyChanged: [${name}=${model}]`)
         if (name === "selected") {
             console.log(`selected property changed. longname: ${this.Model.longParameter}. Selected: ${model.selected}`)
-            this.setStateAsync({ SelectedState: model.selected })
         }
-        this.forceUpdate(); // the state is already set in the ParameterModel
     }
     private onBlur = async (e: React.FormEvent<HTMLInputElement>) => {
         if (this._updatingModel) {
             return;
         }
         try {
-            
+
             this._updatingModel = true;
             const key = e.currentTarget.id as string
             const val = e.currentTarget.value as string
@@ -126,36 +128,36 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
 
             <div className="DIV_OUTER">
-                <form className={formClassName} onFocus={this.formFocus} >
+                <form className={formClassName} onFocus={this.formFocus} tabIndex={0}>
                     <div className="DIV_BORDER" />
                     <div className="DIV_ROW1">
                         <label style={{ marginLeft: "10px" }}>
-                            Long Name:  <input id="longParameter" className="longName" type="text" defaultValue={this.state.Model.longParameter} onBlur={this.onBlur} />
+                            Long Name:  <input id="longParameter" tabIndex={1} ref={this.firstInputBox} className="longName" type="text" defaultValue={this.state.Model.longParameter} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                         <label style={{ marginLeft: "14px" }}>
-                            Short Name:  <input id="shortParameter" type="text" defaultValue={this.state.Model.shortParameter} onBlur={this.onBlur} />
+                            Short Name:  <input id="shortParameter" tabIndex={2} type="text" defaultValue={this.state.Model.shortParameter} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                         <label style={{ marginLeft: "10px" }}>
-                            Variable Name:  <input id="variableName" type="text" defaultValue={this.state.Model.variableName} onBlur={this.onBlur} />
+                            Variable Name:  <input id="variableName" tabIndex={3}  type="text" defaultValue={this.state.Model.variableName} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                     </div>
                     <div className="DIV_ROW2">
                         <label style={{ marginLeft: "29px" }}>
-                            Default:  <input id="default" type="text" defaultValue={this.state.Model.default} onBlur={this.onBlur} />
+                            Default:  <input id="default" type="text"  tabIndex={4} defaultValue={this.state.Model.default} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                         <label style={{ marginLeft: "5px" }}>
-                            Description:  <input id="description" type="text" defaultValue={this.state.Model.description} onBlur={this.onBlur} />
+                            Description:  <input id="description" type="text" tabIndex={5}  defaultValue={this.state.Model.description} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                         <label style={{ marginLeft: "19px" }}>
-                            Value if Set:  <input id="valueIfSet" type="text" defaultValue={this.state.Model.valueIfSet} onBlur={this.onBlur} />
+                            Value if Set:  <input id="valueIfSet" type="text" tabIndex={6}  defaultValue={this.state.Model.valueIfSet} onBlur={this.onBlur} onFocus={(e) => e.currentTarget.select()} />
                         </label>
                     </div>
                     <div className="DIV_ROW3" style={{ marginLeft: "337px" }}>
                         <label>
-                            Requires Input String:  <input id="requiresInputString" type="checkbox" defaultChecked={this.state.Model.requiresInputString} onChange={this.onChecked} />
+                            Requires Input String:  <input id="requiresInputString" tabIndex={7}  type="checkbox" defaultChecked={this.state.Model.requiresInputString} onChange={this.onChecked} />
                         </label>
                         <label style={{ marginLeft: "10px" }}>
-                            Required Parameter:  <input id="requiredParameter" type="checkbox" defaultChecked={this.state.Model.requiredParameter} onChange={this.onChecked} />
+                            Required Parameter:  <input id="requiredParameter"  tabIndex={8}  type="checkbox" defaultChecked={this.state.Model.requiredParameter} onChange={this.onChecked} />
                         </label>
                     </div>
 

@@ -15,9 +15,7 @@ import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
 import { camelCase } from "lodash-es";
 import { uniqueId } from 'lodash-es';
-
-
-
+import { padEnd } from 'lodash-es'
 
 interface IAppState {
     //
@@ -181,7 +179,7 @@ class App extends React.Component<{}, IAppState> {
     private menuDeleteParameter = async () => {
         this.myMenu.current!.isOpen = false;
         if (this.state.SelectedParameter !== undefined) {
-            const toDelete:ParameterModel = this.state.SelectedParameter;
+            const toDelete: ParameterModel = this.state.SelectedParameter;
             this.state.SelectedParameter.selected = false;
             let index: number = this.state.Parameters.indexOf(this.state.SelectedParameter)
             if (index !== -1) {
@@ -200,9 +198,8 @@ class App extends React.Component<{}, IAppState> {
                 //  select the first one if the first one was deleted, otherwise select the previous one
                 this.state.Parameters[index].selected = true;
             }
-            else
-            {
-                console.log ("index of selected item is -1!")
+            else {
+                console.log("index of selected item is -1!")
             }
         }
 
@@ -229,6 +226,11 @@ class App extends React.Component<{}, IAppState> {
         }
         return s;
     }
+
+    private longestParameter = (): number => {
+        return Math.max(...(this.state.Parameters.map(el => el.longParameter.length)))
+    }
+
     private toBash = (): string => {
 
 
@@ -247,18 +249,18 @@ class App extends React.Component<{}, IAppState> {
         let inputDeclarations: string = ""
         let parseInputFile: string = ""
         let requiredFilesIf: string = ""
-
+        const toPad: number = this.longestParameter() + 5;
 
         for (let param of this.state.Parameters) {
             //
             // usage
-            let required: string = (param.requiredParameter) ? "Required" : "Optional";
+            let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
             usageLine += `${param.shortParameter} | --${param.longParameter}`
-            usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${param.longParameter} ${required} ${param.description}\"${nl}`
+            usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
 
             //
             // the  echoInput function
-            echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${param.longParameter} \$${param.variableName}\"${nl}`
+            echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
 
 
             //
@@ -392,16 +394,15 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
         let array: ParameterModel[] = [...this.state.Parameters]
-        const index:number = array.indexOf(parameter)
-        if (index === -1)
-        {
+        const index: number = array.indexOf(parameter)
+        if (index === -1) {
             console.log("WARNING: PARAMETER NOT FOUND IN ARRAY TO DELETE")
             return;
         }
 
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
-        
+
     }
 
     private deleteParameterByLongName = async (longName: string) => {
@@ -422,7 +423,35 @@ class App extends React.Component<{}, IAppState> {
         }
         return false;
     }
+    private keyValueCount = (key: string, value: string): number => {
+        let count: number = 0;
+        for (let parameter of this.state.Parameters) {
+            if (parameter[key] === value) {
+                count++;
+            }
+        }
+        return count;
+    }
 
+
+    private validateParameters = (): string => {
+        for (let param of this.state.Parameters) {
+            if (param.longParameter === "" && param.shortParameter === "" && param.selected) {
+                // likely just starting...
+                continue;
+            }
+            if (this.keyValueCount("longParameter", param.longParameter) !== 1) {
+                return `you already have ${param.longParameter} as Long Parameter`
+            }
+            if (this.keyValueCount("shortParameter", param.shortParameter) !== 1) {
+                return `you already have ${param.shortParameter} as Short Parameter`
+            }
+            if (this.keyValueCount("variableName", param.variableName) !== 1) {
+                return `you already have ${param.shortParameter} as a Variable Name`
+            }
+        }
+        return "";
+    }
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
         if (this._settingState === true) {
             return;
@@ -437,15 +466,42 @@ class App extends React.Component<{}, IAppState> {
                 await this.setStateAsync({ SelectedParameter: parameter })
                 return;
             }
+            let validMessage: string = this.validateParameters()
+            if (validMessage !== "") {
+                this.setState({ bash: validMessage })
+                return;
+            }
             if (name === "longParameter") {
                 //
                 //  attempt to autofill short name and variable name
                 //  
                 if (parameter.shortParameter === "") {
-                    parameter.shortParameter = parameter.longParameter.substring(0, 1) // TODO: need to make sure this is ok
+
+                    // tslint:disable-next-line:prefer-for-of
+                    for (let i = 0; i < parameter.longParameter.length; i++) {
+                        parameter.shortParameter = parameter.longParameter.substring(i, 1)
+                        if (parameter.shortParameter === "") {
+                            continue;
+                        }
+                        if (this.validateParameters() === "") {
+                            break;
+                        }
+                    }
+
+                }
+                validMessage = this.validateParameters()
+                if (validMessage !== "") {
+                    parameter.shortParameter = ""
+                    this.setState({ bash: validMessage + "\npick a short name that works..." })
+                    return;
                 }
                 if (parameter.variableName === "") {
                     parameter.variableName = camelCase(parameter.longParameter);
+                }
+
+                validMessage = this.validateParameters()
+                if (validMessage !== "") {
+                    this.setState({ bash: validMessage })
                 }
 
             }
@@ -467,7 +523,13 @@ class App extends React.Component<{}, IAppState> {
         // await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
         p.registerNotify(this.onPropertyChanged)
         p.selected = true;
-        await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+        const validMessage: string = this.validateParameters()
+        if (validMessage !== "") {
+            this.setState({ bash: validMessage })
+        }
+        else {
+            await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+        }
 
     }
 
@@ -530,9 +592,6 @@ class App extends React.Component<{}, IAppState> {
             default:
                 break;
         }
-
-        await this.setStateAsync({ json: this.stringify(), bash: this.toBash() })
-        this.forceUpdate()
     }
 
 
@@ -601,16 +660,21 @@ class App extends React.Component<{}, IAppState> {
                                     Script Name:  <input id="scriptName" className="INPUT_scriptName" spellCheck={false} type="text" defaultValue={this.state.ScriptName} onBlur={this.changedScriptName} />
                                 </label>
                                 <label className="LABEL_EchoInput">
-                                    Echo Input:  <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
+                                    <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
+                                    Echo Input
                                 </label>
+
                                 <label className="LABEL_CreateLogFile">
-                                    Create Log File:  <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
+                                    <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
+                                    Create Log File
                                 </label>
                                 <label className="LABEL_TeeToLogFile">
-                                    Tee to Log file:  <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
+                                    <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
+                                    Tee to Log file
                                 </label>
                                 <label className="LABEL_AcceptsInputFile">
-                                    Accepts Input File:  <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
+                                    <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
+                                    Accepts Input File
                                 </label>
                             </div>
                             <div className="Parameter_List">
@@ -619,8 +683,8 @@ class App extends React.Component<{}, IAppState> {
                         </div>
                         <div className="DIV_Bottom">
                             <Splitter className="SPLITTER_BottomLeftRight" position="vertical"
-                                primaryPaneMaxWidth="100%"
-                                primaryPaneMinWidth="100px"
+                                primaryPaneMaxWidth="95%"
+                                primaryPaneMinWidth="5%"
                                 primaryPaneWidth="50%"
                                 postPoned={false}>
 
