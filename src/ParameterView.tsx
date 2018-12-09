@@ -23,7 +23,7 @@ interface IParameterState {
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
-    // private firstInputBox = React.createRef<HTMLInputElement>()
+    private firstInputBox = React.createRef<FormControl & HTMLInputElement>()
     // private LongParameterRef = React.createRef<FormControl>()
     constructor(props: IParameterProperties) {
         super(props);
@@ -37,12 +37,16 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     }
 
     public componentWillMount() {
-        this.props.Model.registerNotify(this.onPropertyChanged)
+        if (this.props.Model.registerNotify !== undefined) {
+            this.props.Model.registerNotify(this.onPropertyChanged)
+        }
 
     }
 
     public componentWillUnmount() {
-        this.props.Model.removeNotify(this.onPropertyChanged)
+        if (this.props.Model.registerNotify !== undefined) {
+            this.props.Model.removeNotify(this.onPropertyChanged)
+        }
     }
 
     get Model(): ParameterModel {
@@ -59,16 +63,23 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     // }
 
     public onPropertyChanged = async (model: ParameterModel, name: string) => {
-        
+
         console.log(`ParameterView.onPropertyChanged: [${name}=${model[name]}]`)
         if (name === "selected") {
-            //
-            //  ideally we'd push the focus to the first element in the form...
-            console.log(`selected property changed. longname: ${this.Model.longParameter}. Selected: ${model.selected}`)
             this.forceUpdate();
         }
     }
-    private onBlur = async (e: any) => {        
+    private onTextChanged = (e: React.ChangeEvent<FormControl & HTMLInputElement>) => {
+        const key = e.currentTarget.id;
+        const val = e.currentTarget.value as string
+        const parameterModel: ParameterModel = this.state.Model;
+        parameterModel[key] = val;
+        this.forceUpdate();
+    }
+    //
+    //  see https://github.com/react-bootstrap/react-bootstrap/issues/2781 for why we have to have
+    //  the union in the type
+    private onBlur = async (e: React.FocusEvent<FormControl & HTMLInputElement>) => {
         e.bubbles = true;
         if (this._updatingModel) {
             return;
@@ -80,8 +91,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             if (key !== undefined) {
                 const val = e.currentTarget.value as string
                 const parameterModel: ParameterModel = this.state.Model;
-                parameterModel[key] = val;                
-                this.state.Model.NotifyPropertyChanged(key!);
+                parameterModel[key] = val;
             }
         }
         finally {
@@ -90,14 +100,27 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
     }
 
-   
-    private onChecked = (e: any) => {
+    //
+    //  see https://github.com/react-bootstrap/react-bootstrap/issues/2781 for why we have to have
+    //  the union in the type
+    private onChecked = (e: React.ChangeEvent<FormControl & HTMLInputElement>) => {
         const key = e.currentTarget.id as string // we have very carefully arranged this so that the id === key
-        const val = e.currentTarget.checked as boolean        
+        const checked = e.currentTarget.checked as boolean
         const data: ParameterModel = this.state.Model;
-        data[key] = val;
-        this.state.Model.NotifyPropertyChanged(key);
-        console.log("")
+        data[key] = checked;
+        if (key === "requiresInputString") {
+            //
+            //  if they check "requiresInputString", set valueIfSet to $2
+            //  but remember what they had before and put it back if they uncheck it.
+            if (checked) {
+                this.state.Model.oldValueIfSet = this.state.Model.valueIfSet;
+                this.state.Model.valueIfSet = "$2"
+            }
+            else {
+                this.state.Model.valueIfSet = this.state.Model.oldValueIfSet;
+            }
+            this.forceUpdate();
+        }
     }
 
     //
@@ -110,14 +133,14 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //         correctly
     //  4. "App" can also set the focus by calling the Model (e.g. when the first one is created or one is deleted)
     //
-    private formFocus = (e: React.FocusEvent<FormControl>) => {
+    private formFocus = (e: React.FocusEvent<FormControl & HTMLInputElement>) => {
 
         // let the model know it is selected so the event sinks can notify
-        this.state.Model.selected = true;
-        console.log(`ParameterView.formFocus. [name=${this.state.Model.uniqueName}] [e=%o]`, e)
+        console.log(`ParameterView.formFocus: focus: ${e.target.value} [name=${e.target.name}] [longParam = ${this.state.Model.longParameter}`)
+        this.state.Model.selected = true;        
     }
 
-    
+
     // }
 
     // private wait = async (ms: number) => {
@@ -133,7 +156,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     public render = () => {
 
         let formClassName: string = (this.state.Model.selected) ? "ParameterForm_Selected" : "ParameterForm_NotSelected";
-
+        console.log("Parameter.render. ParameterModel: %o", this.state.Model)
         return (
 
             <Form className={formClassName} onFocus={this.formFocus} >
@@ -141,37 +164,37 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                 <Row className="ROW_ONE">
                     <Col>
                         <ControlLabel>Long Parameter </ControlLabel>
-                        <FormControl id="longParameter" type="text" placeholder={"Long Parameter"} defaultValue={this.state.Model.longParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} autoFocus={true}  />
+                        <FormControl id="longParameter" type="text" spellCheck={false} placeholder={"Long Parameter"} ref={this.firstInputBox} defaultValue={this.state.Model.longParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} autoFocus={true} />
                     </Col>
                     <Col>
                         <ControlLabel >Short Parameter</ControlLabel>
-                        <FormControl id="shortParameter" type="text" placeholder={"Short Parameter"} defaultValue={this.state.Model.shortParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                        <FormControl id="shortParameter" type="text" spellCheck={false} placeholder={"Short Parameter"} defaultValue={this.state.Model.shortParameter} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} />
                     </Col>
                     <Col>
                         <ControlLabel>Variable Name</ControlLabel>
-                        <FormControl id="variableName" type="text" placeholder={"Variable Name"} defaultValue={this.state.Model.variableName} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                        <FormControl id="variableName" type="text" spellCheck={false} placeholder={"Variable Name"} defaultValue={this.state.Model.variableName} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} />
                     </Col>
                 </Row>
                 <Row className="ROW_TWO">
                     <Col>
                         <ControlLabel>Default</ControlLabel>
-                        <FormControl id="default" type="text" placeholder={"Default"} defaultValue={this.state.Model.default} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                        <FormControl id="default" type="text" spellCheck={false} placeholder={"Default"} defaultValue={this.state.Model.default} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} />
                     </Col>
                     <Col>
                         <ControlLabel>Description</ControlLabel>
-                        <FormControl id="description" type="text" placeholder={"Description"} defaultValue={this.state.Model.description} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                        <FormControl id="description" type="text" spellCheck={false} placeholder={"Description"} defaultValue={this.state.Model.description} /* onChange={this.onTextChanged} */ onBlur={this.onBlur} />
                     </Col>
                     <Col>
                         <ControlLabel>Value if Set</ControlLabel>
-                        <FormControl id="valueIfSet" type="text" placeholder={"Value if set (e.g. $2"} defaultValue={this.state.Model.valueIfSet} /* onChange={this.onTextChanged} */ onBlur={this.onBlur}/>
+                        <FormControl id="valueIfSet" type="text" spellCheck={false} placeholder={"Value if set (e.g. $2"} value={this.state.Model.valueIfSet} onChange={this.onTextChanged} onBlur={this.onBlur} />
                     </Col>
                 </Row>
                 <Row className="ROW_THREE">
                     <Col>
-                        <Checkbox inline={true} id="requiresInputString" type="checkbox" defaultChecked={this.state.Model.requiresInputString} onChange={this.onChecked}>Requires Input String</Checkbox>
+                        <Checkbox inline={true} id="requiresInputString" type="checkbox" checked={this.state.Model.requiresInputString} onChange={this.onChecked}>Requires Input String</Checkbox>
                     </Col>
                     <Col>
-                        <Checkbox inline={true} id="requiredParameter" type="checkbox" defaultChecked={this.state.Model.requiredParameter} onChange={this.onChecked}>Required Parameter</Checkbox>
+                        <Checkbox inline={true} id="requiredParameter" type="checkbox" checked={this.state.Model.requiredParameter} onChange={this.onChecked}>Required Parameter</Checkbox>
                     </Col>
                 </Row>
 

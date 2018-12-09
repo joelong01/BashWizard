@@ -8,8 +8,8 @@ export const svgFiles =
     FileSave:   require("./Images/fileSave.svg"),
     FileSaveAs:   require("./Images/fileSaveAs2.svg"),
     HamburgerMenu: require("./Images/hamburgerMenu.svg"),
-    DebugInfo: require("./Images/vsCodeDebugInfo.svg")
-
+    DebugInfo: require("./Images/vsCodeDebugInfo.svg"),
+    ParseJSON: require("./Images/parseJSON.svg")
 }
 
 export default svgFiles;
