@@ -13,9 +13,11 @@ import { bashTemplates } from './bashTemplates';
 import Splitter from 'm-react-splitters';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
+import trimStart from 'lodash-es/trimStart';
 import { camelCase } from "lodash-es";
 import { uniqueId } from 'lodash-es';
 import { padEnd } from 'lodash-es'
+import { Form, ControlLabel, FormControl, Checkbox } from "react-bootstrap"
 
 interface IAppState {
     //
@@ -33,9 +35,7 @@ interface IAppState {
     //  these get stringified
     //  these must match https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ConfigModel.cs
     ScriptName: string;
-    EchoInput: boolean;
     CreateLogFile: boolean;
-    TeeToLogFile: boolean;
     AcceptsInputFile: boolean;
     Parameters: ParameterModel[];
 
@@ -46,7 +46,7 @@ interface IAppState {
 class App extends React.Component<{}, IAppState> {
     private myMenu = React.createRef<BurgerMenu>()
     private _settingState: boolean = false;
-
+    private _loading: boolean = false;
     constructor(props: {}) {
         super(props);
         //#region menu creation
@@ -80,9 +80,19 @@ class App extends React.Component<{}, IAppState> {
         menu.unshift(menuItem);
 
         menuItem = new MenuModel();
+        menuItem.isSeperator = true;
+        menu.unshift(menuItem);
+
+        menuItem = new MenuModel();
         menuItem.Icon = svgFiles.SaveToBash;
         menuItem.Text = "Save to Bash Script";
         menuItem.onClicked = this.menuSaveToBash;
+        menu.unshift(menuItem);
+
+        menuItem = new MenuModel();
+        menuItem.Icon = svgFiles.ParseJSON;
+        menuItem.Text = "Parse JSON";
+        menuItem.onClicked = this.parseJSON;
         menu.unshift(menuItem);
 
         menuItem = new MenuModel();
@@ -125,9 +135,7 @@ class App extends React.Component<{}, IAppState> {
                 endOfBash: bashTemplates.endOfBash,
                 // these do not get replaced
                 ScriptName: "",
-                EchoInput: false,
                 CreateLogFile: false,
-                TeeToLogFile: false,
                 AcceptsInputFile: false,
                 Parameters: params,
 
@@ -136,46 +144,69 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
+    private getDebugInfo = (scriptDirectory: string): string => {
+        let sb: string = "";
+        try {
 
-    //#region menu handlers
-    private menuDebugInfo = async () => {
-        console.log("menuDebugInfo")
-        let p: ParameterModel = new ParameterModel()
-        p.longParameter = "a"
-        await this.addParameter(p)
-        p = new ParameterModel()
-        p.longParameter = "b"
-        await this.addParameter(p)
-        p = new ParameterModel()
-        p.longParameter = "c"
-        await this.addParameter(p)
+            let scriptName: string = this.state.ScriptName
+            let slashes: string = "/\\"
+            let quotes: string = "\"\'"
+            let scriptDir: string = trimEnd(scriptDirectory, slashes)
+            scriptDir = trimStart(scriptDir, "./")
+            scriptName = trimStart(scriptName, slashes);
+            const nl: string = "\n";
+            sb = `{${nl}`
+            sb += `${this.Tabs(1)}\"type\": \"bashdb\",${nl}`
+            sb += `${this.Tabs(1)}\"request\": \"launch\",${nl}`
+            sb += `${this.Tabs(1)}\"name\": \"Debug ${this.state.ScriptName}\",${nl}`
+            sb += `${this.Tabs(1)}\"cwd\": \"\${workspaceFolder}\",${nl}`
 
-        this.myMenu.current!.isOpen = false;
+            sb += `${this.Tabs(1)}\"program\": \"\${workspaceFolder}/${scriptDir}/${this.state.ScriptName}\",${nl}`
+            sb += `${this.Tabs(1)}\"args\": [${nl}`
+            for (let param of this.state.Parameters) {
+                const p:string = trimEnd(trimStart(param.default, quotes), quotes);
+                sb += `${this.Tabs(2)}\"--${param.longParameter}\",${nl}${this.Tabs(2)}\"${p}\",${nl}`
+            }
+
+
+            sb += `${this.Tabs(1)}]${nl}`
+            sb += `}`
+        }
+        catch (e) {
+            return `Exception generating config\n\nException Info:\n===============\n${e.message}`
+        }
+
+        return sb;
 
     }
+
+    //#region menu handlers
+    private menuDebugInfo = (): void => {        
+        this.setState({bash: this.getDebugInfo("BashScripts")})
+        this.myMenu.current!.isOpen = false;
+    }
     private menuSaveAsBashWizardFile = (): void => {
-        console.log("menuSaveAsScript")
         this.myMenu.current!.isOpen = false;
 
     }
     private menuSaveToBash = (): void => {
-        console.log("menuSaveToBash")
         this.myMenu.current!.isOpen = false;
-
+    }
+    private parseJSON = async (): Promise<void> => {
+        await this.jsonToUi(this.state.json);
+        this.myMenu.current!.isOpen = false;
     }
     private menuOpenScript = (): void => {
-        console.log("menuOpenScript")
+
         this.myMenu.current!.isOpen = false;
 
     }
     private menuAddParameter = (): void => {
-        console.log("menuAddParameter")
-
-        this.addParameter(new ParameterModel());
+        this.addParameter(new ParameterModel(), true);
         this.myMenu.current!.isOpen = false;
 
     }
-    private menuDeleteParameter = async () => {
+    private menuDeleteParameter = async (): Promise<void> => {
         this.myMenu.current!.isOpen = false;
         if (this.state.SelectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.SelectedParameter;
@@ -204,16 +235,33 @@ class App extends React.Component<{}, IAppState> {
 
     }
     private menuNewScript = (): void => {
-        console.log("menuNewScript")
         this.myMenu.current!.isOpen = false;
+        this.reset();
 
     }
+
+    private reset = async (): Promise<void> => {
+        await this.setStateAsync({
+            ScriptName: "",
+            EchoInput: false,
+            CreateLogFile: false,
+            TeeToLogFile: false,
+            AcceptsInputFile: false,
+            Parameters: [],
+            SelectedParameter: undefined,
+            json: "",
+            bash: "",
+            input: ""
+        })
+    }
     private menuSaveBashWizardFile = (): void => {
-        console.log("menuSaveScript")
         this.myMenu.current!.isOpen = false;
     }
     //#endregion
-    private changedScriptName = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    //
+    // see https://github.com/react-bootstrap/react-bootstrap/issues/2781 on why
+    // we need the untion of types for the event
+    private changedScriptName = async (e: React.FocusEvent<FormControl & HTMLInputElement>) => {
         await this.setStateAsync({ ScriptName: e.currentTarget.value })
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
         this.forceUpdate()
@@ -335,12 +383,12 @@ class App extends React.Component<{}, IAppState> {
                 sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
             }
 
-            sbBashScript = sbBashScript.replace("__BEGIN_TEE__", this.state.TeeToLogFile ? bashTemplates.beginTee : "");
+            sbBashScript = sbBashScript.replace("__BEGIN_TEE__", bashTemplates.beginTee);
 
 
             sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
             sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
-            sbBashScript = sbBashScript.replace("__ECHO_INPUT__", this.state.EchoInput ? "echoInput" : "");
+            sbBashScript = sbBashScript.replace("__ECHO_INPUT__", "echoInput");
             return sbBashScript;
         }
         catch (e) {
@@ -393,13 +441,13 @@ class App extends React.Component<{}, IAppState> {
 
     private deleteParameter = async (parameter: ParameterModel) => {
         if (parameter === undefined) {
-            console.log("WARNING:  ATTEMPTING TO DELETE AN UNDEFINED PARAMETER")
+            console.log("App.DeleteParameter: WARNING:  ATTEMPTING TO DELETE AN UNDEFINED PARAMETER")
             return;
         }
         let array: ParameterModel[] = [...this.state.Parameters]
         const index: number = array.indexOf(parameter)
         if (index === -1) {
-            console.log("WARNING: PARAMETER NOT FOUND IN ARRAY TO DELETE")
+            console.log("App.DeleteParameter: WARNING: PARAMETER NOT FOUND IN ARRAY TO DELETE")
             return;
         }
 
@@ -465,13 +513,19 @@ class App extends React.Component<{}, IAppState> {
     //
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
+        console.log(`App.onPropertyChanged: [_settingState: ${this._settingState}] [loading=${this._loading}] [name=${name}] [value=${parameter[name]}] [parameter=%o]`, parameter)
+        if (this._loading === true) {
+            return;
+        }
         if (this._settingState === true) {
             return;
         }
         try {
-            console.log(`App.onPropertyChanged: [name=${name}] [value=${parameter[name]}]`)
             this._settingState = true;
             if (name === "selected") {
+                if (this.state.SelectedParameter === parameter) {
+                    return;
+                }
                 if (this.state.SelectedParameter !== undefined) {
                     this.state.SelectedParameter.selected = false; // old selected no longer selected
                 }
@@ -528,26 +582,30 @@ class App extends React.Component<{}, IAppState> {
     }
 
 
-    private addParameter = async (p: ParameterModel) => {
+    private addParameter = async (model: ParameterModel, select: boolean) => {
 
-        // const list:ParameterModel[] = [p, ...this.state.Parameters]
-        const list: ParameterModel[] = this.state.Parameters.concat(p);
-        this.setStateAsync({ Parameters: list })
-        // await this.setStateAsync({ Parameters: [...this.state.Parameters, p] });
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = true;
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        const validMessage: string = this.validateParameters()
-        if (validMessage !== "") {
-            this.setState({ bash: validMessage })
-        }
-        else {
-            await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
-        }
+        model.uniqueName = uniqueId("PARAMETER_DIV_")
+        model.registerNotify(this.onPropertyChanged)
+        model.selected = select;
+
+        const list: ParameterModel[] = this.state.Parameters.concat(model);
+        await this.setStateAsync({ Parameters: list })
+        await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+
+        // const validMessage: string = this.validateParameters()
+        // if (validMessage !== "") {
+        //     this.setState({ bash: validMessage })
+        // }
+        // else {
+        //     await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+        // }
 
     }
 
-    private onChecked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    //
+    //  see https://github.com/react-bootstrap/react-bootstrap/issues/2781 for why we have to have
+    //  the union in the type
+    private onChecked = async (e: React.ChangeEvent<FormControl & HTMLInputElement>) => {
 
         const key = e.currentTarget.id as string
         let val = e.currentTarget.checked as boolean
@@ -569,7 +627,7 @@ class App extends React.Component<{}, IAppState> {
                         p.requiredParameter = false;
                         p.valueIfSet = "$2"
                         p.variableName = "inputFile"
-                        await this.addParameter(p);
+                        await this.addParameter(p, true);
                     }
                     else {
                         await this.deleteParameterByLongName("input-file")
@@ -593,7 +651,7 @@ class App extends React.Component<{}, IAppState> {
                                 p.requiresInputString = true,
                                 p.requiredParameter = false,
                                 p.valueIfSet = "$2"
-                            await this.addParameter(p);
+                            await this.addParameter(p, true);
                         }
                     } else { // removing it
                         await this.deleteParameterByLongName("log-directory")
@@ -609,16 +667,11 @@ class App extends React.Component<{}, IAppState> {
     }
 
 
-    private setStateAsync = (newState: object) => {
-        // const key = Object.keys(newState)[0];
-        // util.log("setStateAsync: key= %s oldVal = %o newVal = %o]", key, this.state[key], newState[key]);
+    private setStateAsync = (newState: object): Promise<void> => {
         return new Promise((resolve, reject) => {
             this.setState(newState, () => {
                 resolve();
-                // console.log("setStateAsync: key= %s state = %o", key, this.state[key]);
-
             });
-
         });
     }
 
@@ -664,10 +717,9 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-
     public render = () => {
         /*jsx requires one parent element*/
-        console.log("rendereing App")
+        console.log("App.render.  State: %o", this.state)
         return (
             <div className="outer-container" id="outer-container">
                 <BurgerMenu ref={this.myMenu} isOpen={this.state.menuOpen} Items={this.state.menuItems} />
@@ -680,28 +732,14 @@ class App extends React.Component<{}, IAppState> {
                         dispatchResize={true}
                         postPoned={false}>
                         <div className="DIV_Top">
-                            <div className="Global_Input_Form">
-                                <label className="LABEL_ScriptName">
-                                    Script Name:  <input id="scriptName" className="INPUT_scriptName" spellCheck={false} type="text" defaultValue={this.state.ScriptName} onBlur={this.changedScriptName} />
-                                </label>
-                                <label className="LABEL_EchoInput">
-                                    <input id="EchoInput" className="INPUT_EchoInput" type="checkbox" defaultChecked={this.state.EchoInput} onChange={this.onChecked} />
-                                    Echo Input
-                                </label>
+                            <Form className="Global_Input_Form" horizontal={true}>
+                                <ControlLabel className="LABEL_ScriptName">Script Name</ControlLabel>
+                                <FormControl id="scriptName" width={"100px"} className="INPUT_scriptName" spellCheck={false} type="text" value={this.state.ScriptName} onBlur={this.changedScriptName}
+                                    onChange={(e: React.ChangeEvent<FormControl & HTMLInputElement>) => this.setState({ ScriptName: e.currentTarget.value })} />
+                                <Checkbox id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" checked={this.state.CreateLogFile} onChange={this.onChecked}>Create Log File</Checkbox>
+                                <Checkbox id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" checked={this.state.AcceptsInputFile} onChange={this.onChecked}>Accepts Input File</Checkbox>
 
-                                <label className="LABEL_CreateLogFile">
-                                    <input id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" defaultChecked={this.state.CreateLogFile} onChange={this.onChecked} />
-                                    Create Log File
-                                </label>
-                                <label className="LABEL_TeeToLogFile">
-                                    <input id="TeeToLogFile" className="INPUT_TeeToLogFile" type="checkbox" defaultChecked={this.state.TeeToLogFile} onChange={this.onChecked} />
-                                    Tee to Log file
-                                </label>
-                                <label className="LABEL_AcceptsInputFile">
-                                    <input id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" defaultChecked={this.state.AcceptsInputFile} onChange={this.onChecked} />
-                                    Accepts Input File
-                                </label>
-                            </div>
+                            </Form>
                             <div className="Parameter_List">
                                 {this.renderParameters()}
                             </div>
@@ -714,8 +752,10 @@ class App extends React.Component<{}, IAppState> {
                                 postPoned={false}>
 
                                 <div className="DIV_BottomLeft">
-                                    <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} spellCheck={false} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }} />
-                                    <textarea className="TEXTAREA_EndOfBash" id="TEXTAREA_EndOfBash" spellCheck={false} value={this.state.endOfBash} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }} />
+                                    <textarea className="TEXTAREA_Bash" id="bashDoc" value={this.state.bash} spellCheck={false} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }}
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => this.setState({ json: e.currentTarget.value })}
+                                    />
+                                    <textarea className="TEXTAREA_EndOfBash" id="TEXTAREA_EndOfBash" spellCheck={false} defaultValue={this.state.endOfBash} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }} />
                                 </div>
                                 <div className="DIV_BottomRight">
                                     <Splitter className="SPLITTER_JsonInput" position="horizontal"
@@ -724,8 +764,9 @@ class App extends React.Component<{}, IAppState> {
                                         primaryPaneMinHeight="10%"
                                         primaryPaneMaxHeight="95%"
                                     >
-                                        <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} spellCheck={false} readOnly={false} onFocus={(e) => { e.currentTarget.select(); }} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => this.setState({ json: e.currentTarget.value })} />
-                                        <textarea className="TEXTAREA_settings" id="input_settings" value={this.state.input} spellCheck={false} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }} />
+                                        <textarea className="TEXTAREA_jsonDoc" id="jsonDoc" value={this.state.json} spellCheck={false} readOnly={false}
+                                            onFocus={(e) => { e.currentTarget.select(); }} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => this.setState({ json: e.currentTarget.value })} />
+                                        <textarea className="TEXTAREA_settings" id="input_settings" defaultValue={this.state.input} spellCheck={false} readOnly={true} onFocus={(e) => { e.currentTarget.select(); }} />
                                     </Splitter>
 
                                 </div>
@@ -735,6 +776,51 @@ class App extends React.Component<{}, IAppState> {
                 </div>
             </div>
         );
+    }
+
+    private async jsonToUi(json: string): Promise<void> {
+        try {
+            //
+            //  do it in this order in case the json parse throws, we don't wipe any UI
+            const objs = JSON.parse(json);
+            await this.reset()
+            this._loading = false;
+            this.setState({
+                ScriptName: objs.ScriptName,
+                CreateLogFile: objs.CreateLogFile,
+                AcceptsInputFile: objs.AcceptsInputFile,
+            });
+            //
+            //  these unserialized things are only partially ParameterModels -- create the real ones
+
+            for (let p of objs.Parameters) {
+                let model: ParameterModel = new ParameterModel();
+                model.default = p.Default;
+                model.description = p.Description;
+                model.longParameter = p.LongParameter;
+                model.valueIfSet = p.ValueIfSet;
+                model.oldValueIfSet = "";
+                model.selected = false;
+                model.requiredParameter = p.RequiredParameter;
+                model.shortParameter = p.ShortParameter;
+                model.variableName = p.VariableName;
+                model.requiresInputString = p.RequiresInputString;
+                this.addParameter(model, false)
+            }
+
+            this.state.Parameters.map(el => el.selected = false)
+            this._loading = false;
+            this.state.Parameters[0].selected = true;
+        }
+        catch (e) {
+            this.setState({ bash: "Error parsing JSON" + e.message });
+        }
+        finally {
+            this.myMenu.current!.isOpen = false;
+            console.log("after jsontoUi: %o", this.state.Parameters)
+            this._loading = false;
+        }
+
     }
 }
 

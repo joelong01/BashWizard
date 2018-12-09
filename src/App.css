@@ -166,3 +166,10 @@ input[type=checkbox], input[type=radio] {
   background-color: blue;
 }
 
+.INPUT_scriptName
+{
+  margin-left: 10px;
+  margin-right: 10px;
+  width:280px;
+}
+

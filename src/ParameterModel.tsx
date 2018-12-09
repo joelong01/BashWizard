@@ -1,12 +1,12 @@
 
-type INotifyPropertyChanged = (parameter:ParameterModel, property: string) => void;
+type INotifyPropertyChanged = (parameter: ParameterModel, property: string) => void;
 
 
 //
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
 class ParameterModel {
 
-    
+
     private Default: string = "";
     private Description: string = "";
     private LongParameter: string = "";
@@ -18,27 +18,38 @@ class ParameterModel {
     private propertyChangedNotify: INotifyPropertyChanged[] = []
     //
     // not stringified
-    private _selected: boolean;
+    private _selected: boolean = false;
     private _uniqueName: string;
 
+// we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option    
+    private _oldValueIfSet: string;     
+    get oldValueIfSet(): string {
+        return this._oldValueIfSet;
+    }
+
+    set oldValueIfSet(value: string) {
+        if (value !== this._oldValueIfSet) {
+
+            this._oldValueIfSet = value;
+
+        }
+    }
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
-    public static jsonReplacer (name: string, value: any) {
-        if (name === "Default" || name === "Description"|| name === "LongParameter"|| name === "RequiresInputString"|| name === "RequiredParameter"|| name === "ShortParameter"|| name === "VariableName"|| name === "ValueIfSet")
-        {            
-            return value;            
-        }        
+    public static jsonReplacer(name: string, value: any) {
+        if (name === "Default" || name === "Description" || name === "LongParameter" || name === "RequiresInputString" || name === "RequiredParameter" || name === "ShortParameter" || name === "VariableName" || name === "ValueIfSet") {
+            return value;
+        }
         return undefined;
     }
 
     public registerNotify(callback: INotifyPropertyChanged) {
-      this.propertyChangedNotify.push(callback);
-      console.log("ParameterModel.registryNotify")
+        this.propertyChangedNotify.push(callback);
+        console.log("ParameterModel.registryNotify")
     }
-    public removeNotify(callback: INotifyPropertyChanged){
-        const index:number = this.propertyChangedNotify.indexOf(callback)
-        if (index === -1)
-        {
+    public removeNotify(callback: INotifyPropertyChanged) {
+        const index: number = this.propertyChangedNotify.indexOf(callback)
+        if (index === -1) {
             throw new Error("attempt to remove a callback that wasn't in the callback array")
         }
         this.propertyChangedNotify.splice(index, 1)
@@ -47,7 +58,7 @@ class ParameterModel {
     public NotifyPropertyChanged(property: string): void {
         console.log(`Model changed: [${property}=${this[property]}]`)
 
-        for (const notify of this.propertyChangedNotify) {            
+        for (const notify of this.propertyChangedNotify) {
             notify(this, property)
         }
 

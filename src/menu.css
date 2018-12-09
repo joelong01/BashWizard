@@ -9,13 +9,13 @@
 
 .MENU_LayoutRootOpen
 {   
-    transition: width 0.5s; 
+    transition: width 250ms; 
     width: 275px;   
 }
 .MENU_LayoutRootClosed
 {
-    transition: width 0.5s;
-    width: 48px;    
+    transition: width 250ms;
+    width: 44px;    
 }
 
 

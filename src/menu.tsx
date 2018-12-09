@@ -40,7 +40,6 @@ export class BurgerMenu extends React.PureComponent<IMenuProperties, IMenuState>
     private menuOpenClose = () => {
         let open: boolean = this.state.isOpen
         this.setState({ isOpen: !open })
-        console.log(`[open: ${!open}]`)
     }
     private renderOneMenuItem = (menuData: MenuModel, index:number): JSX.Element => {
         let key:string=`Menu_key_${index}`
@@ -75,7 +74,7 @@ export class BurgerMenu extends React.PureComponent<IMenuProperties, IMenuState>
     public render() {
 
         let name: string = this.state.isOpen ? "MENU_LayoutRootOpen" : "MENU_LayoutRootClosed"
-        console.log(`menu rendering.  [openProps = ${this.state.isOpen}]  [openState = ${this.state.isOpen}] [className=${name}]`)
+        console.log(`Menu.Render.  [openProps = ${this.state.isOpen}]  [openState = ${this.state.isOpen}] [className=${name}]`)
         return (
             <div className={name}>
                 <div className="DIV_OpenButtonSpace">
