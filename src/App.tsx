@@ -35,6 +35,7 @@ interface IAppState {
     //  these get stringified
     //  these must match https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ConfigModel.cs
     ScriptName: string;
+    Description: string;
     CreateLogFile: boolean;
     AcceptsInputFile: boolean;
     Parameters: ParameterModel[];
@@ -63,38 +64,23 @@ class App extends React.Component<{}, IAppState> {
 
         menuItem = new MenuModel();
         menuItem.Icon = svgFiles.FileOpen;
-        menuItem.Text = "Open Bash Wizard File";
+        menuItem.Text = "Open...";
         menuItem.onClicked = this.menuOpenScript;
         menu.unshift(menuItem);
 
         menuItem = new MenuModel();
-        menuItem.Icon = svgFiles.FileSave;
-        menuItem.Text = "Save Bash Wizard File";
-        menuItem.onClicked = this.menuSaveBashWizardFile;
-        menu.unshift(menuItem);
-
-        menuItem = new MenuModel();
         menuItem.Icon = svgFiles.FileSaveAs;
-        menuItem.Text = "Save As Bash Wizard File";
+        menuItem.Text = "Save As...";
         menuItem.onClicked = this.menuSaveAsBashWizardFile;
         menu.unshift(menuItem);
 
         menuItem = new MenuModel();
-        menuItem.isSeperator = true;
+        menuItem.Icon = svgFiles.FileSave;
+        menuItem.Text = "Save";
+        menuItem.onClicked = this.menuSaveBashWizardFile;
         menu.unshift(menuItem);
-
-        menuItem = new MenuModel();
-        menuItem.Icon = svgFiles.SaveToBash;
-        menuItem.Text = "Save to Bash Script";
-        menuItem.onClicked = this.menuSaveToBash;
-        menu.unshift(menuItem);
-
-        menuItem = new MenuModel();
-        menuItem.Icon = svgFiles.ParseJSON;
-        menuItem.Text = "Parse JSON";
-        menuItem.onClicked = this.parseJSON;
-        menu.unshift(menuItem);
-
+      
+ 
         menuItem = new MenuModel();
         menuItem.isSeperator = true;
         menu.unshift(menuItem);
@@ -114,6 +100,19 @@ class App extends React.Component<{}, IAppState> {
         menuItem = new MenuModel();
         menuItem.isSeperator = true;
         menu.unshift(menuItem);
+
+        
+        menuItem = new MenuModel();
+        menuItem.Icon = svgFiles.Refresh;
+        menuItem.Text = "Refresh";
+        menuItem.onClicked = this.Refresh;
+        menu.unshift(menuItem);
+
+        menuItem = new MenuModel();
+        menuItem.isSeperator = true;
+        menu.unshift(menuItem);
+
+ 
 
         menuItem = new MenuModel();
         menuItem.Icon = svgFiles.DebugInfo;
@@ -135,6 +134,7 @@ class App extends React.Component<{}, IAppState> {
                 endOfBash: bashTemplates.endOfBash,
                 // these do not get replaced
                 ScriptName: "",
+                Description: "",
                 CreateLogFile: false,
                 AcceptsInputFile: false,
                 Parameters: params,
@@ -189,10 +189,7 @@ class App extends React.Component<{}, IAppState> {
         this.myMenu.current!.isOpen = false;
 
     }
-    private menuSaveToBash = (): void => {
-        this.myMenu.current!.isOpen = false;
-    }
-    private parseJSON = async (): Promise<void> => {
+    private Refresh = async (): Promise<void> => {
         await this.jsonToUi(this.state.json);
         this.myMenu.current!.isOpen = false;
     }
@@ -262,6 +259,11 @@ class App extends React.Component<{}, IAppState> {
     // see https://github.com/react-bootstrap/react-bootstrap/issues/2781 on why
     // we need the untion of types for the event
     private changedScriptName = async (e: React.FocusEvent<FormControl & HTMLInputElement>) => {
+        await this.setStateAsync({ ScriptName: e.currentTarget.value })
+        await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
+        this.forceUpdate()
+    }
+    private changedDescription = async (e: React.FocusEvent<FormControl & HTMLInputElement>) => {
         await this.setStateAsync({ ScriptName: e.currentTarget.value })
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
         this.forceUpdate()
@@ -736,6 +738,9 @@ class App extends React.Component<{}, IAppState> {
                                 <ControlLabel className="LABEL_ScriptName">Script Name</ControlLabel>
                                 <FormControl id="scriptName" width={"100px"} className="INPUT_scriptName" spellCheck={false} type="text" value={this.state.ScriptName} onBlur={this.changedScriptName}
                                     onChange={(e: React.ChangeEvent<FormControl & HTMLInputElement>) => this.setState({ ScriptName: e.currentTarget.value })} />
+                                <ControlLabel className="LABEL_Description">Description</ControlLabel>
+                                <FormControl id="description" width={"100px"} className="INPUT_description" spellCheck={false} type="text" value={this.state.Description} onBlur={this.changedDescription}
+                                    onChange={(e: React.ChangeEvent<FormControl & HTMLInputElement>) => this.setState({ Description: e.currentTarget.value })} />
                                 <Checkbox id="CreateLogFile" className="INPUT_CreateLogFile" type="checkbox" checked={this.state.CreateLogFile} onChange={this.onChecked}>Create Log File</Checkbox>
                                 <Checkbox id="AcceptsInputFile" className="INPUT_AcceptsInputFile" type="checkbox" checked={this.state.AcceptsInputFile} onChange={this.onChecked}>Accepts Input File</Checkbox>
 

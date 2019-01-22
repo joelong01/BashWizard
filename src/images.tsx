@@ -9,7 +9,7 @@ export const svgFiles =
     FileSaveAs:   require("./Images/fileSaveAs2.svg"),
     HamburgerMenu: require("./Images/hamburgerMenu.svg"),
     DebugInfo: require("./Images/vsCodeDebugInfo.svg"),
-    ParseJSON: require("./Images/parseJSON.svg")
+    Refresh: require("./Images/parseJSON.svg")
 }
 
 export default svgFiles;

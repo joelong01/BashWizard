@@ -22,7 +22,7 @@
 .DIV_OpenButtonSpace
 {
     position: absolute;
-    height: 100px;
+    height: 70px;
     background-color: #494949;
     top: 0px;
     width: 100%;
@@ -32,8 +32,8 @@
 {
     position: relative;
     width: 100%;
-    height: calc(100% - 100px);
-    top: 100px;
+    height: calc(100% - 70px);
+    top: 70px;
     background-color: #494949;
     
 }
