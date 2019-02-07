@@ -74,7 +74,6 @@ export class BurgerMenu extends React.PureComponent<IMenuProperties, IMenuState>
     public render() {
 
         let name: string = this.state.isOpen ? "MENU_LayoutRootOpen" : "MENU_LayoutRootClosed"
-        console.log(`Menu.Render.  [openProps = ${this.state.isOpen}]  [openState = ${this.state.isOpen}] [className=${name}]`)
         return (
             <div className={name}>
                 <div className="DIV_OpenButtonSpace">

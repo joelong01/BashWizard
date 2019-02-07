@@ -2,5 +2,15 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs"
+  },
+  "rules": {
+    "no-unused-variable": false
+  },
+  "defaultSeverity": "warning",
+  "linterOptions": {
+    "exclude": [
+      "config/**/*.js",
+      "node_modules/**/*.ts"
+    ]
   }
 }

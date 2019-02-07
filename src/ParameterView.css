@@ -1,0 +1,36 @@
+.parameterItem
+{
+    background-color: darkgray;
+    border: 2px black solid;
+    height: 160px;
+    border-radius: 5px;
+    padding: 5px;
+    margin: 2px 2px 2px 2px;
+    width: 75%;
+}
+.param-label
+{
+    margin: 10px;
+}
+
+.param-input
+{
+    background-color: black !important;
+    color: white !important;
+    width: 100%;
+}
+
+.param-column
+{
+    width: 33%;
+}
+
+.p-grid
+{
+    margin-top: 10px !important;
+}
+
+.checkbox-grid
+{
+    margin-top: -10px !important;
+}
