@@ -1,6 +1,7 @@
 export const svgFiles = 
 {
     FileNew: require("./Images/fileNew.svg"),
+    FileNewBlack: require("./Images/fileNewBlack.svg"),
     DeleteParameter: require("./Images/deleteParameter.svg"),
     AddParameter: require("./Images/addParameter.svg"),
     SaveToBash: require("./Images/addToScript.svg"),

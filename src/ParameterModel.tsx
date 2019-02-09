@@ -1,5 +1,7 @@
+import { GrowlMessage } from 'primereact/growl';
 
 type INotifyPropertyChanged = (parameter: ParameterModel, property: string) => void;
+export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void; 
 
 
 //
