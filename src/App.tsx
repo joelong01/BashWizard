@@ -22,10 +22,10 @@ import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
 import { Growl, GrowlMessage } from 'primereact/growl';
-
-
+import { Dialog } from 'primereact/dialog';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
+import {YesNoDialog, YesNoResponse} from "./askUserYesNoDlg";
 
 import "brace/mode/sh"
 import "brace/mode/json"
@@ -51,7 +51,9 @@ interface IAppState {
     loggingParameter: boolean;
     inputFileParameter: boolean;
     cvdParameters: boolean;
-
+    dialogVisible: boolean;
+    dialogMessage: string;
+    dialogCallback: YesNoResponse;
 
     //
     //  these get stringified
@@ -102,6 +104,9 @@ class App extends React.Component<{}, IAppState> {
                 loggingParameter: false,
                 inputFileParameter: false,
                 cvdParameters: false,
+                dialogVisible: false,
+                dialogMessage: "",
+                dialogCallback: this.yesNoReset,
 
 
                 // these do not get replaced
@@ -736,19 +741,40 @@ class App extends React.Component<{}, IAppState> {
         return parameterList;
 
     }
+    //
+    //  if we have parameters, ask the user if they really want to create a new file
+    //  note that we have some async stuff going on.  we'll resturn from this function
+    //  and the answer to the dialog comes back to this.yesNoReset
+    private onNew = async () => {
 
-    private onNew = () => {
-        this.reset();
+        if (this.state.Parameters.length > 0) {
+            const msg: string = "Create a new bash file?";
+            const obj: object = { dialogMessage: msg, dialogVisible: true, dialogCallback: this.yesNoReset };
+            await this.setStateAsync(obj);           
+        }
+        else
+        {
+            this.reset();
+        }
     }
+
+    private yesNoReset = async (response: "yes" | "no") => {
+        console.log (`notified: ${response}`);
+        this.setState({dialogVisible: false});
+        if (response === "yes") {
+            this.reset();
+        }
+    }
+   
 
     public render = () => {
         /*jsx requires one parent element*/
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
-
+       
         return (
             <div className="outer-container" id="outer-container">
                 <Growl ref={this.growl} />
-
+               <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} /> 
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
                     <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} /* primary={"second"} */ onDragFinished={(newSize: number) => {
                         //
@@ -763,7 +789,7 @@ class App extends React.Component<{}, IAppState> {
                                     {/* need to use standard button here because Prime Icons doesn't have a good "New File" icon */}
 
                                     <button className="bw-button p-component" onClick={this.onNew}>
-                                        <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack}/>
+                                        <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
 
