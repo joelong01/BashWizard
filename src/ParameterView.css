@@ -1,16 +1,17 @@
 .parameterItem
 {
-    background-color: darkgray;
-    border: 2px black solid;
+    
+    border: 1px  solid;
     height: 160px;
-    border-radius: 5px;
+    border-radius: 3px;
     padding: 5px;
     margin: 2px 2px 2px 2px;
-    width: 75%;
+    width: calc(100% - 4px);
 }
 .parameterItem:focus-within
 {
-    border: thick solid white;
+    border: 3px solid blue;
+    border-radius: 3px;
 }
 .param-label
 {
@@ -18,11 +19,8 @@
 }
 
 .param-input
-{
-    background-color: black !important;
-    color: white !important;
-    width: 100%;
-    
+{    
+    width: 100%;    
 }
 
 .param-column
@@ -30,7 +28,7 @@
     width: 33%;
 }
 
-.p-grid
+.parameter-item-grid
 {
     margin-top: 10px !important;
 }

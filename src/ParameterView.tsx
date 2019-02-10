@@ -1,14 +1,14 @@
 import React from 'react';
 import ParameterModel, { IGrowlCallback } from './ParameterModel';
-import "./App.css"
-import "./index.css"
-import "./menu.css"
 
-import "primereact/resources/themes/nova-light/theme.css";
+
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 import "primeflex/primeflex.css"
 import "./ParameterView.css"
+import "./App.css"
+import "./index.css"
+
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
 
@@ -235,7 +235,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     public render = () => {
         return (
             <div className="parameterItem" onFocus={() => this.state.Model.selected = true} ref={this.refParameterForm} tabIndex={0}>
-                <div className="p-grid">
+                <div className="p-grid parameter-item-grid">
                     <div className="p-col-fixed param-column">
                         <span className="p-float-label">
                             <InputText autoFocus={true} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
@@ -255,7 +255,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                         </span>
                     </div>
                 </div>
-                <div className="p-grid">
+                <div className="p-grid parameter-item-grid">
                     <div className="p-col-fixed param-column">
                         <span className="p-float-label">
                             <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />

@@ -1,13 +1,9 @@
 import "./index.css"
-import "./ParameterView.css"
-import "./menu.css"
 import 'primereact/resources/themes/nova-light/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css'
 import * as React from 'react';
-
-
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
 import ParameterModel from './ParameterModel';
@@ -26,15 +22,16 @@ import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
 import { Growl, GrowlMessage } from 'primereact/growl';
-import Cookies, { Cookie } from "universal-cookie"
 
+
+import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
 
 import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/cobalt"
-
+import "./ParameterView.css"
 import "./App.css"
 interface IAppState {
     //
@@ -68,25 +65,30 @@ interface IAppState {
 
 
 class App extends React.Component<{}, IAppState> {
-    
+
     private growl = React.createRef<Growl>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
+    private cookie: Cookie = new Cookies();
+
     constructor(props: {}) {
         super(props);
-        const cookie = new Cookies();
-        let savedMode = cookie.get("mode");
+
+        let savedMode = this.cookie.get("mode");
         if (savedMode === "" || savedMode === null) {
             savedMode = "dark";
         }
-    
+
+
+
+
         const params: ParameterModel[] = []
 
         this.state =
             {
                 //
                 //  these get replaced in this.stringify
-                menuOpen: true,                
+                menuOpen: true,
                 json: "",
                 bash: "",
                 input: "",
@@ -101,6 +103,7 @@ class App extends React.Component<{}, IAppState> {
                 inputFileParameter: false,
                 cvdParameters: false,
 
+
                 // these do not get replaced
                 ScriptName: "",
                 Description: "",
@@ -108,6 +111,12 @@ class App extends React.Component<{}, IAppState> {
 
 
             }
+
+    }
+
+    private saveState = (): void => {
+        console.log(`saving mode: ${this.state.mode}`);
+        this.cookie.set("mode", this.state.mode);
 
     }
 
@@ -147,13 +156,13 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-   
+
     private Refresh = async (): Promise<void> => {
         await this.jsonToUi(this.state.json);
     }
 
     private menuDeleteParameter = async (): Promise<void> => {
-   
+
         if (this.state.SelectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.SelectedParameter;
             this.state.SelectedParameter.selected = false;
@@ -183,8 +192,7 @@ class App extends React.Component<{}, IAppState> {
 
 
     private reset = () => {
-        this.state.Parameters.map((el:ParameterModel) => 
-        {
+        this.state.Parameters.map((el: ParameterModel) => {
             el.removeNotify(this.onPropertyChanged);
         }
         );
@@ -210,10 +218,10 @@ class App extends React.Component<{}, IAppState> {
 
         });
     }
-    
+
     private updateAllText = async () => {
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput(), debugConfig: this.getDebugConfig("BashScripts"), inputJson: this.toInput() });
-        
+
     }
 
     private changedScriptName = async (e: React.FormEvent<HTMLInputElement>) => {
@@ -412,6 +420,7 @@ class App extends React.Component<{}, IAppState> {
 
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
+        await this.updateAllText();
 
     }
 
@@ -479,9 +488,9 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
 
-        const validateMessage:string = this.validateParameters();
-        if (validateMessage !== ""){
-            this.growlCallback({severity:"error", summary:"Bash Wizard", detail: validateMessage});
+        const validateMessage: string = this.validateParameters();
+        if (validateMessage !== "") {
+            this.growlCallback({ severity: "error", summary: "Bash Wizard", detail: validateMessage });
             return;
         }
 
@@ -536,7 +545,7 @@ class App extends React.Component<{}, IAppState> {
                 }
 
             }
-           
+
 
         }
         finally {
@@ -593,7 +602,7 @@ class App extends React.Component<{}, IAppState> {
         p.default = "";
         p.description = "echos script data";
         p.longParameter = "verbose";
-        p.shortParameter = "v";
+        p.shortParameter = "b";
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
@@ -644,7 +653,7 @@ class App extends React.Component<{}, IAppState> {
         p.longParameter = "delete";
         p.shortParameter = "d";
         p.description = "calls the onDelete function in the script";
-        p.variableName = "verify";
+        p.variableName = "delete";
         p.default = "false";
         p.requiresInputString = false;
         p.requiredParameter = false;
@@ -739,7 +748,7 @@ class App extends React.Component<{}, IAppState> {
         return (
             <div className="outer-container" id="outer-container">
                 <Growl ref={this.growl} />
-             
+
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
                     <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} /* primary={"second"} */ onDragFinished={(newSize: number) => {
                         //
@@ -752,19 +761,16 @@ class App extends React.Component<{}, IAppState> {
                                 <div className="p-toolbar-group-left">
 
                                     {/* need to use standard button here because Prime Icons doesn't have a good "New File" icon */}
-                                    <button className="TB_New_Button" onClick={this.onNew}>
-                                        <img className="TB_New_Icon" style={{ width: "22px", height: "22px" }}
-                                            srcSet={svgFiles.FileNewBlack}
-                                        />
-                                        <span className="TB_New_Span">New Script</span>
+
+                                    <button className="bw-button p-component" onClick={this.onNew}>
+                                        <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack}/>
+                                        <span className="bw-button-span p-component">New Script</span>
                                     </button>
+
                                     <Button className="p-button-secondary" label="Refresh" icon="pi pi-refresh" onClick={this.Refresh} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.menuDeleteParameter()} style={{ marginRight: '.25em' }} />
-
                                     <Button className="p-button-secondary" label="Add" icon="pi pi-list" onClick={this.addBuiltIn} />
-
-
                                     <Dropdown options=
                                         {
                                             [
@@ -780,45 +786,52 @@ class App extends React.Component<{}, IAppState> {
                                         value={this.state.builtInParameterSelected}
                                         onChange={(e: { originalEvent: Event, value: any }) => this.setState({ builtInParameterSelected: e.value })}
                                     />
-
                                 </div>
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
                                         checked={this.state.mode === "dark"}
-                                        onChange={(e: { originalEvent: Event, value: boolean }) => { this.setState({ mode: e.value ? "dark" : "light" }) }}
+                                        onChange={async (e: { originalEvent: Event, value: boolean }) => { await this.setStateAsync({ mode: e.value ? "dark" : "light" }); this.saveState(); }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
                                 </div>
                             </Toolbar>
-                            <div className="divScriptEntry">
-                                <span className="inputSpan" >
-                                    <label style={{ marginRight: '.25em' }} htmlFor="in" >Script Name:</label>
-                                    <InputText style={{ marginRight: '.25em' }} id="in" spellCheck={false} value={this.state.ScriptName} onChange={this.changedScriptName} 
-                                        onBlur = { async (e: React.FocusEvent<InputText & HTMLInputElement>)=>
-                                        {
-                                            const end:string = e.currentTarget.value!.slice(-3);                                            
-                                            if ( end !== ".sh") {   
-                                                this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
-                                                await this.setStateAsync({ScriptName: e.currentTarget.value + ".sh"});
-                                                await this.updateAllText();
-                                            }
-                                          
-                                        }}
-                                        />
-                                    <label style={{ marginRight: '.25em' }} htmlFor="in" >Description:</label>
-                                    <InputText style={{ marginRight: '.25em', width: "30em" }} id="in" spellCheck={false} value={this.state.Description} onChange={this.changedDescription} />
-                                </span>
+                            {/* this is the section for entering script name and description */}
+                            <div className="DIV_globalEntry">
+                                <div className="p-grid grid-global-entry">
+                                    <div className="p-col-fixed column-global-entry">
+                                        <span className="p-float-label">
+                                            <InputText id="scriptName" className="param-input" spellCheck={false} value={this.state.ScriptName} onChange={this.changedScriptName}
+                                                onBlur={async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
+                                                    const end: string = e.currentTarget.value!.slice(-3);
+                                                    if (end !== ".sh" && end !== "") {
+                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
+                                                        await this.setStateAsync({ ScriptName: e.currentTarget.value + ".sh" });
+                                                        await this.updateAllText();
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor="scriptName" className="param-label">Script Name</label>
+                                        </span>
+                                    </div>
+                                    <div className="p-col-fixed column-global-entry">
+                                        <span className="p-float-label">
+                                            <InputText className="param-input" id="description_input" spellCheck={false} value={this.state.Description} onChange={this.changedDescription} />
+                                            <label className="param-label" htmlFor="description_input" >Description</label>
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
+                            {/* this is the section for parameter list */}
                             <div className="Parameter_List">
                                 {this.renderParameters()}
                             </div>
                         </div>
-
+                        {/* this is the section for the area below the splitter */}
                         <TabView id="tabControl" className="tabControl">
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceBashEditor" theme={mode} className="aceBashEditor" width={"100%"} height={"100%"} showGutter={true} showPrintMargin={false}
-                                        value={this.state.bash}                                        
+                                    <AceEditor mode="sh" name="aceBashEditor" theme={mode} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                        value={this.state.bash}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14, }}
                                         onChange={(newVal: string) => {
                                             this.setState({ bash: newVal });
@@ -828,7 +841,7 @@ class App extends React.Component<{}, IAppState> {
                             </TabPanel >
                             <TabPanel header="JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor" width={"100%"} height={"100%"} showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.json}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
                                         onChange={(newVal: string) => {
@@ -839,7 +852,7 @@ class App extends React.Component<{}, IAppState> {
                             </TabPanel >
                             <TabPanel header="VS Code Debug Config" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor" width={"100%"} height={"100%"} showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.debugConfig}
                                         readOnly={true}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
@@ -848,7 +861,7 @@ class App extends React.Component<{}, IAppState> {
                             </TabPanel >
                             <TabPanel header="Input JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor" width={"100%"} height={"100%"} showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.inputJson}
                                         readOnly={true}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
@@ -878,7 +891,7 @@ class App extends React.Component<{}, IAppState> {
             });
             //
             //  these unserialized things are only partially ParameterModels -- create the real ones
-            const params:ParameterModel[]  = [];
+            const params: ParameterModel[] = [];
             for (let p of objs.Parameters) {
                 let model: ParameterModel = new ParameterModel();
                 model.default = p.Default;
@@ -893,17 +906,17 @@ class App extends React.Component<{}, IAppState> {
                 model.requiresInputString = p.RequiresInputString;
                 params.push(model)
             }
-            await this.setStateAsync({Parameters: params})
+            await this.setStateAsync({ Parameters: params })
             this._loading = false;
             this.state.Parameters[0].selected = true;
         }
         catch (e) {
             this.setState({ bash: "Error parsing JSON" + e.message });
         }
-        finally {          
+        finally {
             this._loading = false;
             await this.updateAllText();
-            
+
         }
 
     }

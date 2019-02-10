@@ -1,7 +1,13 @@
+/* trying to set the fonts consistently everywhere. p-component is a shared class with prime react, so this will set
+   all components to use these fonts.  the internal components are set to the same font in ./index.css */
+.p-component
+{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  
+}
 .outer-container
 {
   margin-left: 0px;
-  background-color: black;
   position: absolute;
   display: flex;
   width: 100%;
@@ -15,41 +21,76 @@
   float:right;
   width: 100%;
   height: 100;
-  background: black;
+  
 }
+/* the div that holds the form for entering description and scriptname */
+.DIV_globalEntry
+{
+  position: relative;
+  width: 100%;
+  top: .5em;
+  height: 65px;
+  
+
+}
+.column-global-entry
+{
+  width: calc(50% - .5em);
+
+}
+
+.grid-global-entry
+{
+  padding-top: 15px;
+  padding-left: 10px;
+}
+
 .tabControl
 {
   /* the Tabs inherit these font settings */
   position: absolute;
   font-size: 16px;
   font-weight: bolder;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;  
-  background-color: lightgray;
   height: 100%;
   width: 100%;
   margin: 0px;
 }
+.p-tabview-panels
+{
+  background-color: transparent !important;
+  height: calc(100% - 40px);
+}
+
+
+/*
+[id^="tabControl_header"]
+{
+  background-color: gray !important;
+}
+*/
 
 .param-label
 {
   margin-left: 0px !important;
-  color: whitesmoke !important;
   font-style: italic;
+}
+
+/* the Ace Editors */
+.bw-ace
+{
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .divEditor
 {
   position: absolute;
-  width: calc(100% - 10px);
-  height: calc(100% - 55px);
-  background-color: blue;
+  width: calc(100% - 20px);
+  height: calc(100% - 60px);  
+  top: 50px;
+  left: 10px;
+  border-radius: 3px;
   
-}
-
-.SPLITTER_TopBottom
-{
-  left: 0px;
-  width: 100%;
   
 }
 
@@ -61,86 +102,78 @@
   margin-right: 0px;
   position: relative;
   background-color: transparent;
-  height: calc(100% - 4px);
-  border: 2px solid darkgray;
+  height: calc(100% - 4px);  
   left: 0px;
   top: 0px;
 }
    
 .Parameter_List
 {
-  height: calc(100% - 105px);
   overflow: auto;
-  background: gray;
-  color: white;
-  position: absolute;
-  top: 105px;
-  width: 100%;
-  border: 2px dark darkgray;
-
+  position: relative;
+  border: 1px solid blue;
+  border-radius: 3px; 
+  margin: .5em 10px;
+  height: calc(100% - 115px);
+  
 }
 
-
+/* this is the little dot next to the light/dark mode.
+   it makes the circle dark when in dark mode */
 .pi-circle-on
 {
   color: black !important;
 }
 
 
-.divScriptEntry
-{
-  padding: 0px 0px 0px 0px;
-  margin-left: 0px;
-  color: black;
-  background-color: gray;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 16px;
-  padding: 8px;
-  font-weight: 500;
-  
-}
-
-
-.p-button-text
-{
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
 /*  the New Button on the Toolbar */
 
-.TB_New_Button
+.bw-button
 {
-  background-color:transparent;
-  border: none; 
-  color: transparent; 
   margin-top: 0px;
+  color: #333333;
+  background-color: #f4f4f4;
+  border: 1px solid #f4f4f4;
+  vertical-align: middle;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+  padding: 0;
+  text-decoration: none !important;
+  cursor: pointer;
+  text-align: left;
+  zoom: 1;
+  overflow: visible;      
+  width: 7.5em;  
+  height: 2.5em;
+  margin-right: 0.25em;
   
 }
-
-.TB_New_Button:hover
-{
-  background: darkgray;
-  border-radius: 3px;
+.bw-button:hover
+{  
+  background-color: #c8c8c8;
+  color: #333333;
+  border-color: #c8c8c8;
+  border-radius: .25em;
 }
-
-.TB_New_Span
+.bw-button-span
 {
   position: relative;
-  bottom: 0px;
-  color: black;
-  font-size: 14px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-weight: normal;
-  margin-left: 5px;
+  font-size: 1em;
+  font-weight: normal;              
+  left: 1.75em;
 }
 
-.TB_New_Icon
+.bw-button-icon
 {
-  width: 15px;
-  height: 15px;
-  margin-bottom: 2px;
+  position: absolute;
+  top: 50%;
+  margin-top: -.5em;
+  height: 1.25em;
+  margin-left: .25em;
+  
 }
-
 .Resizer {
   background: black;
   opacity: 1.0;
@@ -160,8 +193,8 @@
 
 .Resizer.horizontal {
   height: 11px; 
-  border-top: 5px solid black;
-  border-bottom: 5px solid black;
+  border-top: .5em solid black;
+  border-bottom: .5em solid black;
   cursor: row-resize;
   width: 100%;
 }
