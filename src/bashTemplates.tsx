@@ -1,8 +1,7 @@
 export const bashTemplates =
     {
         bashTemplate: 
-String.raw`
-#!/bin/bash
+`#!/bin/bash
 #---------- see https://github.com/joelong01/Bash-Wizard----------------
 # bashWizard version __VERSION__
 # this will make the error text stand out in red - if you are looking at these errors/warnings in the log file
