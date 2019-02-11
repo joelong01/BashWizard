@@ -1,15 +1,16 @@
 export const bashTemplates =
     {
         bashTemplate: 
-`
+String.raw`
 #!/bin/bash
 #---------- see https://github.com/joelong01/Bash-Wizard----------------
+# bashWizard version __VERSION__
 # this will make the error text stand out in red - if you are looking at these errors/warnings in the log file
 # you can use cat <logFile> to see the text in color.
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "\${RED}\${1}\${NORMAL}"
+    echo "\${RED}${1}\${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -24,24 +25,30 @@ function echoInfo {
 # make sure this version of *nix supports the right getopt
 ! getopt --test 2>/dev/null
 if [[ \${PIPESTATUS[0]} -ne 4 ]]; then
-	echoError "'getopt --test' failed in this environment.  please install getopt.  If on a mac see http://macappstore.org/gnu-getopt/"
-	exit 1
+	echoError "'getopt --test' failed in this environment.  please install getopt."
+    read -r -p "install getopt using brew? [y,n]" response
+    if [[ $response == 'y' ]] || [[ $response == 'Y' ]]; then
+        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+        brew install gnu-getopt
+        #shellcheck disable=SC2016
+        echo 'export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"' >> ~/.bash_profile
+        echoWarning "you'll need to restart the shell instance to load the new path"
+    fi
+   exit 1
 fi
 # we have a dependency on jq
 if [[ ! -x "$(command -v jq)" ]]; then
 	echoError "'jq is needed to run this script.  please install jq - see https://stedolan.github.io/jq/download/"
 	exit 1
 fi
-usage() {
-
+function usage() {
     __USAGE_INPUT_STATEMENT__
-
 __USAGE_LINE__ 1>&2
 __USAGE__  
     echo ""
     exit 1
 }
-echoInput() {     
+function echoInput() {     
     echo __ECHO__
 }
 
@@ -58,13 +65,11 @@ function parseInput() {
     if [[ \${PIPESTATUS[0]} -ne 0 ]]; then
         # e.g. return value is 1
         # then getopt has complained about wrong arguments to stdout
-        echoError "you might be running bash on a Mac.  if so, run 'brew install gnu-getopt' to make the command line processing work."
         usage
         exit 2
     fi
-    # read getoptâ€™s output this way to handle the quoting right:
+    # read getopt’s output this way to handle the quoting right:
     eval set -- "$PARSED"
-    # now enjoy the options in order and nicely split until we see --
     while true; do
         case "$1" in
 __INPUT_CASE__
@@ -81,37 +86,37 @@ __INPUT_CASE__
 }
 # input variables 
 __INPUT_DECLARATION__
-# now parse input to see if any of the parameters have been overridden
 parseInput "$@"
-__PARSE_INPUT_FILE
+
+__PARSE_INPUT_FILE__
 __REQUIRED_PARAMETERS__
 __LOGGING_SUPPORT_
-__BEGIN_TEE__
-__ECHO_INPUT__
-# --- END OF BASH WIZARD GENERATED CODE ---
-`,
-beginTee: 
-`
-#creating a tee so that we capture all the output to the log file
-{
-time=$(date +"%m/%d/%y @ %r")
-echo "started: $time"
+
+    echoInput
+    # --- BEGIN USER CODE ---
+__USER_CODE_1__
+    # --- END USER CODE ---
+__END_LOGGING_SUPPORT__
 `,
 logTemplate:
 `
 #logging support
 declare LOG_FILE="\${logDirectory}__LOG_FILE_NAME__"
 {
-    mkdir "\${logDirectory}" 
+    mkdir -p "\${logDirectory}" 
     rm -f "\${LOG_FILE}"  
 } 2>>/dev/null
+#creating a tee so that we capture all the output to the log file
+{
+    time=$(date +"%m/%d/%y @ %r")
+    echo "started: $time"
 `,
 parseInputTemplate: 
 `
 # if command line tells us to parse an input file
-if [ "\${inputFile}" != "" ]; then
+if [ \"\${inputFile}\" != "" ]; then
 	# load parameters from the file
-	configSection=$(jq . <"\${inputFile}" | jq '."__SCRIPT_NAME__"')
+	configSection=$(jq . <\"\${inputFile}\" | jq '."__SCRIPT_NAME__"')
 	if [[ -z $configSection ]]; then
 		echoError "$inputFile or __SCRIPT_NAME__ section not found "
 		exit 3
@@ -135,10 +140,38 @@ fi
 `,
 endOfBash:
 `
-# --- YOUR SCRIPT ENDS HERE ---
 time=$(date +"%m/%d/%y @ %r")
-echo "ended: $time" 
-} | tee -a "\${LOG_FILE}"
+echo "ended: $time"
+} | tee -a \"\${LOG_FILE}\"
+`,
+verifyCreateDelete:
 `
+function onVerify() {
+        
+}
+function onDelete() {
+    
+}
+function onCreate() {
+    
+}
 
+__USER_CODE_1__
+
+#
+#   the order matters - delete, then create, then verify
+#
+
+if [[ $delete == "true" ]]; then
+    onDelete
+fi
+
+if [[ $create == "true" ]]; then
+    onCreate
+fi
+
+if [[ $verify == "true" ]]; then
+    onVerify        
+fi
+`
 }

@@ -41,19 +41,19 @@
 
 .grid-global-entry
 {
-  padding-top: 15px;
-  padding-left: 10px;
+  padding-top: 1em;
+  padding-left: .5em;
 }
 
 .tabControl
 {
   /* the Tabs inherit these font settings */
   position: absolute;
-  font-size: 16px;
+  font-size: 1em;
   font-weight: bolder;
   height: 100%;
   width: 100%;
-  margin: 0px;
+  margin: 0em;
 }
 .p-tabview-panels
 {
@@ -61,13 +61,6 @@
   height: calc(100% - 40px);
 }
 
-
-/*
-[id^="tabControl_header"]
-{
-  background-color: gray !important;
-}
-*/
 
 .param-label
 {
@@ -85,10 +78,10 @@
 .divEditor
 {
   position: absolute;
-  width: calc(100% - 20px);
+  width: calc(100% - 1em);
   height: calc(100% - 60px);  
-  top: 50px;
-  left: 10px;
+  top: 3.25em;
+  left: .5em;
   border-radius: 3px;
   
   
@@ -113,7 +106,7 @@
   position: relative;
   border: 1px solid blue;
   border-radius: 3px; 
-  margin: .5em 10px;
+  margin: .5em .5em;
   height: calc(100% - 115px);
   
 }
@@ -157,7 +150,7 @@
     width: calc(100% - 17px) !important;
     height: calc(100% - 63px);
     position: absolute;
-    left: 9px;
+    left: .75em;
     border-radius: 3px;
     overflow: auto;
   }
@@ -188,12 +181,8 @@
     font-size: 1.25em;      
   }
 
+  
   .error-col1
-  {
-    width: 5em;
-    display: inline-block;
-  }
-  .error-col2
   {
     display: inline-block;
     width: 9em;
@@ -225,29 +214,17 @@
     
   }
 /* splitter */
-  .Resizer {
-    background: black;
-    opacity: 1.0;
-    z-index: 1;
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    box-sizing: border-box;
-    -moz-background-clip: padding;
-    -webkit-background-clip: padding;
-    background-clip: padding-box;
-  }
-
-  .Resizer:hover {
-    -webkit-transition: all .25s ease;
-    transition: all .25s ease;
-  }
-
   .Resizer.horizontal {
-    height: 11px; 
-    border-top: .5em solid black;
-    border-bottom: .5em solid black;
+    height: .5em; 
+    background-color: lightgray;    
+    border: .125em solid darkgray;
     cursor: row-resize;
+    transition: background-color 0.2s, box-shadow 0.2s;
     width: 100%;
+  }
+
+  .Resizer.horizontal:hover {
+    background-color:darkgray;
   }
 
   .Resizer.disabled {

@@ -37,7 +37,7 @@ interface IParameterState {
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
-    private refParameterForm = React.createRef<HTMLDivElement>();
+    private refParameterForm = React.createRef<HTMLDivElement>();    
     constructor(props: IParameterProperties) {
         super(props);
 
@@ -97,8 +97,17 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
     public onPropertyChanged = async (model: ParameterModel, key: string) => {
 
-        console.log(`ParameterView.onPropertyChanged: [${key}=${model[key]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
+        //  console.log(`ParameterView.onPropertyChanged: [${key}=${model[key]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
 
+        if (key === "focus" && this.refParameterForm.current !== null) {
+            this.refParameterForm.current.focus();
+            return;
+        }
+
+        if (!(key in this.state)) {
+            console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
+            throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
+        }
 
         const obj: object = {}
         obj[key] = model[key];
@@ -154,7 +163,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
         else { // not checked
             if (this.state.Model.valueIfSet === "$2") {
-                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the parameter does not use input, then the \"Value if Set\" cannot be \"$2\". Resetting \"Value if Set\".  Unclick to reset to previous value." });                
+                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the parameter does not use input, then the \"Value if Set\" cannot be \"$2\". Resetting \"Value if Set\".  Unclick to reset to previous value." });
                 if (this.state.Model.oldValueIfSet === "$2") {
                     this.state.Model.oldValueIfSet = "";
                 }
@@ -234,7 +243,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //
     public render = () => {
         return (
-            <div className="parameterItem" onFocus={() => this.state.Model.selected = true} ref={this.refParameterForm} tabIndex={0}>
+            <div className="parameterItem" onFocus={() => this.state.Model.selected = true} ref={this.refParameterForm} tabIndex={0} >
                 <div className="p-grid parameter-item-grid">
                     <div className="p-col-fixed param-column">
                         <span className="p-float-label">
