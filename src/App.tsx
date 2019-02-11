@@ -101,7 +101,7 @@ class App extends React.Component<{}, IAppState> {
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
-    private UserCode: string = "";
+    private UserCode: string = "# user code ";
     private Version: string = "0.906";
     private builtInParameters: {[key in keyof IBuiltInParameterName]:ParameterModel} = {}; // this isn't in the this.state object because it doesn't affect the UI
 
@@ -425,12 +425,12 @@ class App extends React.Component<{}, IAppState> {
                 {
                     //
                     //  if they don't have the functions, add the template code
-                    sbBashScript += sbBashScript.replace("__USER_CODE_1__", verifyCreateDeleteTemplate);
+                    sbBashScript = sbBashScript.replace("__USER_CODE_1__", verifyCreateDeleteTemplate);
                 }
             }
             //
             // put the user code where it belongs -- it might contain the functions already
-            sbBashScript += sbBashScript.replace("__USER_CODE_1__", this.UserCode);
+            sbBashScript = sbBashScript.replace("__USER_CODE_1__", this.UserCode);
 
             return sbBashScript;
         }
