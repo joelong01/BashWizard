@@ -41,10 +41,9 @@ function usage() {
     echoWarning "Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
     echo "test"
     echo ""
-    echo "Usage: $0  -i|--input-file -b|--verbose -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
+    echo "Usage: $0  -i|--input-file -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
     echo ""
     echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
-    echo " -b | --verbose           Optional     echos script data"
     echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
     echo " -c | --create            Optional     calls the onCreate function in the script"
     echo " -v | --verify            Optional     calls the onVerify function in the script"
@@ -56,8 +55,6 @@ function echoInput() {
     echo "test.sh:"
     echo -n "    input-file......."
     echoInfo "$inputFile"
-    echo -n "    verbose.........."
-    echoInfo "$verbose"
     echo -n "    log-directory...."
     echoInfo "$logDirectory"
     echo -n "    create..........."
@@ -71,8 +68,8 @@ function echoInput() {
 
 function parseInput() {
     
-    local OPTIONS=i:bl:cvd
-    local LONGOPTS=input-file:,verbose,log-directory:,create,verify,delete
+    local OPTIONS=i:l:cvd
+    local LONGOPTS=input-file:,log-directory:,create,verify,delete
 
     # -use ! and PIPESTATUS to get exit code with errexit set
     # -temporarily store output to be able to check for errors
@@ -92,10 +89,6 @@ function parseInput() {
         -i | --input-file)
             inputFile=$2
             shift 2
-            ;;
-        -b | --verbose)
-            verbose=true
-            shift 1
             ;;
         -l | --log-directory)
             logDirectory=$2
@@ -126,7 +119,6 @@ function parseInput() {
 }
 # input variables 
 declare inputFile=
-declare verbose=
 declare logDirectory="./"
 declare create=false
 declare verify=false
@@ -143,7 +135,6 @@ if [ "${inputFile}" != "" ]; then
 		echoError "$inputFile or __SCRIPT_NAME__ section not found "
 		exit 3
 	fi
-    verbose=$(echo "${configSection}" | jq '.["verbose"]' --raw-output)
     logDirectory=$(echo "${configSection}" | jq '.["log-directory"]' --raw-output)
     create=$(echo "${configSection}" | jq '.["create"]' --raw-output)
     verify=$(echo "${configSection}" | jq '.["verify"]' --raw-output)
@@ -169,7 +160,35 @@ declare LOG_FILE="${logDirectory}test.sh.log"
 
     echoInput
     # --- BEGIN USER CODE ---
+
+function onVerify() {
+        
+}
+function onDelete() {
+    
+}
+function onCreate() {
+    
+}
+
 # user code 
+
+#
+#   the order matters - delete, then create, then verify
+#
+
+if [[ $delete == "true" ]]; then
+    onDelete
+fi
+
+if [[ $create == "true" ]]; then
+    onCreate
+fi
+
+if [[ $verify == "true" ]]; then
+    onVerify        
+fi
+
     # --- END USER CODE ---
 
 time=$(date +"%m/%d/%y @ %r")
