@@ -6,7 +6,7 @@
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "${RED}1${NORMAL}"
+    echo "${RED}${1}${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -38,17 +38,17 @@ if [[ ! -x "$(command -v jq)" ]]; then
 	exit 1
 fi
 function usage() {
-    echoWarning "Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
+    echoWarning "Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
     echo "test"
     echo ""
-    echo "Usage: $0  i|--input-fileb|--verbosel|--log-directoryc|--createv|--verifyd|--delete" 1>&2
+    echo "Usage: $0  -i|--input-file -b|--verbose -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
     echo ""
-    echo " -i | --input-file        Optional the name of the input file. pay attention to $PWD when setting this"
-    echo " -b | --verbose           Optional echos script data"
-    echo " -l | --log-directory     Optional directory for the log file.  the log file name will be based on the script name"
-    echo " -c | --create            Optional calls the onCreate function in the script"
-    echo " -v | --verify            Optional calls the onVerify function in the script"
-    echo " -d | --delete            Optional calls the onDelete function in the script"  
+    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
+    echo " -b | --verbose           Optional     echos script data"
+    echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
+    echo " -c | --create            Optional     calls the onCreate function in the script"
+    echo " -v | --verify            Optional     calls the onVerify function in the script"
+    echo " -d | --delete            Optional     calls the onDelete function in the script"  
     echo ""
     exit 1
 }
@@ -85,7 +85,7 @@ function parseInput() {
         usage
         exit 2
     fi
-    # read getopt�s output this way to handle the quoting right:
+    # read getopt's output this way to handle the quoting right:
     eval set -- "$PARSED"
     while true; do
         case "$1" in
@@ -184,7 +184,7 @@ echo "ended: $time"
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "${RED}1${NORMAL}"
+    echo "${RED}${1}${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -216,17 +216,17 @@ if [[ ! -x "$(command -v jq)" ]]; then
 	exit 1
 fi
 function usage() {
-    echoWarning "Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
+    echoWarning "Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
     echo "test"
     echo ""
-    echo "Usage: $0  i|--input-fileb|--verbosel|--log-directoryc|--createv|--verifyd|--delete" 1>&2
+    echo "Usage: $0  -i|--input-file -b|--verbose -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
     echo ""
-    echo " -i | --input-file        Optional the name of the input file. pay attention to $PWD when setting this"
-    echo " -b | --verbose           Optional echos script data"
-    echo " -l | --log-directory     Optional directory for the log file.  the log file name will be based on the script name"
-    echo " -c | --create            Optional calls the onCreate function in the script"
-    echo " -v | --verify            Optional calls the onVerify function in the script"
-    echo " -d | --delete            Optional calls the onDelete function in the script"  
+    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
+    echo " -b | --verbose           Optional     echos script data"
+    echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
+    echo " -c | --create            Optional     calls the onCreate function in the script"
+    echo " -v | --verify            Optional     calls the onVerify function in the script"
+    echo " -d | --delete            Optional     calls the onDelete function in the script"  
     echo ""
     exit 1
 }
@@ -263,7 +263,7 @@ function parseInput() {
         usage
         exit 2
     fi
-    # read getopt�s output this way to handle the quoting right:
+    # read getopt's output this way to handle the quoting right:
     eval set -- "$PARSED"
     while true; do
         case "$1" in
@@ -390,7 +390,7 @@ echo "ended: $time"
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "${RED}1${NORMAL}"
+    echo "${RED}${1}${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -422,17 +422,17 @@ if [[ ! -x "$(command -v jq)" ]]; then
 	exit 1
 fi
 function usage() {
-    echoWarning "Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
+    echoWarning "Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
     echo "test"
     echo ""
-    echo "Usage: $0  i|--input-fileb|--verbosel|--log-directoryc|--createv|--verifyd|--delete" 1>&2
+    echo "Usage: $0  -i|--input-file -b|--verbose -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
     echo ""
-    echo " -i | --input-file        Optional the name of the input file. pay attention to $PWD when setting this"
-    echo " -b | --verbose           Optional echos script data"
-    echo " -l | --log-directory     Optional directory for the log file.  the log file name will be based on the script name"
-    echo " -c | --create            Optional calls the onCreate function in the script"
-    echo " -v | --verify            Optional calls the onVerify function in the script"
-    echo " -d | --delete            Optional calls the onDelete function in the script"  
+    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
+    echo " -b | --verbose           Optional     echos script data"
+    echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
+    echo " -c | --create            Optional     calls the onCreate function in the script"
+    echo " -v | --verify            Optional     calls the onVerify function in the script"
+    echo " -d | --delete            Optional     calls the onDelete function in the script"  
     echo ""
     exit 1
 }
@@ -469,7 +469,7 @@ function parseInput() {
         usage
         exit 2
     fi
-    # read getopt�s output this way to handle the quoting right:
+    # read getopt's output this way to handle the quoting right:
     eval set -- "$PARSED"
     while true; do
         case "$1" in
@@ -568,7 +568,7 @@ echo "ended: $time"
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "${RED}1${NORMAL}"
+    echo "${RED}${1}${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -600,17 +600,17 @@ if [[ ! -x "$(command -v jq)" ]]; then
 	exit 1
 fi
 function usage() {
-    echoWarning "Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
+    echoWarning "Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file."
     echo "test"
     echo ""
-    echo "Usage: $0  i|--input-fileb|--verbosel|--log-directoryc|--createv|--verifyd|--delete" 1>&2
+    echo "Usage: $0  -i|--input-file -b|--verbose -l|--log-directory -c|--create -v|--verify -d|--delete " 1>&2
     echo ""
-    echo " -i | --input-file        Optional the name of the input file. pay attention to $PWD when setting this"
-    echo " -b | --verbose           Optional echos script data"
-    echo " -l | --log-directory     Optional directory for the log file.  the log file name will be based on the script name"
-    echo " -c | --create            Optional calls the onCreate function in the script"
-    echo " -v | --verify            Optional calls the onVerify function in the script"
-    echo " -d | --delete            Optional calls the onDelete function in the script"  
+    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
+    echo " -b | --verbose           Optional     echos script data"
+    echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
+    echo " -c | --create            Optional     calls the onCreate function in the script"
+    echo " -v | --verify            Optional     calls the onVerify function in the script"
+    echo " -d | --delete            Optional     calls the onDelete function in the script"  
     echo ""
     exit 1
 }
@@ -647,7 +647,7 @@ function parseInput() {
         usage
         exit 2
     fi
-    # read getopt�s output this way to handle the quoting right:
+    # read getopt's output this way to handle the quoting right:
     eval set -- "$PARSED"
     while true; do
         case "$1" in

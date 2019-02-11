@@ -332,8 +332,8 @@ class App extends React.Component<{}, IAppState> {
             for (let param of this.state.Parameters) {
                 //
                 // usage
-                let required: string = (param.requiredParameter) ? "Required" : "Optional";
-                usageLine += `${param.shortParameter}|--${param.longParameter}`
+                let required: string = (param.requiredParameter) ? "Required    " : "Optional    ";
+                usageLine += `-${param.shortParameter}|--${param.longParameter} `
                 usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
 
                 //
@@ -403,7 +403,7 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
             sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
 
-            let inputOverridesRequired: string = (this.state.inputFileParameter) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            let inputOverridesRequired: string = (this.state.inputFileParameter) ? "echoWarning \"Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (parseInputFile.length > 0) {

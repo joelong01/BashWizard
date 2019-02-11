@@ -9,7 +9,7 @@ export const bashTemplates =
 function echoError() {
     RED=$(tput setaf 1)
     NORMAL=$(tput sgr0)
-    echo "\${RED}${1}\${NORMAL}"
+    echo "\${RED}\${1}\${NORMAL}"
 }
 function echoWarning() {
     YELLOW=$(tput setaf 3)
@@ -67,7 +67,7 @@ function parseInput() {
         usage
         exit 2
     fi
-    # read getopt’s output this way to handle the quoting right:
+    # read getopt\'s output this way to handle the quoting right:
     eval set -- "$PARSED"
     while true; do
         case "$1" in
