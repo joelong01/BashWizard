@@ -1,5 +1,7 @@
+import { GrowlMessage } from 'primereact/growl';
 
 type INotifyPropertyChanged = (parameter: ParameterModel, property: string) => void;
+export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void; 
 
 
 //
@@ -21,8 +23,8 @@ class ParameterModel {
     private _selected: boolean = false;
     private _uniqueName: string;
 
-// we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option    
-    private _oldValueIfSet: string;     
+    // we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option    
+    private _oldValueIfSet: string = "";
     get oldValueIfSet(): string {
         return this._oldValueIfSet;
     }
@@ -34,6 +36,19 @@ class ParameterModel {
 
         }
     }
+
+    // we set oldDefault to "" when they select "requires input string"
+    private _oldDefault: string = "";
+    get oldDefault(): string {
+        return this._oldDefault;
+    }
+
+    set oldDefault(value: string) {
+        if (value !== this._oldValueIfSet) {
+            this._oldDefault = value;
+        }
+    }
+
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
     public static jsonReplacer(name: string, value: any) {
@@ -45,7 +60,7 @@ class ParameterModel {
 
     public registerNotify(callback: INotifyPropertyChanged) {
         this.propertyChangedNotify.push(callback);
-        console.log("ParameterModel.registryNotify")
+
     }
     public removeNotify(callback: INotifyPropertyChanged) {
         const index: number = this.propertyChangedNotify.indexOf(callback)
@@ -53,16 +68,15 @@ class ParameterModel {
             throw new Error("attempt to remove a callback that wasn't in the callback array")
         }
         this.propertyChangedNotify.splice(index, 1)
-        console.log(`there are now  ${this.propertyChangedNotify.length} items to notify`)
+
     }
     public NotifyPropertyChanged(property: string): void {
-        console.log(`Model changed: [${property}=${this[property]}]`)
-
         for (const notify of this.propertyChangedNotify) {
             notify(this, property)
         }
 
     }
+
     get default(): string {
         return this.Default;
     }

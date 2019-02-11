@@ -1,0 +1,39 @@
+.parameterItem
+{
+    
+    border: 1px  solid;
+    height: 160px;
+    border-radius: 3px;
+    padding: 5px;
+    margin: 2px 2px 2px 2px;
+    width: calc(100% - 4px);
+}
+.parameterItem:focus-within
+{
+    border: 3px solid blue;
+    border-radius: 3px;
+}
+.param-label
+{
+    margin: 10px;
+}
+
+.param-input
+{    
+    width: 100%;    
+}
+
+.param-column
+{
+    width: 33%;
+}
+
+.parameter-item-grid
+{
+    margin-top: 10px !important;
+}
+
+.checkbox-grid
+{
+    margin-top: -10px !important;
+}

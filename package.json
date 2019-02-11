@@ -5,18 +5,21 @@
   "dependencies": {
     "@types/lodash-es": "^4.17.1",
     "@types/popper.js": "^1.11.0",
-    "@types/react-bootstrap": "^0.32.15",
     "fs": "0.0.1-security",
     "jquery": "^3.3.1",
     "lodash-es": "^4.17.11",
-    "m-react-splitters": "^1.1.0",
     "njv": "^2.0.0",
     "popper.js": "^1.14.6",
+    "primeflex": "^1.0.0-rc.1",
+    "primeicons": "^1.0.0",
+    "primereact": "^3.0.0",
     "react": "^16.6.3",
-    "react-bootstrap": "^0.32.4",
+    "react-ace": "^6.3.2",
     "react-dom": "^16.6.3",
     "react-scripts-ts": "^4.0.8",
-    "react-splitter-layout": "^3.0.1"
+    "react-split-pane": "^0.1.85",
+    "react-splitter-layout": "^3.0.1",
+    "universal-cookie": "^3.0.7"
   },
   "scripts": {
     "start": "react-scripts-ts start",

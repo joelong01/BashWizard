@@ -17,15 +17,18 @@
     "importHelpers": true,
     "strictNullChecks": true,
     "suppressImplicitAnyIndexErrors": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "strictPropertyInitialization": false,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noUnusedParameters": false,
+    
     
   },
   "rules": {
     "named-imports-order": "any",
-    "object-literal-sort-keys": false
+    "object-literal-sort-keys": false,
+    
   },
   "exclude": [
     "node_modules",

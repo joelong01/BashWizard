@@ -1,7 +1,13 @@
+/* trying to set the fonts consistently everywhere. p-component is a shared class with prime react, so this will set
+   all components to use these fonts.  the internal components are set to the same font in ./index.css */
+.p-component
+{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  
+}
 .outer-container
 {
   margin-left: 0px;
-  background-color: black;
   position: absolute;
   display: flex;
   width: 100%;
@@ -15,14 +21,76 @@
   float:right;
   width: 100%;
   height: 100;
-  background: black;
+  
+}
+/* the div that holds the form for entering description and scriptname */
+.DIV_globalEntry
+{
+  position: relative;
+  width: 100%;
+  top: .5em;
+  height: 65px;
+  
+
+}
+.column-global-entry
+{
+  width: calc(50% - .5em);
+
+}
+
+.grid-global-entry
+{
+  padding-top: 15px;
+  padding-left: 10px;
+}
+
+.tabControl
+{
+  /* the Tabs inherit these font settings */
+  position: absolute;
+  font-size: 16px;
+  font-weight: bolder;
+  height: 100%;
+  width: 100%;
+  margin: 0px;
+}
+.p-tabview-panels
+{
+  background-color: transparent !important;
+  height: calc(100% - 40px);
 }
 
 
-.SPLITTER_TopBottom
+/*
+[id^="tabControl_header"]
 {
-  left: 0px;
-  width: 100%;
+  background-color: gray !important;
+}
+*/
+
+.param-label
+{
+  margin-left: 0px !important;
+  font-style: italic;
+}
+
+/* the Ace Editors */
+.bw-ace
+{
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.divEditor
+{
+  position: absolute;
+  width: calc(100% - 20px);
+  height: calc(100% - 60px);  
+  top: 50px;
+  left: 10px;
+  border-radius: 3px;
+  
   
 }
 
@@ -34,142 +102,157 @@
   margin-right: 0px;
   position: relative;
   background-color: transparent;
-  height: calc(100% - 4px);
-  border: 2px solid darkgray;
+  height: calc(100% - 4px);  
   left: 0px;
   top: 0px;
 }
-    .Global_Input_Form
-    {
-      width: 100%;
-      height: 50px;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      position: absolute;
-      color:white;
-      
-    }
-    .Parameter_List
-    {
-      height: calc(100% - 55px);
-      overflow: auto;
-      background: gray;
-      color: white;
-      position: absolute;
-      top: 55px;
-      width: 100%;
-      border: 2px dark darkgray;
-
-    }
-
-.DIV_Bottom
+   
+.Parameter_List
 {
-  position: relative;
-  width: calc(100% - 4px);   
-  background-color: green;
-  height: calc(100% - 4px);
-  border: 2px solid darkgray;
-  left: 0px;
-  top: 0px;
-}
-
-[class^="TEXTAREA_"]
-{
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  color: white;  
-  background-color: black;
   overflow: auto;
-  scroll-behavior: smooth;                    
-  white-space: pre;
-  outline-color: white;
+  position: relative;
+  border: 1px solid blue;
+  border-radius: 3px; 
+  margin: .5em 10px;
+  height: calc(100% - 115px);
   
 }
 
-  .DIV_BottomLeft
+/* this is the little dot next to the light/dark mode.
+   it makes the circle dark when in dark mode */
+.pi-circle-on
+{
+  color: black !important;
+}
+
+
+/*  the New Button on the Toolbar */
+
+.bw-button
+{
+  margin-top: 0px;
+  color: #333333;
+  background-color: #f4f4f4;
+  border: 1px solid #f4f4f4;
+  vertical-align: middle;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+  padding: 0;
+  text-decoration: none !important;
+  cursor: pointer;
+  text-align: left;
+  zoom: 1;
+  overflow: visible;      
+  width: 7.5em;  
+  height: 2.5em;
+  margin-right: 0.25em;
+  
+}
+
+/* error list support */
+  .bw-error-list
   {
-    background: blue;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
+    width: calc(100% - 17px) !important;
+    height: calc(100% - 63px);
+    position: absolute;
+    left: 9px;
+    border-radius: 3px;
+    overflow: auto;
   }
-       .TEXTAREA_Bash
-        {
-          position: absolute;
-          width: 100%; 
-          height: calc(100% - 159px);
-          top:0px;
-        }
-        .TEXTAREA_EndOfBash
-        {
-          
-          position: absolute;
-          bottom: 0px;
-          width: 100%;
-          height:160px;  
-          
-        }
-  .SPLITTER_JsonInput
+  .bw-error-item
   {
-    background-color:transparent;
+    height: 2.0em;
+    overflow: hidden;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    font-weight: 400;
+    width: 100%;
+  }
+  .bw-error-item-selected
+  {
+    border: 2px lightblue solid;
+    border-radius: .25em;
+  }
+  .bw-error-item:hover
+  {
+    background-color: #c8c8c8;
+    color: #333333;
+    border-color: #c8c8c8;
+    border-radius: .25em;
+  }
+  .bw-error-span
+  {
+    margin-right: 2em;
+    margin-top: 0em;
+    font-size: 1.25em;      
+  }
+
+  .error-col1
+  {
+    width: 5em;
+    display: inline-block;
+  }
+  .error-col2
+  {
+    display: inline-block;
+    width: 9em;
+  }
+
+/* toolbar button */
+  .bw-button:hover
+  {  
+    background-color: #c8c8c8;
+    color: #333333;
+    border-color: #c8c8c8;
+    border-radius: .25em;
+  }
+  .bw-button-span
+  {
+    position: relative;
+    font-size: 1em;
+    font-weight: normal;              
+    left: 1.75em;
+  }
+
+  .bw-button-icon
+  {
+    position: absolute;
+    top: 50%;
+    margin-top: -.5em;
+    height: 1.25em;
+    margin-left: .25em;
     
   }
-  .DIV_BottomRight
-  {
-    background: blue;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
+/* splitter */
+  .Resizer {
+    background: black;
+    opacity: 1.0;
+    z-index: 1;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    -moz-background-clip: padding;
+    -webkit-background-clip: padding;
+    background-clip: padding-box;
   }
 
-    .TEXTAREA_jsonDoc
-    {
-      position: absolute;
-      top: 0px;
-      width: 100%; 
-      height: 100%;
-     
-    }
+  .Resizer:hover {
+    -webkit-transition: all .25s ease;
+    transition: all .25s ease;
+  }
 
-    .TEXTAREA_settings
-    {
-          
-      position: absolute;
-      width: 100%;
-      height: 100%;  
-    }
+  .Resizer.horizontal {
+    height: 11px; 
+    border-top: .5em solid black;
+    border-bottom: .5em solid black;
+    cursor: row-resize;
+    width: 100%;
+  }
 
-
-[class^="LABEL_"]
-{
- font-family: 'Consolas', 'Courier New', Courier, monospace;
-  font-size: 16px;
-  background-color:transparent;
-  color:white;
-  margin-left: 10px;
-  font-weight: 100;
-}
-
-input[type=checkbox], input[type=radio] {
-  vertical-align: middle;
-  position: relative;
-  bottom: 1px;
-  font-weight: 100;
-  margin-left: 10px;
-}
-
-.glyphButton
-{
-  background-color: blue;
-}
-
-.INPUT_scriptName, .INPUT_description
-{
-  margin-left: 10px;
-  margin-right: 10px;
-  width:280px;
-}
-
+  .Resizer.disabled {
+  cursor: not-allowed;
+  }
+  .Resizer.disabled:hover {
+  border-color: transparent;
+  }
