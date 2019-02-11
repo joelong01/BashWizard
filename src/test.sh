@@ -55,17 +55,17 @@ function usage() {
 function echoInput() {     
     echo "test.sh:"
     echo -n "    input-file......."
-    echoInfo "inputFile"
+    echoInfo "$inputFile"
     echo -n "    verbose.........."
-    echoInfo "verbose"
+    echoInfo "$verbose"
     echo -n "    log-directory...."
-    echoInfo "logDirectory"
+    echoInfo "$logDirectory"
     echo -n "    create..........."
-    echoInfo "create"
+    echoInfo "$create"
     echo -n "    verify..........."
-    echoInfo "verify"
+    echoInfo "$verify"
     echo -n "    delete..........."
-    echoInfo "delete"
+    echoInfo "$delete"
 
 }
 
@@ -233,17 +233,17 @@ function usage() {
 function echoInput() {     
     echo "test.sh:"
     echo -n "    input-file......."
-    echoInfo "inputFile"
+    echoInfo "$inputFile"
     echo -n "    verbose.........."
-    echoInfo "verbose"
+    echoInfo "$verbose"
     echo -n "    log-directory...."
-    echoInfo "logDirectory"
+    echoInfo "$logDirectory"
     echo -n "    create..........."
-    echoInfo "create"
+    echoInfo "$create"
     echo -n "    verify..........."
-    echoInfo "verify"
+    echoInfo "$verify"
     echo -n "    delete..........."
-    echoInfo "delete"
+    echoInfo "$delete"
 
 }
 
@@ -439,17 +439,17 @@ function usage() {
 function echoInput() {     
     echo "test.sh:"
     echo -n "    input-file......."
-    echoInfo "inputFile"
+    echoInfo "$inputFile"
     echo -n "    verbose.........."
-    echoInfo "verbose"
+    echoInfo "$verbose"
     echo -n "    log-directory...."
-    echoInfo "logDirectory"
+    echoInfo "$logDirectory"
     echo -n "    create..........."
-    echoInfo "create"
+    echoInfo "$create"
     echo -n "    verify..........."
-    echoInfo "verify"
+    echoInfo "$verify"
     echo -n "    delete..........."
-    echoInfo "delete"
+    echoInfo "$delete"
 
 }
 
@@ -617,17 +617,17 @@ function usage() {
 function echoInput() {     
     echo "test.sh:"
     echo -n "    input-file......."
-    echoInfo "inputFile"
+    echoInfo "$inputFile"
     echo -n "    verbose.........."
-    echoInfo "verbose"
+    echoInfo "$verbose"
     echo -n "    log-directory...."
-    echoInfo "logDirectory"
+    echoInfo "$logDirectory"
     echo -n "    create..........."
-    echoInfo "create"
+    echoInfo "$create"
     echo -n "    verify..........."
-    echoInfo "verify"
+    echoInfo "$verify"
     echo -n "    delete..........."
-    echoInfo "delete"
+    echoInfo "$delete"
 
 }
 
