@@ -22,10 +22,10 @@ import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
 import { Growl, GrowlMessage } from 'primereact/growl';
-import { Dialog } from 'primereact/dialog';
+import { ListBox } from 'primereact/listbox';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
-import {YesNoDialog, YesNoResponse} from "./askUserYesNoDlg";
+import { YesNoDialog, YesNoResponse } from "./askUserYesNoDlg";
 
 import "brace/mode/sh"
 import "brace/mode/json"
@@ -33,6 +33,18 @@ import "brace/theme/xcode"
 import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
+import { checkServerIdentity } from 'tls';
+import { number } from 'prop-types';
+
+interface IErrorMessage {
+    severity: "warning" | "error" | "info";
+    lineNumber?: number;
+    message: string;
+    key: string;
+    selected: boolean;
+    Parameter?: ParameterModel
+}
+
 interface IAppState {
     //
     //  these get replaced in this.stringify
@@ -54,6 +66,9 @@ interface IAppState {
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
+    errors: IErrorMessage[];
+    selectedError: IErrorMessage | undefined;
+    
 
     //
     //  these get stringified
@@ -72,7 +87,6 @@ class App extends React.Component<{}, IAppState> {
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
-
     constructor(props: {}) {
         super(props);
 
@@ -107,8 +121,8 @@ class App extends React.Component<{}, IAppState> {
                 dialogVisible: false,
                 dialogMessage: "",
                 dialogCallback: this.yesNoReset,
-
-
+                errors: [],
+                selectedError: undefined,
                 // these do not get replaced
                 ScriptName: "",
                 Description: "",
@@ -119,8 +133,7 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-    private saveState = (): void => {
-        console.log(`saving mode: ${this.state.mode}`);
+    private saveSettings = (): void => {        
         this.cookie.set("mode", this.state.mode);
 
     }
@@ -429,6 +442,18 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
+    private addErrorMessage = (severity: "warning" | "error" | "info", lineNumber: number, message: string, parameter?: ParameterModel) => {
+        let newMsg = {} as IErrorMessage;
+        newMsg.lineNumber = lineNumber;
+        newMsg.severity = severity;
+        newMsg.message = message;
+        newMsg.selected = false;
+        newMsg.Parameter = parameter;
+        newMsg.key = uniqueId("error:");
+        console.log("adding error: %o", newMsg)
+        this.setState({ errors: [...this.state.errors, newMsg] });
+    }
+
     private deleteParameterByLongName = async (longName: string) => {
         let index: number = 0;
         for (index = 0; index < this.state.Parameters.length; index++) {
@@ -565,7 +590,9 @@ class App extends React.Component<{}, IAppState> {
     private addParameter = async (model: ParameterModel, select: boolean) => {
 
         if (this.parameterExists(model.longParameter)) {
-            const msg: string = `A parameter with the long-name ${model.longParameter} already exists.`;
+
+            const msg: string = `A parameter with the long-name=\"${model.longParameter}\" already exists.`;
+            this.addErrorMessage("error", 1, msg, model);
             this.growl.current!.show({ severity: "error", summary: "Error Message", detail: msg });
             return;
         }
@@ -750,31 +777,43 @@ class App extends React.Component<{}, IAppState> {
         if (this.state.Parameters.length > 0) {
             const msg: string = "Create a new bash file?";
             const obj: object = { dialogMessage: msg, dialogVisible: true, dialogCallback: this.yesNoReset };
-            await this.setStateAsync(obj);           
+            await this.setStateAsync(obj);
         }
-        else
-        {
+        else {
             this.reset();
         }
     }
 
     private yesNoReset = async (response: "yes" | "no") => {
-        console.log (`notified: ${response}`);
-        this.setState({dialogVisible: false});
+        console.log(`notified: ${response}`);
+        this.setState({ dialogVisible: false });
         if (response === "yes") {
             this.reset();
         }
     }
-   
-
+    private onErrorClicked = (e:React.MouseEvent<HTMLDivElement>, item:IErrorMessage) => {
+        if (this.state.selectedError !== undefined){
+            this.state.selectedError.selected = false;
+        }
+        item.selected = true;
+        this.setState({selectedError: item});
+        
+    }
+    private onErrorDoubleClicked = (e:React.MouseEvent<HTMLDivElement>, item:IErrorMessage) => {
+        console.log("doubled clicked on %o",item);
+        if (item.Parameter !== undefined) {
+            item.Parameter.selected = true;
+            
+        }
+    }
     public render = () => {
-        /*jsx requires one parent element*/
+        
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
-       
+
         return (
             <div className="outer-container" id="outer-container">
                 <Growl ref={this.growl} />
-               <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} /> 
+                <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
                     <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} /* primary={"second"} */ onDragFinished={(newSize: number) => {
                         //
@@ -816,7 +855,12 @@ class App extends React.Component<{}, IAppState> {
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
                                         checked={this.state.mode === "dark"}
-                                        onChange={async (e: { originalEvent: Event, value: boolean }) => { await this.setStateAsync({ mode: e.value ? "dark" : "light" }); this.saveState(); }}
+                                        onChange={async (e: { originalEvent: Event, value: boolean }) => 
+                                            { 
+                                                await this.setStateAsync({ mode: e.value ? "dark" : "light" }); 
+                                                this.saveSettings(); 
+                                                this.growlCallback({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
+                                            }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
                                 </div>
@@ -894,8 +938,34 @@ class App extends React.Component<{}, IAppState> {
                                     />
                                 </div>
                             </TabPanel >
-                            <TabPanel header="Messages (0)" >
-                                <label>Messages</label>
+                            <TabPanel header={`Messages (${this.state.errors.length})`}>
+                                <div className="bw-error-list" >
+                                    <div className="bw-error-header">
+                                        <span className="bw-error-span error-col1">Line</span>
+                                        <span className="bw-error-span error-col2">Severity</span>
+                                        <span className="bw-error-span error-col3">Message</span>
+                                    </div>
+                                    {
+                                        this.state.errors.map((item: IErrorMessage) => {
+                                            let className:string = "bw-error-item";
+                                            if (this.state.selectedError === item)                                            {
+                                                className += " bw-error-item-selected";
+                                            }
+                                            
+                                            
+                                            return (
+                                                <div    className={className} key={item.key} 
+                                                        onClick={(e:React.MouseEvent<HTMLDivElement>) => { this.onErrorClicked(e, item)}} 
+                                                        onDoubleClick={(e:React.MouseEvent<HTMLDivElement>) => { this.onErrorDoubleClicked(e, item)}}>
+                                                        
+                                                    <span className="bw-error-span error-col1" key={item.key + ".col1"} >{item.lineNumber}</span>
+                                                    <span className="bw-error-span error-col2" key={item.key + ".col2"} >{item.severity}</span>
+                                                    <span className="bw-error-span error-col3" key={item.key + ".col3"} >{item.message}</span>
+                                                </div>
+                                            )
+                                        })
+                                    }
+                                </div>                                
                             </TabPanel >
                         </TabView>
                     </SplitPane>
