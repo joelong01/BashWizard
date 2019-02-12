@@ -1,17 +1,16 @@
 .parameterItem
 {
-    
-    border: 1px  solid;
-    height: 160px;
-    border-radius: 3px;
-    padding: 5px;
-    margin: 2px 2px 2px 2px;
-    width: calc(100% - 4px);
+    border: 1px solid;
+    height: 9.5em;
+    border-radius: .25em;
+    padding: .5em;
+    margin: .5em;
+    width: calc(100% - 1.0em);
 }
 .parameterItem:focus-within
 {
     border: 3px solid blue;
-    border-radius: 3px;
+    border-radius: .25em;
 }
 .param-label
 {
@@ -30,10 +29,15 @@
 
 .parameter-item-grid
 {
-    margin-top: 10px !important;
+    margin-top: .5em !important;
 }
 
 .checkbox-grid
 {
-    margin-top: -10px !important;
+    margin-top: -.75em !important;
+    margin-left: 0em;
+}
+.p-checkbox-label
+{
+    margin-left: 0em !important; 
 }

@@ -44,12 +44,12 @@ interface IErrorMessage {
     Parameter?: ParameterModel
 }
 interface IBuiltInParameterName {
-    Create?:string,
-    Verify?:string,
-    Delete?:string,
-    LoggingSupport?:string,
-    InputFileSupport?:string,
-    VerboseSupport?:string
+    Create?: string,
+    Verify?: string,
+    Delete?: string,
+    LoggingSupport?: string,
+    InputFileSupport?: string,
+    VerboseSupport?: string
 }
 
 enum ValidationOptions {
@@ -84,6 +84,8 @@ interface IAppState {
     dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
+    // keep the state of the parameter list so shrinking width doens't break layout
+    parameterListHeight: string;
 
     //
     //  these get stringified
@@ -104,21 +106,15 @@ class App extends React.Component<{}, IAppState> {
     private cookie: Cookie = new Cookies();
     private UserCode: string = "";
     private Version: string = "0.907";
-    private builtInParameters: {[key in keyof IBuiltInParameterName]:ParameterModel} = {}; // this isn't in the this.state object because it doesn't affect the UI
+    private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
 
     constructor(props: {}) {
         super(props);
-
         let savedMode = this.cookie.get("mode");
         if (savedMode === "" || savedMode === null) {
             savedMode = "dark";
         }
-
-
-
-
         const params: ParameterModel[] = []
-
         this.state =
             {
                 //
@@ -131,7 +127,7 @@ class App extends React.Component<{}, IAppState> {
                 debugConfig: "",
                 inputJson: "",
                 builtInParameterSelected: null,
-                
+                parameterListHeight: "calc(100% - 115px)",
                 verboseParameter: false,
                 loggingParameter: false,
                 inputFileParameter: false,
@@ -145,12 +141,32 @@ class App extends React.Component<{}, IAppState> {
                 ScriptName: "",
                 Description: "",
                 Parameters: params,
-
-
             }
-
     }
 
+    public componentDidMount = () => {        
+        window.addEventListener<"resize">('resize', this.handleResize);
+        this.handleResize();
+    }
+    public componentWillUnmount = () => {
+        window.removeEventListener<"resize">('resize', this.handleResize);
+    }
+    //
+    //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
+    //  this means that if we set the height of the parameter list in css, then we have to
+    //  deal with 3 different calcs - instead i'll do it hear by listening to the window
+    //  size event and calculating the height of the parameter list based on the height of 
+    //  the toolbar.  note that 64px is the size of the div we enter script name in plus
+    //  various margins.
+    private handleResize = () => {
+        
+        const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
+        if (toolbar !== null) {            
+            const htStyle:string = `calc(100% - ${toolbar.clientHeight + 69}px)`            
+            this.setState({parameterListHeight: htStyle});
+        }
+
+    };
     private saveSettings = (): void => {
         this.cookie.set("mode", this.state.mode);
 
@@ -236,7 +252,7 @@ class App extends React.Component<{}, IAppState> {
             json: "",
             bash: "",
             input: "",
-            
+
             debugConfig: "",
             inputJson: "",
             builtInParameterSelected: null,
@@ -266,8 +282,8 @@ class App extends React.Component<{}, IAppState> {
     }
     private changedDescription = async (e: React.FormEvent<HTMLInputElement>) => {
         await this.setStateAsync({ Description: e.currentTarget.value })
-         // tslint:disable-next-line
-         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
+        // tslint:disable-next-line
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
         await this.updateAllText();
     }
     private Tabs = (n: number): string => {
@@ -278,51 +294,50 @@ class App extends React.Component<{}, IAppState> {
         return s;
     }
 
-    private fromBash =(bash: string) => {
+    private fromBash = (bash: string) => {
         //
         //  Error Messages constants used when parsing the Bash file
-        const unMergedGitFile:string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
-        const noNewLines:string = "There are no new lines in this file -- please fix this and try again.";
-        const missingComments:string = "Missing the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
-        const addingComments:string = "Adding comments and treating the whole file as user code";
-        const missingOneUserComment:string = "Missing one of the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
-        const pleaseFix:string = "Please fix and retry.";
-        const tooManyUserComments:string = "There is more than one \"# --- BEGIN USER CODE ---\" or more than one \"# --- END USER CODE ---\" comments in this file.  Please fix and try again.";
-        const missingVersionInfo:string = "couldn't find script version information";
+        const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
+        const noNewLines: string = "There are no new lines in this file -- please fix this and try again.";
+        const missingComments: string = "Missing the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
+        const addingComments: string = "Adding comments and treating the whole file as user code";
+        const missingOneUserComment: string = "Missing one of the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
+        const pleaseFix: string = "Please fix and retry.";
+        const tooManyUserComments: string = "There is more than one \"# --- BEGIN USER CODE ---\" or more than one \"# --- END USER CODE ---\" comments in this file.  Please fix and try again.";
+        const missingVersionInfo: string = "couldn't find script version information";
 
     }
-    private replaceAll = (from:string, search:string, replace:string):string => {
+    private replaceAll = (from: string, search: string, replace: string): string => {
         // if replace is not sent, return original string otherwise it will
         // replace search string with 'undefined'.
         if (replace === undefined) {
             return from;
         }
-    
+
         return from.replace(new RegExp('[' + search + ']', 'g'), replace);
     };
 
     //
     //  given the state of the app, return a valid bash script
     private toBash = (): string => {
-        
+
 
 
         try {
 
-            if (this.state.Parameters.length === 0)
-            {
+            if (this.state.Parameters.length === 0) {
                 //
                 //  if there are no parameters, just mark it as user code
-                return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";                
+                return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";
             }
 
             let sbBashScript: string = bashTemplates.bashTemplate;
-            sbBashScript  = sbBashScript.replace("__VERSION__", this.Version);
+            sbBashScript = sbBashScript.replace("__VERSION__", this.Version);
             let logTemplate: string = bashTemplates.logTemplate;
             let parseInputTemplate: string = bashTemplates.parseInputTemplate;
             let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
-            let verifyCreateDeleteTemplate:string = bashTemplates.verifyCreateDelete;
-            let endLogTemplate:string = bashTemplates.endOfBash;
+            let verifyCreateDeleteTemplate: string = bashTemplates.verifyCreateDelete;
+            let endLogTemplate: string = bashTemplates.endOfBash;
 
             let nl: string = "\n";
             let usageLine: string = `${this.Tabs(1)}echo \"${this.state.Description}\"\n${this.Tabs(1)}echo \"\"\n${this.Tabs(1)}echo \"Usage: $0  `;
@@ -334,9 +349,9 @@ class App extends React.Component<{}, IAppState> {
             let inputDeclarations: string = "";
             let parseInputFile: string = "";
             let requiredFilesIf: string = "";
-            let loggingSupport :string = "";
-           
-            const longestLongParameter:number = Math.max(...(this.state.Parameters.map(param => param.longParameter.length))) + 4;
+            let loggingSupport: string = "";
+
+            const longestLongParameter: number = Math.max(...(this.state.Parameters.map(param => param.longParameter.length))) + 4;
 
             for (let param of this.state.Parameters) {
                 //
@@ -416,7 +431,7 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (parseInputFile.length > 0) {
-                
+
                 parseInputTemplate = parseInputTemplate.replace(/__SCRIPT_NAME__/g, this.state.ScriptName);
                 parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
                 sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", parseInputTemplate);
@@ -429,10 +444,8 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
             sbBashScript = sbBashScript.replace("__END_LOGGING_SUPPORT__", this.builtInParameters.LoggingSupport !== undefined ? endLogTemplate : "");
 
-            if (this.builtInParameters.Create !== undefined && this.builtInParameters.Verify !== undefined && this.builtInParameters.Delete !== undefined)
-            {
-                if (!this.functionExists(this.UserCode, "onVerify") && !this.functionExists(this.UserCode, "onDelete") && !this.functionExists(this.UserCode, "onCreate"))
-                {
+            if (this.builtInParameters.Create !== undefined && this.builtInParameters.Verify !== undefined && this.builtInParameters.Delete !== undefined) {
+                if (!this.functionExists(this.UserCode, "onVerify") && !this.functionExists(this.UserCode, "onDelete") && !this.functionExists(this.UserCode, "onCreate")) {
                     //
                     //  if they don't have the functions, add the template code
                     sbBashScript = sbBashScript.replace("__USER_CODE_1__", verifyCreateDeleteTemplate);
@@ -440,10 +453,10 @@ class App extends React.Component<{}, IAppState> {
             }
 
             if (this.builtInParameters.VerboseSupport !== undefined) {
-                let v:string = `if [[ \$\"verbose\" == true ]];then${nl}${this.Tabs(1)}echoInput${nl}fi`;
+                let v: string = `if [[ \$\"verbose\" == true ]];then${nl}${this.Tabs(1)}echoInput${nl}fi`;
                 sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", v);
             }
-            else{
+            else {
                 sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", "");
             }
 
@@ -459,20 +472,18 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-    private  functionExists = (bashScript:string, name:string):boolean => {
-            if (bashScript === "")
-            {
-                return false;
-            }
-
-            if (bashScript.indexOf(`function ${name}() {{`) !== -1)
-            {
-                return true;
-            }
-
-
+    private functionExists = (bashScript: string, name: string): boolean => {
+        if (bashScript === "") {
             return false;
         }
+
+        if (bashScript.indexOf(`function ${name}() {{`) !== -1) {
+            return true;
+        }
+
+
+        return false;
+    }
 
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
@@ -529,13 +540,13 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
 
-        for (let builtInName in this.builtInParameters){
+        for (let builtInName in this.builtInParameters) {
             if (this.builtInParameters[builtInName] === parameter) {
                 // console.log(`deleting built in parameter: ${builtInName}`);
                 this.builtInParameters[builtInName] = undefined;
             }
         }
-        
+
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
         await this.updateAllText();
@@ -629,11 +640,11 @@ class App extends React.Component<{}, IAppState> {
         //  and it seems a small price to pay to not take any risks with the names.  Note that we always Trim() the names
         //  in the ParameterOrScriptData_PropertyChanged method
         //  
-        const illegalNameChars: string = ":{}[]\\\'\"";        
+        const illegalNameChars: string = ":{}[]\\\'\"";
         if (this.state.ScriptName !== "") {
             for (let c of illegalNameChars) {
                 if (this.state.ScriptName.includes(c)) {
-                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Script Name: :{}[]\\\'\"", key: uniqueId("ERROR") });                    
+                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Script Name: :{}[]\\\'\"", key: uniqueId("ERROR") });
                     break;
                 }
             }
@@ -641,7 +652,7 @@ class App extends React.Component<{}, IAppState> {
         if (this.state.Description !== "") {
             for (let c of illegalNameChars) {
                 if (this.state.Description.includes(c)) {
-                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Description::{}[]\\\'\"", key: uniqueId("ERROR") });                    
+                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Description::{}[]\\\'\"", key: uniqueId("ERROR") });
                     break;
                 }
             }
@@ -855,7 +866,7 @@ class App extends React.Component<{}, IAppState> {
     private addBuiltIn = async () => {
         switch (this.state.builtInParameterSelected) {
             case "inputFileParameter":
-                await this.addInputFileParameter();                
+                await this.addInputFileParameter();
                 break;
             case "verboseParameter":
                 await this.addVerboseParameter();
@@ -980,7 +991,7 @@ class App extends React.Component<{}, IAppState> {
 
                     }} >
                         <div className="DIV_Top">
-                            <Toolbar className="toolbar">
+                            <Toolbar className="toolbar" id="toolbar">
                                 <div className="p-toolbar-group-left">
 
                                     {/* need to use standard button here because Prime Icons doesn't have a good "New File" icon */}
@@ -1031,7 +1042,7 @@ class App extends React.Component<{}, IAppState> {
                                                 onBlur={async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
                                                     const end: string = e.currentTarget.value!.slice(-3);
                                                     if (end !== ".sh" && end !== "") {
-                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });                                                        
+                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
                                                         await this.setStateAsync({ ScriptName: e.currentTarget.value + ".sh" });
                                                         // tslint:disable-next-line
                                                         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
@@ -1051,7 +1062,7 @@ class App extends React.Component<{}, IAppState> {
                                 </div>
                             </div>
                             {/* this is the section for parameter list */}
-                            <div className="Parameter_List">
+                            <div className="Parameter_List" style={{height: this.state.parameterListHeight}}>
                                 {this.renderParameters()}
                             </div>
                         </div>
