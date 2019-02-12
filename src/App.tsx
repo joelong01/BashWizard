@@ -102,7 +102,7 @@ class App extends React.Component<{}, IAppState> {
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
-    private UserCode: string = "# user code ";
+    private UserCode: string = "";
     private Version: string = "0.906";
     private builtInParameters: {[key in keyof IBuiltInParameterName]:ParameterModel} = {}; // this isn't in the this.state object because it doesn't affect the UI
 
@@ -416,13 +416,13 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (parseInputFile.length > 0) {
-                console.log("replacing __SCRIPT_NAME__");
+                
                 parseInputTemplate = parseInputTemplate.replace(/__SCRIPT_NAME__/g, this.state.ScriptName);
                 parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
-                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
+                sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", parseInputTemplate);
             }
             else {
-                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
+                sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", "");
             }
 
             sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);

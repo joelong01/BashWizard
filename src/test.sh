@@ -142,7 +142,7 @@ if [ "${inputFile}" != "" ]; then
 	# we need to parse the again to see if there are any overrides to what is in the config file
 	parseInput "$@"
 fi
-__
+
 
 #logging support
 declare LOG_FILE="${logDirectory}test.sh.log"
@@ -168,7 +168,7 @@ function onCreate() {
     
 }
 
-# user code 
+
 
 #
 #   the order matters - delete, then create, then verify
