@@ -438,6 +438,15 @@ class App extends React.Component<{}, IAppState> {
                     sbBashScript = sbBashScript.replace("__USER_CODE_1__", verifyCreateDeleteTemplate);
                 }
             }
+
+            if (this.builtInParameters.VerboseSupport !== undefined) {
+                let v:string = `if [[ \$\"verbose\" == true ]];then${nl}${this.Tabs(1)}echoInput${nl}fi`;
+                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", v);
+            }
+            else{
+                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", "");
+            }
+
             //
             // put the user code where it belongs -- it might contain the functions already
             sbBashScript = sbBashScript.replace("__USER_CODE_1__", this.UserCode);
@@ -520,6 +529,13 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
 
+        for (let builtInName in this.builtInParameters){
+            if (this.builtInParameters[builtInName] === parameter) {
+                // console.log(`deleting built in parameter: ${builtInName}`);
+                this.builtInParameters[builtInName] = undefined;
+            }
+        }
+        
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
         await this.updateAllText();
@@ -726,7 +742,6 @@ class App extends React.Component<{}, IAppState> {
 
             }
 
-            console.log(`App.propertyChanged.finally prop:${name}`);
             // tslint:disable-next-line
             this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl); // this will append Errors and leave Warnings
         }
@@ -771,7 +786,7 @@ class App extends React.Component<{}, IAppState> {
     private addVerboseParameter = async () => {
         this.setState({ verboseParameter: true });
         let p: ParameterModel = new ParameterModel();
-        p.default = "";
+        p.default = "false";
         p.description = "echos script data";
         p.longParameter = "verbose";
         p.shortParameter = "b";

@@ -90,8 +90,8 @@ parseInput "$@"
 ___PARSE_INPUT_FILE___
 __REQUIRED_PARAMETERS__
 __LOGGING_SUPPORT_
-
-    echoInput
+__VERBOSE_ECHO__
+    
     # --- BEGIN USER CODE ---
 __USER_CODE_1__
     # --- END USER CODE ---

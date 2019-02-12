@@ -131,7 +131,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
             this._updatingModel = true;
             const key = e.currentTarget.id;
-            console.log(`onBlur [${key}=${e.currentTarget.value}]`)
+            // console.log(`onBlur [${key}=${e.currentTarget.value}]`)
             if (key !== undefined) {
                 this.state.Model[key] = e.currentTarget.value;
             }

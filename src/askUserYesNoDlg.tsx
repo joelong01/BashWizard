@@ -29,30 +29,24 @@ interface IYesNoDialogState {
 
 export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDialogState> {
     private _updatingModel: boolean;
-    constructor(props: IYesNoDialogProps) {        
+    constructor(props: IYesNoDialogProps) {
         super(props);
-        console.log("dlg props: %o", this.props);
         this.state = {
             message: this.props.message,
             Notify: this.props.Notify,
-            visible: false,            
+            visible: false,
             dialogAnswer: "no",
         };
     }
     private dlgOnYes = async () => {
-        console.log("user said yes");
         this.state.Notify("yes");
-
     }
     private dlgOnNo = async () => {
-        console.log("user said no");
         this.state.Notify("no");
     }
 
     private dlgClosed = async () => {
-        console.log(`dlgClosed`);
         this.state.Notify("no");
-
     }
     public render = () => {
         const dialogFooter = (
@@ -60,7 +54,7 @@ export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDi
                 <Button label="Yes" icon="pi pi-check" onClick={this.dlgOnYes} />
                 <Button label="No" icon="pi pi-times" onClick={this.dlgOnNo} />
             </div>);
-        
+
         return (
             <div className="content-section implementation">
                 <Dialog header="Bash Wizard" visible={this.props.visible} style={{ width: '50vw' }} footer={dialogFooter} onHide={this.dlgClosed}>
