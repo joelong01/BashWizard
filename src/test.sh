@@ -53,15 +53,15 @@ function usage() {
 }
 function echoInput() {     
     echo "test.sh:"
-    echo -n "    input-file......."
+    echo -n "    input-file....... "
     echoInfo "$inputFile"
-    echo -n "    log-directory...."
+    echo -n "    log-directory.... "
     echoInfo "$logDirectory"
-    echo -n "    create..........."
+    echo -n "    create........... "
     echoInfo "$create"
-    echo -n "    verify..........."
+    echo -n "    verify........... "
     echoInfo "$verify"
-    echo -n "    delete..........."
+    echo -n "    delete........... "
     echoInfo "$delete"
 
 }

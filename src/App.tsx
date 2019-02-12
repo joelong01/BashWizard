@@ -347,7 +347,7 @@ class App extends React.Component<{}, IAppState> {
 
                 //
                 // the  echoInput function                
-                echoInput += `${this.Tabs(1)}echo -n \"${this.Tabs(1)}${padEnd(param.longParameter, longestLongParameter, '.')}\"${nl}`;
+                echoInput += `${this.Tabs(1)}echo -n \"${this.Tabs(1)}${padEnd(param.longParameter, longestLongParameter, '.')} \"${nl}`;
                 echoInput += `${this.Tabs(1)}echoInfo \"\$${param.variableName}\"${nl}`;
 
 
