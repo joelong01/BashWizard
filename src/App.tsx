@@ -103,7 +103,7 @@ class App extends React.Component<{}, IAppState> {
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
     private UserCode: string = "";
-    private Version: string = "0.906";
+    private Version: string = "0.907";
     private builtInParameters: {[key in keyof IBuiltInParameterName]:ParameterModel} = {}; // this isn't in the this.state object because it doesn't affect the UI
 
     constructor(props: {}) {
