@@ -22,7 +22,6 @@ import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
 import { Growl, GrowlMessage } from 'primereact/growl';
-import { ListBox } from 'primereact/listbox';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
 import { YesNoDialog, YesNoResponse } from "./askUserYesNoDlg";
@@ -33,16 +32,34 @@ import "brace/theme/xcode"
 import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
-import { checkServerIdentity } from 'tls';
-import { number } from 'prop-types';
+
+
+
 
 interface IErrorMessage {
     severity: "warning" | "error" | "info";
-    lineNumber?: number;
     message: string;
     key: string;
-    selected: boolean;
+    selected?: boolean;
     Parameter?: ParameterModel
+}
+interface IBuiltInParameterName {
+    Create?:string,
+    Verify?:string,
+    Delete?:string,
+    LoggingSupport?:string,
+    InputFileSupport?:string,
+    VerboseSupport?:string
+}
+
+enum ValidationOptions {
+    AllowBlankValues = 1,
+    // tslint:disable-next-line
+    ClearErrors = 1 << 2,
+    // tslint:disable-next-line
+    ValidateOnly = 1 << 3,
+    // tslint:disable-next-line
+    Growl = 1 << 4
 }
 
 interface IAppState {
@@ -51,7 +68,6 @@ interface IAppState {
     menuOpen: boolean;
     json: string;
     bash: string;
-    endOfBash: string;
     input: string;
     SelectedParameter?: ParameterModel;
     debugConfig: string;
@@ -68,7 +84,6 @@ interface IAppState {
     dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
-    
 
     //
     //  these get stringified
@@ -87,6 +102,10 @@ class App extends React.Component<{}, IAppState> {
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
+    private UserCode: string = "";
+    private Version: string = "0.907";
+    private builtInParameters: {[key in keyof IBuiltInParameterName]:ParameterModel} = {}; // this isn't in the this.state object because it doesn't affect the UI
+
     constructor(props: {}) {
         super(props);
 
@@ -108,12 +127,11 @@ class App extends React.Component<{}, IAppState> {
                 json: "",
                 bash: "",
                 input: "",
-                endOfBash: bashTemplates.endOfBash,
                 mode: savedMode,
                 debugConfig: "",
                 inputJson: "",
                 builtInParameterSelected: null,
-
+                
                 verboseParameter: false,
                 loggingParameter: false,
                 inputFileParameter: false,
@@ -133,7 +151,7 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-    private saveSettings = (): void => {        
+    private saveSettings = (): void => {
         this.cookie.set("mode", this.state.mode);
 
     }
@@ -218,8 +236,7 @@ class App extends React.Component<{}, IAppState> {
             json: "",
             bash: "",
             input: "",
-            endOfBash: bashTemplates.endOfBash,
-
+            
             debugConfig: "",
             inputJson: "",
             builtInParameterSelected: null,
@@ -249,6 +266,8 @@ class App extends React.Component<{}, IAppState> {
     }
     private changedDescription = async (e: React.FormEvent<HTMLInputElement>) => {
         await this.setStateAsync({ Description: e.currentTarget.value })
+         // tslint:disable-next-line
+         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
         await this.updateAllText();
     }
     private Tabs = (n: number): string => {
@@ -259,40 +278,77 @@ class App extends React.Component<{}, IAppState> {
         return s;
     }
 
-    private longestParameter = (): number => {
-        return Math.max(...(this.state.Parameters.map(el => el.longParameter.length)))
-    }
+    private fromBash =(bash: string) => {
+        //
+        //  Error Messages constants used when parsing the Bash file
+        const unMergedGitFile:string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
+        const noNewLines:string = "There are no new lines in this file -- please fix this and try again.";
+        const missingComments:string = "Missing the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
+        const addingComments:string = "Adding comments and treating the whole file as user code";
+        const missingOneUserComment:string = "Missing one of the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
+        const pleaseFix:string = "Please fix and retry.";
+        const tooManyUserComments:string = "There is more than one \"# --- BEGIN USER CODE ---\" or more than one \"# --- END USER CODE ---\" comments in this file.  Please fix and try again.";
+        const missingVersionInfo:string = "couldn't find script version information";
 
+    }
+    private replaceAll = (from:string, search:string, replace:string):string => {
+        // if replace is not sent, return original string otherwise it will
+        // replace search string with 'undefined'.
+        if (replace === undefined) {
+            return from;
+        }
+    
+        return from.replace(new RegExp('[' + search + ']', 'g'), replace);
+    };
+
+    //
+    //  given the state of the app, return a valid bash script
     private toBash = (): string => {
+        
+
 
         try {
+
+            if (this.state.Parameters.length === 0)
+            {
+                //
+                //  if there are no parameters, just mark it as user code
+                return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";                
+            }
+
             let sbBashScript: string = bashTemplates.bashTemplate;
+            sbBashScript  = sbBashScript.replace("__VERSION__", this.Version);
             let logTemplate: string = bashTemplates.logTemplate;
             let parseInputTemplate: string = bashTemplates.parseInputTemplate;
             let requiredVariablesTemplate: string = bashTemplates.requiredVariablesTemplate;
+            let verifyCreateDeleteTemplate:string = bashTemplates.verifyCreateDelete;
+            let endLogTemplate:string = bashTemplates.endOfBash;
 
-            let nl: string = "\n"
-            let usageLine: string = `${this.Tabs(1)}echo \"Usage: $0 `
-            let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`
-            let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`
-            let shortOptions: string = ""
-            let longOptions: string = ""
-            let inputCase: string = ""
-            let inputDeclarations: string = ""
-            let parseInputFile: string = ""
-            let requiredFilesIf: string = ""
-            const toPad: number = this.longestParameter() + 5;
+            let nl: string = "\n";
+            let usageLine: string = `${this.Tabs(1)}echo \"${this.state.Description}\"\n${this.Tabs(1)}echo \"\"\n${this.Tabs(1)}echo \"Usage: $0  `;
+            let usageInfo: string = `${this.Tabs(1)}echo \"\"\n`;
+            let echoInput: string = `\"${this.state.ScriptName}:\"${nl}`;
+            let shortOptions: string = "";
+            let longOptions: string = "";
+            let inputCase: string = "";
+            let inputDeclarations: string = "";
+            let parseInputFile: string = "";
+            let requiredFilesIf: string = "";
+            let loggingSupport :string = "";
+           
+            const longestLongParameter:number = Math.max(...(this.state.Parameters.map(param => param.longParameter.length))) + 4;
 
             for (let param of this.state.Parameters) {
                 //
                 // usage
-                let required: string = (param.requiredParameter) ? "Required      " : "Optional     ";
-                usageLine += `${param.shortParameter} | --${param.longParameter}`
-                usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, toPad, " ")} ${required} ${param.description}\"${nl}`
+                let required: string = (param.requiredParameter) ? "Required    " : "Optional    ";
+                usageLine += `-${param.shortParameter}|--${param.longParameter} `
+                usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
 
                 //
-                // the  echoInput function
-                echoInput += `${this.Tabs(1)}echo \"${this.Tabs(1)}${padEnd(param.longParameter, toPad, ".")} \$${param.variableName}\"${nl}`
+                // the  echoInput function                
+                echoInput += `${this.Tabs(1)}echo -n \"${this.Tabs(1)}${padEnd(param.longParameter, longestLongParameter, '.')} \"${nl}`;
+                echoInput += `${this.Tabs(1)}echoInfo \"\$${param.variableName}\"${nl}`;
 
 
                 //
@@ -302,16 +358,16 @@ class App extends React.Component<{}, IAppState> {
                 longOptions += `${param.longParameter}${colon},`
 
                 // input Case
-                inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})\n`
-                inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}\n`
-                inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1\n`
+                inputCase += `${this.Tabs(2)}-${param.shortParameter} | --${param.longParameter})${nl}`
+                inputCase += `${this.Tabs(3)}${param.variableName}=${param.valueIfSet}${nl}`
+                inputCase += param.requiresInputString ? `${this.Tabs(3)}shift 2\n` : `${this.Tabs(3)}shift 1${nl}`
                 inputCase += `${this.Tabs(3)};;\n`
 
                 // declare variables
-                inputDeclarations += `declare ${param.variableName}=${param.default}\n`
+                inputDeclarations += `declare ${param.variableName}=${param.default}${nl}`
                 if (this.state.inputFileParameter && param.variableName !== "inputFile") {
                     // parse input file
-                    parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)\n`
+                    parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)${nl}`
                 }
 
                 // if statement for the required files
@@ -356,24 +412,45 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
             sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
 
-            let inputOverridesRequired: string = (this.state.inputFileParameter) ? "echoWarning \"Required parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            let inputOverridesRequired: string = (this.state.inputFileParameter) ? "echoWarning \"Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (parseInputFile.length > 0) {
-                parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
+                
+                parseInputTemplate = parseInputTemplate.replace(/__SCRIPT_NAME__/g, this.state.ScriptName);
                 parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
-                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
+                sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", parseInputTemplate);
             }
             else {
-                sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", "");
+                sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", "");
             }
-
-            sbBashScript = sbBashScript.replace("__BEGIN_TEE__", bashTemplates.beginTee);
-
 
             sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
             sbBashScript = sbBashScript.replace("__LOGGING_SUPPORT_", logTemplate);
-            sbBashScript = sbBashScript.replace("__ECHO_INPUT__", "echoInput");
+            sbBashScript = sbBashScript.replace("__END_LOGGING_SUPPORT__", this.builtInParameters.LoggingSupport !== undefined ? endLogTemplate : "");
+
+            if (this.builtInParameters.Create !== undefined && this.builtInParameters.Verify !== undefined && this.builtInParameters.Delete !== undefined)
+            {
+                if (!this.functionExists(this.UserCode, "onVerify") && !this.functionExists(this.UserCode, "onDelete") && !this.functionExists(this.UserCode, "onCreate"))
+                {
+                    //
+                    //  if they don't have the functions, add the template code
+                    sbBashScript = sbBashScript.replace("__USER_CODE_1__", verifyCreateDeleteTemplate);
+                }
+            }
+
+            if (this.builtInParameters.VerboseSupport !== undefined) {
+                let v:string = `if [[ \$\"verbose\" == true ]];then${nl}${this.Tabs(1)}echoInput${nl}fi`;
+                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", v);
+            }
+            else{
+                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", "");
+            }
+
+            //
+            // put the user code where it belongs -- it might contain the functions already
+            sbBashScript = sbBashScript.replace("__USER_CODE_1__", this.UserCode);
+
             return sbBashScript;
         }
         catch (e) {
@@ -381,6 +458,22 @@ class App extends React.Component<{}, IAppState> {
         }
 
     }
+
+    private  functionExists = (bashScript:string, name:string):boolean => {
+            if (bashScript === "")
+            {
+                return false;
+            }
+
+            if (bashScript.indexOf(`function ${name}() {{`) !== -1)
+            {
+                return true;
+            }
+
+
+            return false;
+        }
+
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
     private jsonReplacer = (name: string, value: any) => {
@@ -436,21 +529,27 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
 
+        for (let builtInName in this.builtInParameters){
+            if (this.builtInParameters[builtInName] === parameter) {
+                // console.log(`deleting built in parameter: ${builtInName}`);
+                this.builtInParameters[builtInName] = undefined;
+            }
+        }
+        
         array.splice(index, 1);
         await this.setStateAsync({ Parameters: array })
         await this.updateAllText();
 
     }
 
-    private addErrorMessage = (severity: "warning" | "error" | "info", lineNumber: number, message: string, parameter?: ParameterModel) => {
+    private addErrorMessage = (severity: "warning" | "error" | "info", message: string, parameter?: ParameterModel) => {
         let newMsg = {} as IErrorMessage;
-        newMsg.lineNumber = lineNumber;
         newMsg.severity = severity;
         newMsg.message = message;
         newMsg.selected = false;
         newMsg.Parameter = parameter;
         newMsg.key = uniqueId("error:");
-        console.log("adding error: %o", newMsg)
+        this.growl.current!.show({ severity: "error", summary: "Error Message", detail: message + "\n\rSee \"Message\" tab." });
         this.setState({ errors: [...this.state.errors, newMsg] });
     }
 
@@ -464,50 +563,127 @@ class App extends React.Component<{}, IAppState> {
         }
     }
 
-    private parameterExists = (longName: string): boolean => {
+    private parameterExists = (longName: string): ParameterModel | undefined => {
         for (let parameter of this.state.Parameters) {
             if (parameter.longParameter === longName) {
+                return parameter;
+            }
+        }
+        return undefined;
+    }
+
+    private shortParameterExists = (shortParam: string): boolean => {
+        for (let parameter of this.state.Parameters) {
+            if (parameter.shortParameter === shortParam) {
                 return true;
             }
         }
         return false;
     }
-    private keyValueCount = (key: string, value: string): number => {
-        let count: number = 0;
-        for (let parameter of this.state.Parameters) {
-            if (parameter[key] === value) {
-                count++;
-            }
-        }
-        return count;
-    }
 
-
-    private validateParameters = (): string => {
+    //
+    //  returns an array of validation errors with no side effects
+    //
+    //  
+    private getValidationErrors = (options: ValidationOptions): IErrorMessage[] => {
+        const errors: IErrorMessage[] = []
+        const nameObject = Object.create(null);
+        const variableObject = {}
         for (let param of this.state.Parameters) {
-            if (param.longParameter === "" && param.shortParameter === "" && param.selected) {
-                // likely just starting...
-                continue;
+            // tslint:disable-next-line
+
+            if (param.longParameter === "" && param.shortParameter === "") {
+                errors.push({ severity: "error", Parameter: param, message: "All Long Names, Short Names, and Variable Names must be non-empty.", key: uniqueId("ERROR") });
             }
-            if (this.keyValueCount("longParameter", param.longParameter) !== 1) {
-                return `you already have ${param.longParameter} as Long Parameter`
+
+            if (param.longParameter in nameObject && param.longParameter !== "") {
+                errors.push({ severity: "error", Parameter: param, message: `you already have \"${param.longParameter}\" as Long Parameter`, key: uniqueId("ERROR") });
             }
-            if (this.keyValueCount("shortParameter", param.shortParameter) !== 1) {
-                return `you already have ${param.shortParameter} as Short Parameter`
+            else {
+                nameObject[param.longParameter] = param;
             }
-            if (this.keyValueCount("variableName", param.variableName) !== 1) {
-                return `you already have ${param.variableName} as a Variable Name`
+            if (param.shortParameter in nameObject && param.shortParameter !== "") {
+                errors.push({ severity: "error", Parameter: param, message: `you already have \"${param.shortParameter}\" as Short Parameter`, key: uniqueId("ERROR") });
+            }
+            else {
+                nameObject[param.shortParameter] = param;
+            }
+
+            if (param.variableName in variableObject && param.variableName !== "") {
+                errors.push({ severity: "error", Parameter: param, message: `you already have \"${param.variableName}\" as Variable Name`, key: uniqueId("ERROR") });
+            }
+            else {
+                variableObject[param.variableName] = param;
             }
 
             if (param.requiresInputString && param.valueIfSet !== "$2") {
-                return `parameter ${param.longParameter} has Required Input String = true but hasn't set the Value if Set to $2.  this is an invalid combination`
+                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = true but hasn't set the Value if Set to $2.  this is an invalid combination`, key: uniqueId("ERROR") });
             }
             if (!param.requiresInputString && param.valueIfSet === "$2") {
-                return `parameter ${param.longParameter} has Required Input String = false but has set the Value if Set to $2.  this is an invalid combination`
+                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = false but has set the Value if Set to $2.  this is an invalid combination`, key: uniqueId("ERROR") });
             }
         }
-        return "";
+
+        //
+        //  I'm taking out these chars because they are "special" in JSON.  I found that the ":" messed up JQ processing
+        //  and it seems a small price to pay to not take any risks with the names.  Note that we always Trim() the names
+        //  in the ParameterOrScriptData_PropertyChanged method
+        //  
+        const illegalNameChars: string = ":{}[]\\\'\"";        
+        if (this.state.ScriptName !== "") {
+            for (let c of illegalNameChars) {
+                if (this.state.ScriptName.includes(c)) {
+                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Script Name: :{}[]\\\'\"", key: uniqueId("ERROR") });                    
+                    break;
+                }
+            }
+        }
+        if (this.state.Description !== "") {
+            for (let c of illegalNameChars) {
+                if (this.state.Description.includes(c)) {
+                    errors.push({ severity: "error", Parameter: undefined, message: "The following characters are illegal in the Description::{}[]\\\'\"", key: uniqueId("ERROR") });                    
+                    break;
+                }
+            }
+        }
+
+        return errors;
     }
+
+    //
+    //  make sure we don't have any errors in the parameters.  if there are we growl them and add them to the Message list.
+    //  Note that we clear all errors each time this is run so that if the user fixes anything (e.g. changes something), we
+    //  rerun this
+    //
+    /// returns true if the parameters are valid and false if they are not (e.g. an error was generated)
+    private clearErrorsAndValidateParameters = (options: ValidationOptions = ValidationOptions.ClearErrors): boolean => {
+
+        const newErrors: IErrorMessage[] = this.getValidationErrors(options);
+
+        //
+        //  putting this here means you can't do ValidateOnly and anything else
+        // tslint:disable-next-line
+        if (options & ValidationOptions.ValidateOnly) {
+            return newErrors.length === 0;
+        }
+
+        // tslint:disable-next-line
+        if (options & ValidationOptions.ClearErrors) {
+            this.setState({ errors: [] });
+        }
+        // tslint:disable-next-line
+        if (options & ValidationOptions.Growl) {
+            for (let err of newErrors) {
+                this.growl.current!.show({ severity: "error", summary: "Error Message", detail: err.message });
+            }
+        }
+
+        newErrors.concat(this.state.errors);
+
+        this.setState({ errors: newErrors });
+        return this.state.errors.length === 0;
+    }
+
     //
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
@@ -518,13 +694,13 @@ class App extends React.Component<{}, IAppState> {
             return;
         }
 
-        const validateMessage: string = this.validateParameters();
-        if (validateMessage !== "") {
-            this.growlCallback({ severity: "error", summary: "Bash Wizard", detail: validateMessage });
+        if (name === "focus") {
             return;
         }
 
+
         try {
+
             this._settingState = true;
             if (name === "selected") {
                 if (this.state.SelectedParameter === parameter) {
@@ -536,66 +712,49 @@ class App extends React.Component<{}, IAppState> {
                 await this.setStateAsync({ SelectedParameter: parameter })
                 return;
             }
-            let validMessage: string = this.validateParameters()
-            if (validMessage !== "") {
-                this.setState({ bash: validMessage })
-                return;
-            }
+
             if (name === "longParameter") {
                 //
                 //  attempt to autofill short name and variable name
                 //  
-                if (parameter.shortParameter === "" || parameter.shortParameter === "Short Parameter") {
 
-                    // tslint:disable-next-line:prefer-for-of
-                    for (let i = 0; i < parameter.longParameter.length; i++) {
-                        parameter.shortParameter = parameter.longParameter.substring(i, 1)
-                        if (parameter.shortParameter === "") {
+                if (parameter.shortParameter === "") {
+                    for (const c of parameter.longParameter) {
+
+                        if (c === "") {
                             continue;
                         }
-                        if (this.validateParameters() === "") {
+                        if (!this.shortParameterExists(c)) {
+                            parameter.shortParameter = c;
+
                             break;
                         }
                     }
-
                 }
-                validMessage = this.validateParameters()
-                if (validMessage !== "") {
-                    parameter.shortParameter = ""
-                    this.setState({ bash: validMessage + "\npick a short name that works..." })
+                if (parameter.shortParameter === "") {
+                    this.addErrorMessage("warning", "Unable to auto generate a Short Parameter", parameter);
                     return;
                 }
-                if (parameter.variableName === "" || parameter.variableName === "Variable Name") {
-                    parameter.variableName = camelCase(parameter.longParameter);
-                }
 
-                validMessage = this.validateParameters()
-                if (validMessage !== "") {
-                    this.setState({ bash: validMessage })
+                if (parameter.variableName === "") {
+                    parameter.variableName = camelCase(parameter.longParameter);
                 }
 
             }
 
-
+            // tslint:disable-next-line
+            this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl); // this will append Errors and leave Warnings
         }
         finally {
-            this._settingState = false
-            await this.updateAllText();
+            this._settingState = false;
 
+            await this.updateAllText();
         }
 
     }
 
 
     private addParameter = async (model: ParameterModel, select: boolean) => {
-
-        if (this.parameterExists(model.longParameter)) {
-
-            const msg: string = `A parameter with the long-name=\"${model.longParameter}\" already exists.`;
-            this.addErrorMessage("error", 1, msg, model);
-            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: msg });
-            return;
-        }
 
         model.uniqueName = uniqueId("PARAMETER_DIV_")
         model.registerNotify(this.onPropertyChanged)
@@ -604,14 +763,9 @@ class App extends React.Component<{}, IAppState> {
         const list: ParameterModel[] = this.state.Parameters.concat(model);
         await this.setStateAsync({ Parameters: list })
         await this.updateAllText();
+        // tslint:disable-next-line
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
 
-        // const validMessage: string = this.validateParameters()
-        // if (validMessage !== "") {
-        //     this.setState({ bash: validMessage })
-        // }
-        // else {
-        //     await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput() })
-        // }
 
     }
 
@@ -627,11 +781,12 @@ class App extends React.Component<{}, IAppState> {
         p.valueIfSet = "$2";
         p.variableName = "inputFile";
         await this.addParameter(p, true);
+        this.builtInParameters.InputFileSupport = p;
     }
     private addVerboseParameter = async () => {
         this.setState({ verboseParameter: true });
         let p: ParameterModel = new ParameterModel();
-        p.default = "";
+        p.default = "false";
         p.description = "echos script data";
         p.longParameter = "verbose";
         p.shortParameter = "b";
@@ -640,6 +795,7 @@ class App extends React.Component<{}, IAppState> {
         p.valueIfSet = "true";
         p.variableName = "verbose"
         await this.addParameter(p, true);
+        this.builtInParameters.VerboseSupport = p;
     }
     private addloggingParameter = async () => {
         this.setState({ loggingParameter: true });
@@ -654,6 +810,7 @@ class App extends React.Component<{}, IAppState> {
         p.valueIfSet = "$2";
 
         await this.addParameter(p, true);
+        this.builtInParameters.LoggingSupport = p;
     }
 
     private addcvdParameters = async () => {
@@ -669,7 +826,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         await this.addParameter(p, true);
-
+        this.builtInParameters.Create = p;
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -680,7 +837,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         await this.addParameter(p, true);
-
+        this.builtInParameters.Verify = p;
         p = new ParameterModel();
         p.longParameter = "delete";
         p.shortParameter = "d";
@@ -691,13 +848,14 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         await this.addParameter(p, true);
+        this.builtInParameters.Delete = p;
     }
     //
     //  message handler for the toolbar button "add"
     private addBuiltIn = async () => {
         switch (this.state.builtInParameterSelected) {
             case "inputFileParameter":
-                await this.addInputFileParameter();
+                await this.addInputFileParameter();                
                 break;
             case "verboseParameter":
                 await this.addVerboseParameter();
@@ -785,29 +943,29 @@ class App extends React.Component<{}, IAppState> {
     }
 
     private yesNoReset = async (response: "yes" | "no") => {
-        console.log(`notified: ${response}`);
         this.setState({ dialogVisible: false });
         if (response === "yes") {
             this.reset();
         }
     }
-    private onErrorClicked = (e:React.MouseEvent<HTMLDivElement>, item:IErrorMessage) => {
-        if (this.state.selectedError !== undefined){
+    private onErrorClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
+        if (this.state.selectedError !== undefined) {
             this.state.selectedError.selected = false;
         }
         item.selected = true;
-        this.setState({selectedError: item});
-        
-    }
-    private onErrorDoubleClicked = (e:React.MouseEvent<HTMLDivElement>, item:IErrorMessage) => {
-        console.log("doubled clicked on %o",item);
+        this.setState({ selectedError: item });
         if (item.Parameter !== undefined) {
-            item.Parameter.selected = true;
-            
+            item.Parameter.focus();
+        }
+
+    }
+    private onErrorDoubleClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
+        if (item.Parameter !== undefined) {
+            item.Parameter.focus();
         }
     }
     public render = () => {
-        
+
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
 
         return (
@@ -855,12 +1013,11 @@ class App extends React.Component<{}, IAppState> {
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
                                         checked={this.state.mode === "dark"}
-                                        onChange={async (e: { originalEvent: Event, value: boolean }) => 
-                                            { 
-                                                await this.setStateAsync({ mode: e.value ? "dark" : "light" }); 
-                                                this.saveSettings(); 
-                                                this.growlCallback({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
-                                            }}
+                                        onChange={async (e: { originalEvent: Event, value: boolean }) => {
+                                            await this.setStateAsync({ mode: e.value ? "dark" : "light" });
+                                            this.saveSettings();
+                                            this.growlCallback({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
+                                        }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
                                 </div>
@@ -874,8 +1031,10 @@ class App extends React.Component<{}, IAppState> {
                                                 onBlur={async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
                                                     const end: string = e.currentTarget.value!.slice(-3);
                                                     if (end !== ".sh" && end !== "") {
-                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
+                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });                                                        
                                                         await this.setStateAsync({ ScriptName: e.currentTarget.value + ".sh" });
+                                                        // tslint:disable-next-line
+                                                        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
                                                         await this.updateAllText();
                                                     }
                                                 }}
@@ -941,31 +1100,27 @@ class App extends React.Component<{}, IAppState> {
                             <TabPanel header={`Messages (${this.state.errors.length})`}>
                                 <div className="bw-error-list" >
                                     <div className="bw-error-header">
-                                        <span className="bw-error-span error-col1">Line</span>
-                                        <span className="bw-error-span error-col2">Severity</span>
-                                        <span className="bw-error-span error-col3">Message</span>
+                                        <span className="bw-error-span error-col1">Severity</span>
+                                        <span className="bw-error-span error-col2">Message</span>
                                     </div>
                                     {
                                         this.state.errors.map((item: IErrorMessage) => {
-                                            let className:string = "bw-error-item";
-                                            if (this.state.selectedError === item)                                            {
+                                            let className: string = "bw-error-item";
+                                            if (this.state.selectedError === item) {
                                                 className += " bw-error-item-selected";
                                             }
-                                            
-                                            
+
+
                                             return (
-                                                <div    className={className} key={item.key} 
-                                                        onClick={(e:React.MouseEvent<HTMLDivElement>) => { this.onErrorClicked(e, item)}} 
-                                                        onDoubleClick={(e:React.MouseEvent<HTMLDivElement>) => { this.onErrorDoubleClicked(e, item)}}>
-                                                        
-                                                    <span className="bw-error-span error-col1" key={item.key + ".col1"} >{item.lineNumber}</span>
-                                                    <span className="bw-error-span error-col2" key={item.key + ".col2"} >{item.severity}</span>
-                                                    <span className="bw-error-span error-col3" key={item.key + ".col3"} >{item.message}</span>
+                                                <div className={className} key={item.key}
+                                                    onClick={(e: React.MouseEvent<HTMLDivElement>) => { this.onErrorClicked(e, item) }}>
+                                                    <span className="bw-error-span error-col1" key={item.key + ".col1"} >{item.severity}</span>
+                                                    <span className="bw-error-span error-col2" key={item.key + ".col2"} >{item.message}</span>
                                                 </div>
                                             )
                                         })
                                     }
-                                </div>                                
+                                </div>
                             </TabPanel >
                         </TabView>
                     </SplitPane>
