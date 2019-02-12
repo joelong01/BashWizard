@@ -126,7 +126,6 @@ declare delete=false
 
 parseInput "$@"
 
-
 # if command line tells us to parse an input file
 if [ "${inputFile}" != "" ]; then
 	# load parameters from the file
@@ -145,7 +144,6 @@ if [ "${inputFile}" != "" ]; then
 fi
 __
 
-
 #logging support
 declare LOG_FILE="${logDirectory}test.sh.log"
 {
@@ -160,7 +158,6 @@ declare LOG_FILE="${logDirectory}test.sh.log"
 
     echoInput
     # --- BEGIN USER CODE ---
-
 function onVerify() {
         
 }
@@ -190,7 +187,6 @@ if [[ $verify == "true" ]]; then
 fi
 
     # --- END USER CODE ---
-
 time=$(date +"%m/%d/%y @ %r")
 echo "ended: $time"
 } | tee -a "${LOG_FILE}"

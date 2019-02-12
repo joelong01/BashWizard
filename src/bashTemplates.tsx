@@ -98,8 +98,7 @@ __USER_CODE_1__
 __END_LOGGING_SUPPORT__
 `,
 logTemplate:
-`
-#logging support
+`#logging support
 declare LOG_FILE="\${logDirectory}__LOG_FILE_NAME__"
 {
     mkdir -p "\${logDirectory}" 
@@ -111,8 +110,7 @@ declare LOG_FILE="\${logDirectory}__LOG_FILE_NAME__"
     echo "started: $time"
 `,
 parseInputTemplate: 
-`
-# if command line tells us to parse an input file
+`# if command line tells us to parse an input file
 if [ \"\${inputFile}\" != "" ]; then
 	# load parameters from the file
 	configSection=$(jq . <\"\${inputFile}\" | jq '."__SCRIPT_NAME__"')
@@ -126,8 +124,7 @@ __FILE_TO_SETTINGS__
 fi
 `,
 requiredVariablesTemplate:
-`
-#verify required parameters are set
+`#verify required parameters are set
 if __REQUIRED_FILES_IF__; then
 	echo ""
 	echoError "Required parameter missing! "
@@ -138,14 +135,12 @@ if __REQUIRED_FILES_IF__; then
 fi
 `,
 endOfBash:
-`
-time=$(date +"%m/%d/%y @ %r")
+`time=$(date +"%m/%d/%y @ %r")
 echo "ended: $time"
 } | tee -a \"\${LOG_FILE}\"
 `,
 verifyCreateDelete:
-`
-function onVerify() {
+`function onVerify() {
         
 }
 function onDelete() {
