@@ -132,7 +132,7 @@ if [ "${inputFile}" != "" ]; then
 	# load parameters from the file
 	configSection=$(jq . <"${inputFile}" | jq '."test.sh"')
 	if [[ -z $configSection ]]; then
-		echoError "$inputFile or __SCRIPT_NAME__ section not found "
+		echoError "$inputFile or test.sh section not found "
 		exit 3
 	fi
     logDirectory=$(echo "${configSection}" | jq '.["log-directory"]' --raw-output)

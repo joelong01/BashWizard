@@ -32,8 +32,9 @@ import "brace/theme/xcode"
 import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
-import { checkServerIdentity } from 'tls';
-import { number, string } from 'prop-types';
+
+
+
 
 interface IErrorMessage {
     severity: "warning" | "error" | "info";
@@ -290,7 +291,15 @@ class App extends React.Component<{}, IAppState> {
         const missingVersionInfo:string = "couldn't find script version information";
 
     }
-
+    private replaceAll = (from:string, search:string, replace:string):string => {
+        // if replace is not sent, return original string otherwise it will
+        // replace search string with 'undefined'.
+        if (replace === undefined) {
+            return from;
+        }
+    
+        return from.replace(new RegExp('[' + search + ']', 'g'), replace);
+    };
 
     //
     //  given the state of the app, return a valid bash script
@@ -407,7 +416,8 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (parseInputFile.length > 0) {
-                parseInputTemplate = parseInputTemplate.replace("__SCRIPT_NAME__", this.state.ScriptName);
+                console.log("replacing __SCRIPT_NAME__");
+                parseInputTemplate = parseInputTemplate.replace(/__SCRIPT_NAME__/g, this.state.ScriptName);
                 parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
                 sbBashScript = sbBashScript.replace("__PARSE_INPUT_FILE", parseInputTemplate);
             }
