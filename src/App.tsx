@@ -3,7 +3,7 @@ import 'primereact/resources/themes/nova-light/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css'
-import * as React from 'react';
+import React from 'react';
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
 import ParameterModel from './ParameterModel';

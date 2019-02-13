@@ -1,7 +1,9 @@
-import { ParameterModel } from "./ParameterModel";
+
+import ParameterModel from './ParameterModel';
+import { bashTemplates } from './bashTemplates';
 import { IErrorMessage } from "./App"
 import { uniqueId } from 'lodash-es';
-import { start } from 'repl';
+
 //
 //  used when parsing a bash script
 export interface IParseState {
@@ -10,6 +12,7 @@ export interface IParseState {
     Parameters: ParameterModel[];
     ParseErrors: IErrorMessage[];
     UserCode: string;
+    LogDirectorySupported:boolean;
 }
 
 //
@@ -32,8 +35,7 @@ export class ParseBash {
                 }
             }
         }
-        
-        console.log(`answer has ${answer.length} answers`)
+                
         return answer.filter((e) =>  e); // remove empty entries
 
         /*         let regex: string = "/(";
@@ -75,7 +77,6 @@ export class ParseBash {
     private findParameterByLongName = (params: ParameterModel[], longParam: string): ParameterModel | null => {
 
         for (let p of params) {
-            console.log(p.longParameter);
             if (p.longParameter === longParam) {
                 return p;
             }
@@ -87,8 +88,7 @@ export class ParseBash {
     private findParameterByVarName = (params: ParameterModel[], name: string): ParameterModel | null => {
 
         for (let p of params) {
-            console.log(p.longParameter);
-            if (p.longParameter === name) {
+            if (p.variableName === name) {
                 return p;
             }
         }
@@ -96,8 +96,25 @@ export class ParseBash {
         return null;
 
     }
-    public fromBash = (input: string): IParseState => {
 
+    public logDirectorySupported = (bashScript:string):boolean => {
+        
+        const actual:string = bashScript.replace(/\s/g, "");
+        const desired:string = bashTemplates.endOfBash.replace(/\s/g, "");
+
+        console.log("start: " + bashScript);
+        console.log("actual: " + actual);
+        console.log("desired: " + desired);
+        if (actual === desired) {
+            console.log ("logDirectory Supported")
+            return true;
+        }
+        console.log ("logDirectory NOT supported")
+        return false;
+    }
+
+    public fromBash = (input: string): IParseState => {
+        console.log("in fromBash. %o", bashTemplates);
         //
         //  Error Messages constants used when parsing the Bash file
         const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
@@ -112,7 +129,7 @@ export class ParseBash {
         const noParseInput: string = "Could not locate the parseInput() function in the bashScript";
 
 
-        const parseState: IParseState = { ParseErrors: [], Parameters: [], Description: "", ScriptName: "", UserCode: "" };
+        const parseState: IParseState = { ParseErrors: [], Parameters: [], Description: "", ScriptName: "", UserCode: "", LogDirectorySupported: false };
         //
         //  make sure that we deal with the case of getting a file with EOL == \n\r.  we only want \n
         //  I've also had scenarios where I get only \r...fix those too.
@@ -177,6 +194,7 @@ export class ParseBash {
             case 3:
                 bashWizardCode = sections[0];
                 parseState.UserCode = sections[1].trim();
+                parseState.LogDirectorySupported = this.logDirectorySupported(sections[2]);
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
@@ -211,9 +229,7 @@ export class ParseBash {
             this.addParseError(parseState.ParseErrors, noUsage);
         }
         else {
-            bashFragment = bashFragment.replace("echoWarning", "echo");
-           /*  const regex:RegExp = new RegExp(/\n/, "g");
-            bashFragment = bashFragment.replace(regex, ""); */
+            bashFragment = bashFragment.replace(/echoWarning/g, "echo");           
             bashFragment = bashFragment.replace(new RegExp(/"/, "g"), "");
             lines = bashFragment.split("echo ");
             for (let line of lines) {
@@ -325,7 +341,7 @@ export class ParseBash {
                     if (nameTokens.length !== 2) // the first is the short param, second long param, and third is empty
                     {
                         this.addParseError(parseState.ParseErrors,
-                            `When parsing the parseInput() function to get the variable names, encountered the line {lines[index].trim()} which doesn't parse.  It should look like \"-l | --long-name)\" or the like.`,
+                            `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index].trim()} which doesn't parse.  It should look like \"-l | --long-name)\" or the like.`,
                             "warning");
                     }
                     // nameTokens[1] looks like "--long-param)
@@ -334,7 +350,7 @@ export class ParseBash {
 
                     const param: ParameterModel | null = this.findParameterByLongName(parseState.Parameters, longParam);
                     if (param === null) {
-                        this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to get the variable names, found a long parameter named {longParam} which was not found in the usage() function`,
+                        this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
                             "warning");
                     }
                     else {
@@ -347,7 +363,7 @@ export class ParseBash {
                             param.requiresInputString = true;
                         }
                         else {
-                            this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to see if {param.VariableName} requires input, found this line: {lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
+                            this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
                                 "warning");
                         }
                     }
@@ -362,7 +378,7 @@ export class ParseBash {
         }
         else {
             // throw away the "declare "
-            bashFragment = bashFragment.replace("declare ", "");
+            bashFragment = bashFragment.replace(/declare/g, "");
             lines = bashFragment.split('\n');
             for (let line of lines) {
                 line = line.trim();
@@ -373,17 +389,17 @@ export class ParseBash {
                     continue;
                 }
 
-                const varTokens: string[] = line.split("=");
+                const varTokens: string[] = line.split("=");                
                 if (varTokens.length === 0 || varTokens.length > 2) {
                     this.addParseError(parseState.ParseErrors,
-                        `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line {line} was encountered that didn't parse.  it should be in the form of varName=Default`,
+                        `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line \"${line}\" was encountered that didn't parse.  it should be in the form of varName=Default`,
                         "warning");
 
                 }
                 const varName: string = varTokens[0].trim();
                 const param: ParameterModel | null = this.findParameterByVarName(parseState.Parameters, varName);
                 if (param === null) {
-                    this.addParseError(parseState.ParseErrors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named {varName} which was not found in the usage() function`,
+                    this.addParseError(parseState.ParseErrors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
                         "warning");
                     this.addParseError(parseState.ParseErrors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
 

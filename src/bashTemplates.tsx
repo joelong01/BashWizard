@@ -169,3 +169,5 @@ if [[ $verify == "true" ]]; then
 fi
 `
 }
+
+export default bashTemplates;
