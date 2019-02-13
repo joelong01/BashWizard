@@ -21,7 +21,7 @@ function echoInfo {
 # make sure this version of *nix supports the right getopt
 ! getopt --test 2>/dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    echoError "'getopt --test' failed in this environment.  please install getopt."
+    echoError "'getopt --test' failed in this environment. please install getopt."
     read -r -p "install getopt using brew? [y,n]" response
     if [[ $response == 'y' ]] || [[ $response == 'Y' ]]; then
         ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
@@ -34,7 +34,7 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
 fi
 # we have a dependency on jq
 if [[ ! -x "$(command -v jq)" ]]; then
-    echoError "'jq is needed to run this script.  please install jq - see https://stedolan.github.io/jq/download/"
+    echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
     exit 1
 fi
 function usage() {
@@ -48,7 +48,7 @@ function usage() {
     echo " -l | --log-directory     Optional     directory for the log file.  the log file name will be based on the script name"
     echo " -c | --create            Optional     calls the onCreate function in the script"
     echo " -v | --verify            Optional     calls the onVerify function in the script"
-    echo " -d | --delete            Optional     calls the onDelete function in the script"  
+    echo " -d | --delete            Optional     calls the onDelete function in the script"
     echo ""
     exit 1
 }
@@ -77,7 +77,7 @@ function parseInput() {
     # -use ! and PIPESTATUS to get exit code with errexit set
     # -temporarily store output to be able to check for errors
     # -activate quoting/enhanced mode (e.g. by writing out "--options")
-    # -pass arguments only via   -- "$@"   to separate them correctly
+    # -pass arguments only via -- "$@" to separate them correctly
     ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         # e.g. return value is 1
@@ -156,7 +156,7 @@ fi
 declare LOG_FILE="${logDirectory}.log"
 {
     mkdir -p "${logDirectory}" 
-    rm -f "${LOG_FILE}"  
+    rm -f "${LOG_FILE}"
 } 2>>/dev/null
 #creating a tee so that we capture all the output to the log file
 {
@@ -192,7 +192,7 @@ if [[ $create == "true" ]]; then
 fi
 
 if [[ $verify == "true" ]]; then
-    onVerify        
+    onVerify
 fi
 # --- END USER CODE ---
 time=$(date +"%m/%d/%y @ %r")
