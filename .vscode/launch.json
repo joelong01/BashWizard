@@ -2,6 +2,13 @@
     "version": "0.1.0",
     "configurations": [
         {
+            "type": "chrome",
+            "request": "attach",
+            "name": "Attach to Chrome",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}"
+        },
+        {
             "name": "Launch localhost",
             "type": "chrome",
             "request": "launch",

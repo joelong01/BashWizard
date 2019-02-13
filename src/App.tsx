@@ -32,11 +32,12 @@ import "brace/theme/xcode"
 import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
+import { ParseBash, IParseState } from './parseBash';
 
 
 
 
-interface IErrorMessage {
+export interface IErrorMessage {
     severity: "warning" | "error" | "info";
     message: string;
     key: string;
@@ -62,6 +63,7 @@ enum ValidationOptions {
     Growl = 1 << 4
 }
 
+
 interface IAppState {
     //
     //  these get replaced in this.stringify
@@ -74,6 +76,7 @@ interface IAppState {
     inputJson: string;
     mode: string; // one of "light" or "dark"
     builtInParameterSelected: string | null;
+    generateBashScript: boolean;
     // parameters with built in support
     verboseParameter: boolean;
     loggingParameter: boolean;
@@ -86,7 +89,7 @@ interface IAppState {
     selectedError: IErrorMessage | undefined;
     // keep the state of the parameter list so shrinking width doens't break layout
     parameterListHeight: string;
-
+    activeTabIndex: number;
     //
     //  these get stringified
     //  these must match https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ConfigModel.cs
@@ -107,10 +110,12 @@ class App extends React.Component<{}, IAppState> {
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
+    
 
     constructor(props: {}) {
         super(props);
         let savedMode = this.cookie.get("mode");
+
         if (savedMode === "" || savedMode === null) {
             savedMode = "dark";
         }
@@ -128,6 +133,7 @@ class App extends React.Component<{}, IAppState> {
                 inputJson: "",
                 builtInParameterSelected: null,
                 parameterListHeight: "calc(100% - 115px)",
+                generateBashScript: true,
                 verboseParameter: false,
                 loggingParameter: false,
                 inputFileParameter: false,
@@ -137,6 +143,7 @@ class App extends React.Component<{}, IAppState> {
                 dialogCallback: this.yesNoReset,
                 errors: [],
                 selectedError: undefined,
+                activeTabIndex: 0,
                 // these do not get replaced
                 ScriptName: "",
                 Description: "",
@@ -144,7 +151,7 @@ class App extends React.Component<{}, IAppState> {
             }
     }
 
-    public componentDidMount = () => {        
+    public componentDidMount = () => {
         window.addEventListener<"resize">('resize', this.handleResize);
         this.handleResize();
     }
@@ -159,11 +166,11 @@ class App extends React.Component<{}, IAppState> {
     //  the toolbar.  note that 64px is the size of the div we enter script name in plus
     //  various margins.
     private handleResize = () => {
-        
+
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
-        if (toolbar !== null) {            
-            const htStyle:string = `calc(100% - ${toolbar.clientHeight + 69}px)`            
-            this.setState({parameterListHeight: htStyle});
+        if (toolbar !== null) {
+            const htStyle: string = `calc(100% - ${toolbar.clientHeight + 69}px)`
+            this.setState({ parameterListHeight: htStyle });
         }
 
     };
@@ -209,8 +216,19 @@ class App extends React.Component<{}, IAppState> {
     }
 
 
-    private Refresh = async (): Promise<void> => {
-        await this.jsonToUi(this.state.json);
+    private onRefresh = async (): Promise<void> => {
+        switch (this.state.activeTabIndex) {
+            case 0:
+                await this.bashToUi(this.state.bash);
+                break;
+            case 1:
+                await this.jsonToUi(this.state.json);
+                break;
+            default:
+                break;
+        }
+
+
     }
 
     private menuDeleteParameter = async (): Promise<void> => {
@@ -294,19 +312,9 @@ class App extends React.Component<{}, IAppState> {
         return s;
     }
 
-    private fromBash = (bash: string) => {
-        //
-        //  Error Messages constants used when parsing the Bash file
-        const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
-        const noNewLines: string = "There are no new lines in this file -- please fix this and try again.";
-        const missingComments: string = "Missing the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
-        const addingComments: string = "Adding comments and treating the whole file as user code";
-        const missingOneUserComment: string = "Missing one of the comments around the user's code.  User Code starts after \"# --- BEGIN USER CODE ---\" and ends before \"# --- END USER CODE ---\" ";
-        const pleaseFix: string = "Please fix and retry.";
-        const tooManyUserComments: string = "There is more than one \"# --- BEGIN USER CODE ---\" or more than one \"# --- END USER CODE ---\" comments in this file.  Please fix and try again.";
-        const missingVersionInfo: string = "couldn't find script version information";
 
-    }
+
+
     private replaceAll = (from: string, search: string, replace: string): string => {
         // if replace is not sent, return original string otherwise it will
         // replace search string with 'undefined'.
@@ -637,7 +645,7 @@ class App extends React.Component<{}, IAppState> {
 
         //
         //  I'm taking out these chars because they are "special" in JSON.  I found that the ":" messed up JQ processing
-        //  and it seems a small price to pay to not take any risks with the names.  Note that we always Trim() the names
+        //  and it seems a small price to pay to not take any risks with the names.  Note that we always trim() the names
         //  in the ParameterOrScriptData_PropertyChanged method
         //  
         const illegalNameChars: string = ":{}[]\\\'\"";
@@ -1001,7 +1009,7 @@ class App extends React.Component<{}, IAppState> {
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
 
-                                    <Button className="p-button-secondary" label="Refresh" icon="pi pi-refresh" onClick={this.Refresh} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.menuDeleteParameter()} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="Add" icon="pi pi-list" onClick={this.addBuiltIn} />
@@ -1062,12 +1070,12 @@ class App extends React.Component<{}, IAppState> {
                                 </div>
                             </div>
                             {/* this is the section for parameter list */}
-                            <div className="Parameter_List" style={{height: this.state.parameterListHeight}}>
+                            <div className="Parameter_List" style={{ height: this.state.parameterListHeight }}>
                                 {this.renderParameters()}
                             </div>
                         </div>
                         {/* this is the section for the area below the splitter */}
-                        <TabView id="tabControl" className="tabControl">
+                        <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({activeTabIndex: e.index}))}>
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
                                     <AceEditor mode="sh" name="aceBashEditor" theme={mode} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
@@ -1140,6 +1148,28 @@ class App extends React.Component<{}, IAppState> {
         );
     }
 
+    private async bashToUi(bash: string): Promise<void> {
+        const parser: ParseBash = new ParseBash();
+        const state: IParseState = parser.fromBash(bash);
+        if (state.Parameters.length > 0) {
+            this.UserCode = state.UserCode;
+            for (let p of state.Parameters)            {
+                p.registerNotify(this.onPropertyChanged);
+                p.uniqueName = uniqueId("PARAMETER_DIV_")
+                p.selected = false;
+            }
+            await this.setStateAsync({
+                Parameters: state.Parameters,
+                ScriptName: state.ScriptName,
+                Description: state.Description,
+                errors: state.ParseErrors
+            });
+
+            await this.updateAllText();
+
+        }
+    }
+
     private async jsonToUi(json: string): Promise<void> {
         try {
             //
@@ -1182,6 +1212,7 @@ class App extends React.Component<{}, IAppState> {
         }
 
     }
+
 }
 
 export default App;

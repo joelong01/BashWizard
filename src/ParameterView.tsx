@@ -258,7 +258,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                 <div className="p-grid parameter-item-grid">
                     <div className="p-col-fixed param-column">
                         <span className="p-float-label">                            
-                            <InputText autoFocus={true} inputRef={this.refLongName} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                            <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
                             <label htmlFor="longParameter" className="param-label">Long Name</label>
                         </span>
                     </div>
