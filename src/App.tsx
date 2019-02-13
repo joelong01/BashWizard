@@ -426,7 +426,7 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
             sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
 
-            let inputOverridesRequired: string = (this.builtInParameters.InputFileSupport !== undefined) ? "echoWarning \"Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            let inputOverridesRequired: string = (this.builtInParameters.InputFileSupport !== undefined) ? "echoWarning \"Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file.\"" : "";
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
             if (this.builtInParameters.InputFileSupport !== undefined) {
@@ -643,10 +643,10 @@ class App extends React.Component<{}, IAppState> {
             }
 
             if (param.requiresInputString && param.valueIfSet !== "$2") {
-                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = true but hasn't set the Value if Set to $2.  this is an invalid combination`, key: uniqueId("ERROR") });
+                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = true but hasn't set the Value if Set to $2. This is an invalid combination`, key: uniqueId("ERROR") });
             }
             if (!param.requiresInputString && param.valueIfSet === "$2") {
-                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = false but has set the Value if Set to $2.  this is an invalid combination`, key: uniqueId("ERROR") });
+                errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = false but has set the Value if Set to $2. This is an invalid combination`, key: uniqueId("ERROR") });
             }
         }
 
@@ -853,7 +853,7 @@ class App extends React.Component<{}, IAppState> {
         let p: ParameterModel = new ParameterModel();
         p.longParameter = "log-directory";
         p.shortParameter = "l";
-        p.description = "directory for the log file.  the log file name will be based on the script name";
+        p.description = "Directory for the log file. The log file name will be based on the script name.";
         p.variableName = "logDirectory";
         p.default = "\"./\"";
         p.requiresInputString = true;
