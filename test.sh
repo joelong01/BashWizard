@@ -168,13 +168,13 @@ fi
 
 # --- BEGIN USER CODE ---
 function onVerify() {
-
+    echo "onVerify"
 }
 function onDelete() {
-
+    echo "onDelete"
 }
 function onCreate() {
-
+    echo "onCreate"
 }
 
 
