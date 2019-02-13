@@ -6,7 +6,7 @@ export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void;
 
 //
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
-class ParameterModel {
+export class ParameterModel {
 
 
     private Default: string = "";
@@ -133,7 +133,7 @@ class ParameterModel {
     }
     public set longParameter(value: string) {
         if (value !== this.LongParameter) {
-            this.LongParameter = value;
+            this.LongParameter = value.replace(new RegExp(/^-{2}/, "i"), "");
             this.NotifyPropertyChanged("longParameter")
         }
     }
@@ -143,7 +143,7 @@ class ParameterModel {
     }
     public set shortParameter(value: string) {
         if (value !== this.ShortParameter) {
-            this.ShortParameter = value;
+            this.ShortParameter = value.replace(new RegExp(/^-{1}/, "i"), "");
             this.NotifyPropertyChanged("shortParameter")
         }
     }

@@ -13,6 +13,7 @@ import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
 
 
+
 export interface IParameterProperties {
     Model: ParameterModel;
     Name: string;
@@ -37,7 +38,8 @@ interface IParameterState {
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
-    private refParameterForm = React.createRef<HTMLDivElement>();    
+    private refParameterForm = React.createRef<HTMLDivElement>();
+    private refLongName = React.createRef<HTMLInputElement>();
     constructor(props: IParameterProperties) {
         super(props);
 
@@ -243,11 +245,20 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //
     public render = () => {
         return (
-            <div className="parameterItem" onFocus={() => this.state.Model.selected = true} ref={this.refParameterForm} tabIndex={0} >
+            <div className="parameterItem"
+                onFocus={() => {
+                    this.state.Model.selected = true;
+                    /*  this was an attempt to set the focus on the first input box whenever the form got focus 
+                        it doesn't work -- not sure why. will debug later.
+                        if (this.refLongName.current !== null){
+                        this.refLongName.current.focus();
+                    } */
+                }}
+                ref={this.refParameterForm} tabIndex={0} >
                 <div className="p-grid parameter-item-grid">
                     <div className="p-col-fixed param-column">
-                        <span className="p-float-label">
-                            <InputText autoFocus={true} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                        <span className="p-float-label">                            
+                            <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
                             <label htmlFor="longParameter" className="param-label">Long Name</label>
                         </span>
                     </div>

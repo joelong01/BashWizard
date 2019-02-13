@@ -1,6 +1,6 @@
 export const bashTemplates =
     {
-        bashTemplate: 
+        bashTemplate:
 `#!/bin/bash
 #---------- see https://github.com/joelong01/Bash-Wizard----------------
 # bashWizard version __VERSION__
@@ -24,7 +24,7 @@ function echoInfo {
 # make sure this version of *nix supports the right getopt
 ! getopt --test 2>/dev/null
 if [[ \${PIPESTATUS[0]} -ne 4 ]]; then
-	echoError "'getopt --test' failed in this environment.  please install getopt."
+    echoError "'getopt --test' failed in this environment. please install getopt."
     read -r -p "install getopt using brew? [y,n]" response
     if [[ $response == 'y' ]] || [[ $response == 'Y' ]]; then
         ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
@@ -35,19 +35,15 @@ if [[ \${PIPESTATUS[0]} -ne 4 ]]; then
     fi
    exit 1
 fi
-# we have a dependency on jq
-if [[ ! -x "$(command -v jq)" ]]; then
-	echoError "'jq is needed to run this script.  please install jq - see https://stedolan.github.io/jq/download/"
-	exit 1
-fi
+__JQ_DEPENDENCY__
 function usage() {
     __USAGE_INPUT_STATEMENT__
 __USAGE_LINE__ 1>&2
-__USAGE__  
+__USAGE__
     echo ""
     exit 1
 }
-function echoInput() {     
+function echoInput() {
     echo __ECHO__
 }
 
@@ -59,7 +55,7 @@ function parseInput() {
     # -use ! and PIPESTATUS to get exit code with errexit set
     # -temporarily store output to be able to check for errors
     # -activate quoting/enhanced mode (e.g. by writing out "--options")
-    # -pass arguments only via   -- "$@"   to separate them correctly
+    # -pass arguments only via -- "$@" to separate them correctly
     ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
     if [[ \${PIPESTATUS[0]} -ne 0 ]]; then
         # e.g. return value is 1
@@ -85,75 +81,71 @@ __INPUT_CASE__
 }
 # input variables 
 __INPUT_DECLARATION__
+
 parseInput "$@"
 
 ___PARSE_INPUT_FILE___
 __REQUIRED_PARAMETERS__
 __LOGGING_SUPPORT_
 __VERBOSE_ECHO__
-    
-    # --- BEGIN USER CODE ---
+
+# --- BEGIN USER CODE ---
 __USER_CODE_1__
-    # --- END USER CODE ---
-__END_LOGGING_SUPPORT__
-`,
+# --- END USER CODE ---
+__END_LOGGING_SUPPORT__`,
 logTemplate:
 `#logging support
 declare LOG_FILE="\${logDirectory}__LOG_FILE_NAME__"
 {
     mkdir -p "\${logDirectory}" 
-    rm -f "\${LOG_FILE}"  
+    rm -f "\${LOG_FILE}"
 } 2>>/dev/null
 #creating a tee so that we capture all the output to the log file
 {
     time=$(date +"%m/%d/%y @ %r")
-    echo "started: $time"
-`,
+    echo "started: $time"`,
 parseInputTemplate: 
 `# if command line tells us to parse an input file
 if [ \"\${inputFile}\" != "" ]; then
-	# load parameters from the file
-	configSection=$(jq . <\"\${inputFile}\" | jq '."__SCRIPT_NAME__"')
-	if [[ -z $configSection ]]; then
-		echoError "$inputFile or __SCRIPT_NAME__ section not found "
-		exit 3
-	fi
+    # load parameters from the file
+    configSection=$(jq . <\"\${inputFile}\" | jq '."__SCRIPT_NAME__"')
+    if [[ -z $configSection ]]; then
+        echoError "$inputFile or __SCRIPT_NAME__ section not found "
+        exit 3
+    fi
 __FILE_TO_SETTINGS__
-	# we need to parse the again to see if there are any overrides to what is in the config file
-	parseInput "$@"
-fi
-`,
+    # we need to parse the again to see if there are any overrides to what is in the config file
+    parseInput "$@"
+fi`,
 requiredVariablesTemplate:
 `#verify required parameters are set
 if __REQUIRED_FILES_IF__; then
-	echo ""
-	echoError "Required parameter missing! "
-	echoInput #make it easy to see what is missing
-	echo ""
-	usage
-	exit 2
-fi
-`,
+    echo ""
+    echoError "Required parameter missing! "
+    echoInput #make it easy to see what is missing
+    echo ""
+    usage
+    exit 2
+fi`,
 endOfBash:
 `time=$(date +"%m/%d/%y @ %r")
 echo "ended: $time"
-} | tee -a \"\${LOG_FILE}\"
-`,
+} | tee -a \"\${LOG_FILE}\"`,
 verifyCreateDelete:
 `function onVerify() {
-        
+    echo "onVerify"
 }
 function onDelete() {
-    
+    echo "onDelete"
 }
 function onCreate() {
-    
+    echo "onCreate"
 }
 
 __USER_CODE_1__
 
 #
-#   the order matters - delete, then create, then verify
+#  this order makes it so that passing in /cvd will result in a verified resource being created
 #
 
 if [[ $delete == "true" ]]; then
@@ -165,7 +157,18 @@ if [[ $create == "true" ]]; then
 fi
 
 if [[ $verify == "true" ]]; then
-    onVerify        
-fi
-`
+    onVerify
+fi`,
+jqDependency: 
+`# we have a dependency on jq
+if [[ ! -x "$(command -v jq)" ]]; then
+    echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
+    exit 1
+fi`,
+verboseEcho:
+`if [[ $"verbose" == true ]];then
+    echoInput
+fi`
 }
+
+export default bashTemplates;
