@@ -12,7 +12,7 @@ import SplitPane from 'react-split-pane';
 import trim from 'lodash-es/trim';
 import trimEnd from 'lodash-es/trimEnd';
 import trimStart from 'lodash-es/trimStart';
-import { camelCase } from "lodash-es";
+import { camelCase, template } from "lodash-es";
 import { uniqueId } from 'lodash-es';
 import { padEnd } from 'lodash-es'
 import { TabView, TabPanel } from 'primereact/tabview';
@@ -44,7 +44,7 @@ export interface IErrorMessage {
     selected?: boolean;
     Parameter?: ParameterModel
 }
-interface IBuiltInParameterName {
+export interface IBuiltInParameterName {
     Create?: string,
     Verify?: string,
     Delete?: string,
@@ -77,11 +77,7 @@ interface IAppState {
     mode: string; // one of "light" or "dark"
     builtInParameterSelected: string | null;
     generateBashScript: boolean;
-    // parameters with built in support
-    verboseParameter: boolean;
-    loggingParameter: boolean;
-    inputFileParameter: boolean;
-    cvdParameters: boolean;
+
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
@@ -110,7 +106,7 @@ class App extends React.Component<{}, IAppState> {
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
-    
+
 
     constructor(props: {}) {
         super(props);
@@ -134,10 +130,6 @@ class App extends React.Component<{}, IAppState> {
                 builtInParameterSelected: null,
                 parameterListHeight: "calc(100% - 115px)",
                 generateBashScript: true,
-                verboseParameter: false,
-                loggingParameter: false,
-                inputFileParameter: false,
-                cvdParameters: false,
                 dialogVisible: false,
                 dialogMessage: "",
                 dialogCallback: this.yesNoReset,
@@ -266,6 +258,7 @@ class App extends React.Component<{}, IAppState> {
             el.removeNotify(this.onPropertyChanged);
         }
         );
+        this.builtInParameters = {}
         this.setState({
             json: "",
             bash: "",
@@ -275,10 +268,7 @@ class App extends React.Component<{}, IAppState> {
             inputJson: "",
             builtInParameterSelected: null,
 
-            verboseParameter: false,
-            loggingParameter: false,
-            inputFileParameter: false,
-            cvdParameters: false,
+
 
             // these do not get replaced
             ScriptName: "",
@@ -329,7 +319,7 @@ class App extends React.Component<{}, IAppState> {
     //  given the state of the app, return a valid bash script
     private toBash = (): string => {
 
-
+        console.log("ToBash BuiltIns: %o", this.builtInParameters);
 
         try {
 
@@ -388,7 +378,7 @@ class App extends React.Component<{}, IAppState> {
 
                 // declare variables
                 inputDeclarations += `declare ${param.variableName}=${param.default}${nl}`
-                if (this.state.inputFileParameter && param.variableName !== "inputFile") {
+                if (this.builtInParameters.InputFileSupport !== undefined && param.variableName !== "inputFile") {
                     // parse input file
                     parseInputFile += `${this.Tabs(1)}${param.variableName}=$(echo \"\${configSection}\" | jq \'.[\"${param.longParameter}\"]\' --raw-output)${nl}`
                 }
@@ -405,10 +395,11 @@ class App extends React.Component<{}, IAppState> {
 
             usageLine += "\""
 
-            //  remove last line
+            //  remove last line / character
             longOptions = longOptions.slice(0, -1);
             inputCase = inputCase.slice(0, -1)
             usageInfo = usageInfo.slice(0, -1)
+
 
             if (requiredFilesIf.length > 0) {
                 requiredFilesIf = requiredFilesIf.slice(0, -4); // removes the " || " at the end
@@ -418,11 +409,11 @@ class App extends React.Component<{}, IAppState> {
                 requiredVariablesTemplate = "";
             }
 
-            if (this.state.loggingParameter) {
+            if (this.builtInParameters.LoggingSupport !== undefined) {
                 logTemplate = logTemplate.replace("__LOG_FILE_NAME__", this.state.ScriptName + ".log");
             }
             else {
-                logTemplate = ""
+                logTemplate = "";
             }
 
             //
@@ -435,17 +426,19 @@ class App extends React.Component<{}, IAppState> {
             sbBashScript = sbBashScript.replace("__INPUT_CASE__", inputCase);
             sbBashScript = sbBashScript.replace("__INPUT_DECLARATION__", inputDeclarations);
 
-            let inputOverridesRequired: string = (this.state.inputFileParameter) ? "echoWarning \"Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
+            let inputOverridesRequired: string = (this.builtInParameters.InputFileSupport !== undefined) ? "echoWarning \"Parameters can be passed in the command line or in the input file.  The command line overrides the setting in the input file.\"" : "";
             sbBashScript = sbBashScript.replace("__USAGE_INPUT_STATEMENT__", inputOverridesRequired);
 
-            if (parseInputFile.length > 0) {
-
+            if (this.builtInParameters.InputFileSupport !== undefined) {
                 parseInputTemplate = parseInputTemplate.replace(/__SCRIPT_NAME__/g, this.state.ScriptName);
                 parseInputTemplate = parseInputTemplate.replace("__FILE_TO_SETTINGS__", parseInputFile);
                 sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", parseInputTemplate);
+                sbBashScript = sbBashScript.replace("__JQ_DEPENDENCY__", bashTemplates.jqDependency);
+
             }
             else {
                 sbBashScript = sbBashScript.replace("___PARSE_INPUT_FILE___", "");
+                sbBashScript = sbBashScript.replace("__JQ_DEPENDENCY__", "");
             }
 
             sbBashScript = sbBashScript.replace("__REQUIRED_PARAMETERS__", requiredVariablesTemplate);
@@ -461,15 +454,27 @@ class App extends React.Component<{}, IAppState> {
             }
 
             if (this.builtInParameters.VerboseSupport !== undefined) {
-                let v: string = `if [[ \$\"verbose\" == true ]];then${nl}${this.Tabs(1)}echoInput${nl}fi`;
-                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", v);
+                sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", bashTemplates.verboseEcho);
             }
             else {
                 sbBashScript = sbBashScript.replace("__VERBOSE_ECHO__", "");
             }
-
+            /*
+              replace anyplace we have 3 new lines with 2 new lines.  this will get rid of double black lines...
+              e.g. 
+                        function onCreate() { (\n)
+                            (\n)
+                            (\n)
+                        }
+            becomes
+                        function onCreate() {(\n)
+                            (\n)
+                        }
+            */
+            sbBashScript = sbBashScript.replace(/\n\n\n/g, "\n\n");
             //
             // put the user code where it belongs -- it might contain the functions already
+
             sbBashScript = sbBashScript.replace("__USER_CODE_1__", this.UserCode);
 
             return sbBashScript;
@@ -485,7 +490,7 @@ class App extends React.Component<{}, IAppState> {
             return false;
         }
 
-        if (bashScript.indexOf(`function ${name}() {{`) !== -1) {
+        if (bashScript.indexOf(`function ${name}()`) !== -1) {
             return true;
         }
 
@@ -555,7 +560,9 @@ class App extends React.Component<{}, IAppState> {
             }
         }
 
+        parameter.removeNotify(this.onPropertyChanged);
         array.splice(index, 1);
+
         await this.setStateAsync({ Parameters: array })
         await this.updateAllText();
 
@@ -779,17 +786,26 @@ class App extends React.Component<{}, IAppState> {
         model.registerNotify(this.onPropertyChanged)
         model.selected = select;
 
-        const list: ParameterModel[] = this.state.Parameters.concat(model);
-        await this.setStateAsync({ Parameters: list })
+        /*  const list: ParameterModel[] = this.state.Parameters.concat(model);
+         await this.setStateAsync({ Parameters: list }) */
+
+        this.setState({ Parameters: [...this.state.Parameters, model] });
         await this.updateAllText();
+
         // tslint:disable-next-line
-        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors);
 
 
     }
 
     private addInputFileParameter = async () => {
-        this.setState({ inputFileParameter: true })
+        //
+        //  this way we always go back to the default - e.g. if somebody messes with the built in then
+        //  they can just readd it and the right thing will happen.
+        if (this.builtInParameters.InputFileSupport !== undefined) {
+            await this.deleteParameter(this.builtInParameters.InputFileSupport);
+        }
+
         let p: ParameterModel = new ParameterModel();
         p.default = "";
         p.description = "the name of the input file. pay attention to $PWD when setting this";
@@ -799,11 +815,18 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "$2";
         p.variableName = "inputFile";
-        await this.addParameter(p, true);
         this.builtInParameters.InputFileSupport = p;
+        await this.addParameter(p, true);
+
     }
     private addVerboseParameter = async () => {
-        this.setState({ verboseParameter: true });
+        //
+        //  this way we always go back to the default - e.g. if somebody messes with the built in then
+        //  they can just readd it and the right thing will happen.
+        if (this.builtInParameters.VerboseSupport !== undefined) {
+            await this.deleteParameter(this.builtInParameters.VerboseSupport);
+        }
+
         let p: ParameterModel = new ParameterModel();
         p.default = "false";
         p.description = "echos script data";
@@ -813,11 +836,20 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         p.variableName = "verbose"
-        await this.addParameter(p, true);
         this.builtInParameters.VerboseSupport = p;
+        await this.addParameter(p, true);
+
+
     }
     private addloggingParameter = async () => {
-        this.setState({ loggingParameter: true });
+
+        //
+        //  this way we always go back to the default - e.g. if somebody messes with the built in then
+        //  they can just readd it and the right thing will happen.
+        if (this.builtInParameters.LoggingSupport !== undefined) {
+            await this.deleteParameter(this.builtInParameters.LoggingSupport);
+        }
+
         let p: ParameterModel = new ParameterModel();
         p.longParameter = "log-directory";
         p.shortParameter = "l";
@@ -827,14 +859,20 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = true;
         p.requiredParameter = false;
         p.valueIfSet = "$2";
-
-        await this.addParameter(p, true);
         this.builtInParameters.LoggingSupport = p;
+        await this.addParameter(p, true);
+
     }
 
     private addcvdParameters = async () => {
 
-        this.setState({ cvdParameters: true });
+        let params: ParameterModel[] = []
+        //
+        //  this way we always go back to the default - e.g. if somebody messes with the built in then
+        //  they can just readd it and the right thing will happen.
+        if (this.builtInParameters.Create !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Create);
+        }
         let p: ParameterModel = new ParameterModel();
         p.longParameter = "create";
         p.shortParameter = "c";
@@ -844,8 +882,14 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        await this.addParameter(p, true);
+        p.uniqueName = uniqueId("PARAMETER_DIV_")
+        p.registerNotify(this.onPropertyChanged)
+        p.selected = false;
         this.builtInParameters.Create = p;
+        params.push(p);
+        if (this.builtInParameters.Verify !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Verify);
+        }
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -855,8 +899,15 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        await this.addParameter(p, true);
+        p.uniqueName = uniqueId("PARAMETER_DIV_")
+        p.registerNotify(this.onPropertyChanged)
+        p.selected = false;
         this.builtInParameters.Verify = p;
+        params.push(p);
+
+        if (this.builtInParameters.Delete !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Delete);
+        }
         p = new ParameterModel();
         p.longParameter = "delete";
         p.shortParameter = "d";
@@ -866,8 +917,14 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        await this.addParameter(p, true);
+        p.uniqueName = uniqueId("PARAMETER_DIV_")
+        p.registerNotify(this.onPropertyChanged)
+        p.selected = false;
         this.builtInParameters.Delete = p;
+        params.push(p);
+
+        this.setState({ Parameters: [...this.state.Parameters, ...params] });
+
     }
     //
     //  message handler for the toolbar button "add"
@@ -1075,7 +1132,7 @@ class App extends React.Component<{}, IAppState> {
                             </div>
                         </div>
                         {/* this is the section for the area below the splitter */}
-                        <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({activeTabIndex: e.index}))}>
+                        <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
                                     <AceEditor mode="sh" name="aceBashEditor" theme={mode} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
@@ -1153,7 +1210,8 @@ class App extends React.Component<{}, IAppState> {
         const state: IParseState = parser.fromBash(bash);
         if (state.Parameters.length > 0) {
             this.UserCode = state.UserCode;
-            for (let p of state.Parameters)            {
+            this.builtInParameters = state.builtInParameters;
+            for (let p of state.Parameters) {
                 p.registerNotify(this.onPropertyChanged);
                 p.uniqueName = uniqueId("PARAMETER_DIV_")
                 p.selected = false;

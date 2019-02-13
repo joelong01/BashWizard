@@ -1,7 +1,7 @@
 
 import ParameterModel from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
-import { IErrorMessage } from "./App"
+import { IErrorMessage, IBuiltInParameterName } from "./App"
 import { uniqueId } from 'lodash-es';
 
 //
@@ -12,7 +12,7 @@ export interface IParseState {
     Parameters: ParameterModel[];
     ParseErrors: IErrorMessage[];
     UserCode: string;
-    LogDirectorySupported:boolean;
+    builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel }; // this isn't in the this.state object because it doesn't affect the UI
 }
 
 //
@@ -74,7 +74,7 @@ export class ParseBash {
         return null; */
     }
 
-    private findParameterByLongName = (params: ParameterModel[], longParam: string): ParameterModel | null => {
+    private findParameterByLongName = (params: ParameterModel[], longParam: string): ParameterModel | undefined => {
 
         for (let p of params) {
             if (p.longParameter === longParam) {
@@ -82,37 +82,59 @@ export class ParseBash {
             }
         }
 
-        return null;
-
+        return undefined;
     }
-    private findParameterByVarName = (params: ParameterModel[], name: string): ParameterModel | null => {
+    private findParameterByVarName = (params: ParameterModel[], name: string): ParameterModel | undefined => {
 
         for (let p of params) {
             if (p.variableName === name) {
+                console.log ("log-directory supported");
                 return p;
             }
         }
-
-        return null;
-
+        return undefined;
     }
-
-    public logDirectorySupported = (bashScript:string):boolean => {
+    //
+    //  the built in parameter "LogDirectory" is in the script iff   we have the
+    //  "endOfBash" in the script file and we have a long-parameter name "log-directory"
+    public logDirectorySupported = (endOfScript:string, parameters: ParameterModel[]):ParameterModel | undefined => {
         
-        const actual:string = bashScript.replace(/\s/g, "");
+        //
+        //  compare to the template
+        const actual:string = endOfScript.replace(/\s/g, "");
         const desired:string = bashTemplates.endOfBash.replace(/\s/g, "");
-
-        console.log("start: " + bashScript);
-        console.log("actual: " + actual);
-        console.log("desired: " + desired);
         if (actual === desired) {
-            console.log ("logDirectory Supported")
-            return true;
+            
+            return this.findParameterByLongName(parameters, "log-directory");
         }
-        console.log ("logDirectory NOT supported")
-        return false;
+        return undefined;
     }
+     //
+    //  the built in parameter "Verbose" is in the script iff  we have the
+    //  "endOfBash" in the script file and we have a long-parameter name "log-directory"
+    public verboseSupported = (script:string, parameters: ParameterModel[]):ParameterModel | undefined => {
+        
+        const idx:number = script.indexOf("if [[ $\"verbose\" == true ]];then") ;
+        console.log (`inputFileSupported idx: ${idx}`);
+        if (idx !== -1) {
+            
+            return this.findParameterByLongName(parameters, "verbose");
+        }
+        return undefined;
+    }
+    //
+    //  the built in paramater "InputFileSupported" is true iff the "input-file" long parameter exists and 
+    //  the script has the text "if [ \"\${inputFile}\" != "" ]; then"    
+    public inputFileSupported = (script:string, parameters: ParameterModel[]):ParameterModel | undefined => {
 
+        const idx:number = script.indexOf("if [ \"\${inputFile}\" != \"\" ]; then") ;
+        console.log (`inputFileSupported idx: ${idx}`);
+        if (idx !== -1) {
+            
+            return this.findParameterByLongName(parameters, "input-file");
+        }
+        return undefined;
+    }
     public fromBash = (input: string): IParseState => {
         console.log("in fromBash. %o", bashTemplates);
         //
@@ -129,7 +151,7 @@ export class ParseBash {
         const noParseInput: string = "Could not locate the parseInput() function in the bashScript";
 
 
-        const parseState: IParseState = { ParseErrors: [], Parameters: [], Description: "", ScriptName: "", UserCode: "", LogDirectorySupported: false };
+        const parseState: IParseState = { ParseErrors: [], Parameters: [], Description: "", ScriptName: "", UserCode: "", builtInParameters: {} };
         //
         //  make sure that we deal with the case of getting a file with EOL == \n\r.  we only want \n
         //  I've also had scenarios where I get only \r...fix those too.
@@ -193,8 +215,7 @@ export class ParseBash {
             case 2:
             case 3:
                 bashWizardCode = sections[0];
-                parseState.UserCode = sections[1].trim();
-                parseState.LogDirectorySupported = this.logDirectorySupported(sections[2]);
+                parseState.UserCode = sections[1].trim();                
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
@@ -348,8 +369,8 @@ export class ParseBash {
                     
                     let longParam: string = nameTokens[1].substring(3, nameTokens[1].length - 1); 
 
-                    const param: ParameterModel | null = this.findParameterByLongName(parseState.Parameters, longParam);
-                    if (param === null) {
+                    const param: ParameterModel | undefined = this.findParameterByLongName(parseState.Parameters, longParam);
+                    if (param === undefined) {
                         this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
                             "warning");
                     }
@@ -397,8 +418,8 @@ export class ParseBash {
 
                 }
                 const varName: string = varTokens[0].trim();
-                const param: ParameterModel | null = this.findParameterByVarName(parseState.Parameters, varName);
-                if (param === null) {
+                const param: ParameterModel | undefined = this.findParameterByVarName(parseState.Parameters, varName);
+                if (param === undefined) {
                     this.addParseError(parseState.ParseErrors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
                         "warning");
                     this.addParseError(parseState.ParseErrors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
@@ -411,7 +432,9 @@ export class ParseBash {
             }
         }
 
-
+        parseState.builtInParameters.LoggingSupport = this.logDirectorySupported(sections[2], parseState.Parameters);
+        parseState.builtInParameters.InputFileSupport = this.inputFileSupported(sections[0], parseState.Parameters);
+        parseState.builtInParameters.VerboseSupport = this.verboseSupported(sections[0], parseState.Parameters);
         return parseState;
 
 
