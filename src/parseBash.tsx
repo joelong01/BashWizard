@@ -1,5 +1,5 @@
 
-import ParameterModel from './ParameterModel';
+import ParameterModel, { ParameterTypes } from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
 import { IErrorMessage, IBuiltInParameterName } from "./App"
 import { uniqueId } from 'lodash-es';
@@ -23,20 +23,20 @@ export class ParseBash {
         errors.push({ severity: sev, key: uniqueId("PARSEERROR"), message: msg });
     }
     private splitByTwoStrings = (from: string, string1: string, string2: string): string[] => {
-        
+
         let answer: string[] = [];
         if (from.indexOf(string1) !== -1) { // if we have the first string
             answer = from.split(string1);
-            for (let i=answer.length-1; i>=0; i--) { // now look for the second string in each section
-                let a:string =answer[i];
+            for (let i = answer.length - 1; i >= 0; i--) { // now look for the second string in each section
+                let a: string = answer[i];
                 if (a.indexOf(string2) !== -1) { // if it has the second string...
                     answer.splice(i, 1); // take this string out of the asnwer array                    
                     answer = answer.concat(a.split(string2)); //                     
                 }
             }
         }
-                
-        return answer.filter((e) =>  e); // remove empty entries
+
+        return answer.filter((e) => e); // remove empty entries
 
         /*         let regex: string = "/(";
                 console.log(`split params: ${split}`);
@@ -55,23 +55,22 @@ export class ParseBash {
 
     private getStringBetween = (str: string, begin: string, end: string): string | null => {
 
-        const beginIdx:number = str.indexOf(begin);
-        const endIdx:number = str.indexOf(end, beginIdx);
-        if (beginIdx !== -1 && endIdx !== -1)
-        {
-            const answer:string = str.substring(beginIdx + begin.length, endIdx);
+        const beginIdx: number = str.indexOf(begin);
+        const endIdx: number = str.indexOf(end, beginIdx);
+        if (beginIdx !== -1 && endIdx !== -1) {
+            const answer: string = str.substring(beginIdx + begin.length, endIdx);
             return answer;
         }
 
         return null;
-      /*   const regExString: RegExp = new RegExp("(?:" + begin + ")(.*?)(?:" + end + ")", "ig"); // set ig flag for global search and case insensitive
-        const ret: RegExpExecArray | null = regExString.exec(str);
-        if (ret !== null && ret.length > 1) // RegEx has found something and has more than one entry.
-        {
-            return ret[1]; // is the matched group if found
-        }
-
-        return null; */
+        /*   const regExString: RegExp = new RegExp("(?:" + begin + ")(.*?)(?:" + end + ")", "ig"); // set ig flag for global search and case insensitive
+          const ret: RegExpExecArray | null = regExString.exec(str);
+          if (ret !== null && ret.length > 1) // RegEx has found something and has more than one entry.
+          {
+              return ret[1]; // is the matched group if found
+          }
+  
+          return null; */
     }
 
     private findParameterByLongName = (params: ParameterModel[], longParam: string): ParameterModel | undefined => {
@@ -88,7 +87,7 @@ export class ParseBash {
 
         for (let p of params) {
             if (p.variableName === name) {
-                console.log ("log-directory supported");
+                console.log("log-directory supported");
                 return p;
             }
         }
@@ -97,44 +96,59 @@ export class ParseBash {
     //
     //  the built in parameter "LogDirectory" is in the script iff   we have the
     //  "endOfBash" in the script file and we have a long-parameter name "log-directory"
-    public logDirectorySupported = (endOfScript:string, parameters: ParameterModel[]):ParameterModel | undefined => {
-        
+    public logDirectorySupported = (endOfScript: string, parameters: ParameterModel[]): ParameterModel | undefined => {
+
         //
         //  compare to the template
-        const actual:string = endOfScript.replace(/\s/g, "");
-        const desired:string = bashTemplates.endOfBash.replace(/\s/g, "");
+        const actual: string = endOfScript.replace(/\s/g, "");
+        const desired: string = bashTemplates.endOfBash.replace(/\s/g, "");
         if (actual === desired) {
-            
+
             return this.findParameterByLongName(parameters, "log-directory");
         }
         return undefined;
     }
-     //
+    //
     //  the built in parameter "Verbose" is in the script iff  we have the
     //  "endOfBash" in the script file and we have a long-parameter name "log-directory"
-    public verboseSupported = (script:string, parameters: ParameterModel[]):ParameterModel | undefined => {
-        
-        const idx:number = script.indexOf("if [[ $\"verbose\" == true ]];then") ;
-        console.log (`inputFileSupported idx: ${idx}`);
+    public verboseSupported = (script: string, parameters: ParameterModel[]): ParameterModel | undefined => {
+
+        const idx: number = script.indexOf("if [[ $\"verbose\" == true ]];then");
         if (idx !== -1) {
-            
+
             return this.findParameterByLongName(parameters, "verbose");
+        }
+        return undefined;
+    }
+
+    //
+    //  finds create, verify, or delete by looking into the user code to see if the function is declared (e.g. "function onCreate()") and if it "if" statement
+    //  is there e.g. "if [[ $delete == "true" ]]"
+    private findCVD = (script: string, parameters: ParameterModel[], functionLine: string, ifLine: string, longParam: string): ParameterModel | undefined => {
+        const idxFunc: number = script.indexOf(functionLine);
+        const idxIf: number = script.indexOf(ifLine)
+        if (idxFunc !== -1 && idxIf && -1) {
+
+            return this.findParameterByLongName(parameters, longParam);
         }
         return undefined;
     }
     //
     //  the built in paramater "InputFileSupported" is true iff the "input-file" long parameter exists and 
     //  the script has the text "if [ \"\${inputFile}\" != "" ]; then"    
-    public inputFileSupported = (script:string, parameters: ParameterModel[]):ParameterModel | undefined => {
+    public inputFileSupported = (script: string, parameters: ParameterModel[]): ParameterModel | undefined => {
 
-        const idx:number = script.indexOf("if [ \"\${inputFile}\" != \"\" ]; then") ;
-        console.log (`inputFileSupported idx: ${idx}`);
+        const idx: number = script.indexOf("if [ \"\${inputFile}\" != \"\" ]; then");
+
         if (idx !== -1) {
-            
+
             return this.findParameterByLongName(parameters, "input-file");
         }
         return undefined;
     }
+
+    // public findCVDFuncs = (script:string)
+
     public fromBash = (input: string): IParseState => {
         console.log("in fromBash. %o", bashTemplates);
         //
@@ -155,24 +169,24 @@ export class ParseBash {
         //
         //  make sure that we deal with the case of getting a file with EOL == \n\r.  we only want \n
         //  I've also had scenarios where I get only \r...fix those too.
-       /*  if (input.indexOf("\n") !== -1) {
-            //
-            //  we have some new lines, just kill the \r
-            if (input.indexOf("\r") !== -1) {
-                input = input.replace(new RegExp(/\r/, "g"), "");
-
-            }
-        }
-        else if (input.indexOf("\r") !== -1) {
-            // no \n, but we have \r
-            input = input.replace(new RegExp(/\r/,"g"), "\n");
-        }
-        else {
-            // no \r and no \n
-            this.addParseError(parseState.ParseErrors, noNewLines);
-            return parseState;
-        }
- */
+        /*  if (input.indexOf("\n") !== -1) {
+             //
+             //  we have some new lines, just kill the \r
+             if (input.indexOf("\r") !== -1) {
+                 input = input.replace(new RegExp(/\r/, "g"), "");
+ 
+             }
+         }
+         else if (input.indexOf("\r") !== -1) {
+             // no \n, but we have \r
+             input = input.replace(new RegExp(/\r/,"g"), "\n");
+         }
+         else {
+             // no \r and no \n
+             this.addParseError(parseState.ParseErrors, noNewLines);
+             return parseState;
+         }
+  */
 
         //
         // make sure the file doesn't have GIT merge conflicts
@@ -195,7 +209,7 @@ export class ParseBash {
                 the general parse strategy is to separate the user code and then to parse the Bash Wizard Functions to find all the parameter information
                 we *never* want to touch the user code 
 
-         */        
+         */
         const userComments: string[] = ["# --- BEGIN USER CODE ---", "# --- END USER CODE ---"];
         const sections: string[] = this.splitByTwoStrings(input, userComments[0], userComments[1]);
         let bashWizardCode: string = "";
@@ -215,25 +229,25 @@ export class ParseBash {
             case 2:
             case 3:
                 bashWizardCode = sections[0];
-                parseState.UserCode = sections[1].trim();                
+                parseState.UserCode = sections[1].trim();
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
                 this.addParseError(parseState.ParseErrors, tooManyUserComments);
                 return parseState;
         }
-        
+
         //
         //  first look for the bash version
         const versionLine: string = "# bashWizard version ";
         let index: number = bashWizardCode.indexOf(versionLine);
         let userBashVersion: number = 0.1;
         let lines: string[];
-        let startPos:number = 0;
+        let startPos: number = 0;
         let foundDescription: boolean = false;
         if (index > 0) {
             startPos = index + versionLine.length;
-            userBashVersion =  parseFloat(bashWizardCode.substring(startPos, startPos + 5));
+            userBashVersion = parseFloat(bashWizardCode.substring(startPos, startPos + 5));
             if (Number.isNaN(userBashVersion)) {
                 userBashVersion = parseFloat(bashWizardCode.substring(startPos, startPos + 3)); // 0.9 is a version i have out there...
                 if (Number.isNaN(userBashVersion)) {
@@ -250,7 +264,7 @@ export class ParseBash {
             this.addParseError(parseState.ParseErrors, noUsage);
         }
         else {
-            bashFragment = bashFragment.replace(/echoWarning/g, "echo");           
+            bashFragment = bashFragment.replace(/echoWarning/g, "echo");
             bashFragment = bashFragment.replace(new RegExp(/"/, "g"), "");
             lines = bashFragment.split("echo ");
             for (let line of lines) {
@@ -350,8 +364,11 @@ export class ParseBash {
                 if (line === "") {
                     continue;
                 }
-
-                if (line.substring(0, 1) === "-") // we have a parameter!
+                if (line === "- |") {
+                  
+                    continue; // this is an empty parameter
+                }
+                if (line.substring(0, 1) === "-" && lines[index+1] !== undefined) // we have a parameter!
                 {
                     const paramTokens: string[] = lines[index + 1].trim().split("=");
                     if (paramTokens.length !== 2) {
@@ -366,8 +383,8 @@ export class ParseBash {
                             "warning");
                     }
                     // nameTokens[1] looks like "--long-param)
-                    
-                    let longParam: string = nameTokens[1].substring(3, nameTokens[1].length - 1); 
+
+                    let longParam: string = nameTokens[1].substring(3, nameTokens[1].length - 1);
 
                     const param: ParameterModel | undefined = this.findParameterByLongName(parseState.Parameters, longParam);
                     if (param === undefined) {
@@ -410,7 +427,7 @@ export class ParseBash {
                     continue;
                 }
 
-                const varTokens: string[] = line.split("=");                
+                const varTokens: string[] = line.split("=");
                 if (varTokens.length === 0 || varTokens.length > 2) {
                     this.addParseError(parseState.ParseErrors,
                         `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line \"${line}\" was encountered that didn't parse.  it should be in the form of varName=Default`,
@@ -433,8 +450,31 @@ export class ParseBash {
         }
 
         parseState.builtInParameters.LoggingSupport = this.logDirectorySupported(sections[2], parseState.Parameters);
+        if (parseState.builtInParameters.LoggingSupport !== undefined) {
+            parseState.builtInParameters.LoggingSupport.type = ParameterTypes.LoggingSupport;
+        }
         parseState.builtInParameters.InputFileSupport = this.inputFileSupported(sections[0], parseState.Parameters);
+        if (parseState.builtInParameters.InputFileSupport !== undefined) {
+            parseState.builtInParameters.InputFileSupport.type = ParameterTypes.InputFileSupport;
+        }
         parseState.builtInParameters.VerboseSupport = this.verboseSupported(sections[0], parseState.Parameters);
+        if (parseState.builtInParameters.VerboseSupport !== undefined) {
+            parseState.builtInParameters.VerboseSupport.type = ParameterTypes.VerboseSupport;
+        }
+        parseState.builtInParameters.Create = this.findCVD(parseState.UserCode, parseState.Parameters, "function onCreate()", "if [[ $create == \"true\" ]]", "create");
+        if (parseState.builtInParameters.Create !== undefined) {
+            parseState.builtInParameters.Create.type = ParameterTypes.Create;
+        }
+
+        parseState.builtInParameters.Verify = this.findCVD(parseState.UserCode, parseState.Parameters, "function onVerify()", "if [[ $verify == \"true\" ]]", "verify");
+        if (parseState.builtInParameters.Verify !== undefined) {
+            parseState.builtInParameters.Verify.type = ParameterTypes.Verify;
+        }
+        parseState.builtInParameters.Delete = this.findCVD(parseState.UserCode, parseState.Parameters, "function onDelete()", "if [[ $delete == \"true\" ]]", "delete");
+        if (parseState.builtInParameters.Delete !== undefined) {
+            parseState.builtInParameters.Delete.type = ParameterTypes.Delete;
+        }
+
         return parseState;
 
 

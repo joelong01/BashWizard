@@ -8,9 +8,9 @@ export enum ParameterTypes {
     Verify = "Verify",
     Delete = "Delete",
     LoggingSupport = "Logging",
-    InputFileSupport = "InputFile",
+    InputFileSupport = "Input File",
     VerboseSupport = "Verbose",
-    Custom = "Custom Parameter"
+    Custom = "Custom"
 }
 
 //

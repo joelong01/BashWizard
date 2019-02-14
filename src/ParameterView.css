@@ -41,3 +41,8 @@
 {
     margin-left: 0em !important; 
 }
+.parameter-type
+{
+    font-style: italic;
+    font-weight: 500;
+}

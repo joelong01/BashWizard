@@ -94,10 +94,7 @@ interface IAppState {
 
 }
 
-
-
 class App extends React.Component<{}, IAppState> {
-
     private growl = React.createRef<Growl>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
@@ -133,8 +130,28 @@ class App extends React.Component<{}, IAppState> {
                 selectedError: undefined,
                 activeTabIndex: 0,
                 ButtonModel: [
+                    
+                    {
+                        label: 'Add All',
+                        icon: "pi pi-globe",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addVerboseParameter();
+                            await this.addloggingParameter();
+                            await this.addInputFileParameter();
+                            await this.addcvdParameters();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    }, 
+                    {
+                        separator: true,
+                        id: "bw-menu-seperator",
+                        style: {left: "5% !important", border: "black 1px solid !important",padding: "0em !important", height: "2px !important", position: "relative !important", width: "90% !important"}
+                    },
                     {
                         label: 'Add Verbose Support',
+                        icon: "pi pi-camera",
                         command: async () => {
                             this.generateBashScript = false;
                             await this.addVerboseParameter();
@@ -144,6 +161,7 @@ class App extends React.Component<{}, IAppState> {
                     },
                     {
                         label: 'Add Logging Support',
+                        icon: "pi pi-pencil",
                         command: async () => {
                             this.generateBashScript = false;
                             await this.addloggingParameter();
@@ -153,6 +171,7 @@ class App extends React.Component<{}, IAppState> {
                     },
                     {
                         label: 'Add Input File Support',
+                        icon: "pi pi-list",
                         command: async () => {
                             this.generateBashScript = false;
                             await this.addInputFileParameter();
@@ -160,6 +179,7 @@ class App extends React.Component<{}, IAppState> {
                     },
                     {
                         label: 'Add Create, Validate, Delete',
+                        icon: "pi pi-table",
                         command: async () => {
                             this.generateBashScript = false;
                             await this.addcvdParameters();
@@ -167,19 +187,7 @@ class App extends React.Component<{}, IAppState> {
                             await this.updateAllText();
                         }
                     }
-                    ,
-                    {
-                        label: 'Add All Built-in Parameters',
-                        command: async () => {
-                            this.generateBashScript = false;
-                            await this.addVerboseParameter();
-                            await this.addloggingParameter();
-                            await this.addInputFileParameter();
-                            await this.addcvdParameters();
-                            this.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    }
+                   
 
                 ],
                 // these do not get replaced
@@ -1083,7 +1091,7 @@ class App extends React.Component<{}, IAppState> {
                 <Growl ref={this.growl} />
                 <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
-                    <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} /* primary={"second"} */ onDragFinished={(newSize: number) => {
+                    <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} minSize={"125"} onDragFinished={(newSize: number) => {
                         //
                         //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
                         window.dispatchEvent(new Event('resize'));
@@ -1101,7 +1109,7 @@ class App extends React.Component<{}, IAppState> {
                                     </button>
 
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <SplitButton model={this.state.ButtonModel} menuStyle={{width: "16.5em"}} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
                                     
                                 </div>

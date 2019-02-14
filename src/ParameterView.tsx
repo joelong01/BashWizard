@@ -114,10 +114,11 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
             throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
         }
-        if (key === "type") {
+       /*  commenting out because Type is now read only
+            if (key === "type") {
             this.changeType(model);
             this.setState({ type: model.type });
-        }
+        } */
         const obj: object = {}
         obj[key] = model[key];
         await this.setStateAsync(obj);
@@ -128,7 +129,9 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
 
     }
-
+    //
+    //  right now .Type is read only -- but if we wanted to allow a parameter to change, this is the function we would cuse
+    //
     private changeType = (model: ParameterModel): void => {
         try {
             model.FireChangeNotifications = false;
@@ -250,7 +253,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             if (this.state.Model.default !== "") {
                 this.state.Model.oldDefault = this.state.Model.default;
                 this.state.Model.default = "";
-                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "You cannot have a \"Required Property\" and a \"Default\" at the same time.  Reseting \"Default\".  Unselect to restore." });
+                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "You cannot have a \"Required Parameter\" and a \"Default\" at the same time.  Reseting \"Default\".  Unselect to restore." });
             }
 
         }
@@ -262,6 +265,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
 
         this.state.Model.requiredParameter = e.checked;
+        console.log("required Parameter: " + this.state.Model.requiredParameter);
 
         //
         //  do not call this.setState -- this will happen in the notification
@@ -297,9 +301,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
     }
 
-    private onTypeChanged = (e: { originalEvent: Event, value: any }): void => {
-        this.state.Model.type = e.value;  // triggers a call to onPropertyChanged
-    }
 
     //
     //  The state management might look a bit different here than normal at first glance.
@@ -364,15 +365,15 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                     <div className="p-grid checkbox-grid">
                         <div className="p-col-fixed param-column">
                             <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
-                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} />
+                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom}/>
                         </div>
                         <div className="p-col-fixed param-column">
                             <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
-                            <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} />
+                            <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterTypes.Custom}/>
                         </div>
                         <div className="p-col-fixed param-column" >
                             <label className="p-checkbox-label">Parameter Type: </label>
-                            <label className="p-checkbox-label">{this.state.type} </label>
+                            <label className="p-checkbox-label parameter-type">{this.state.type} </label>
                             {/* <Dropdown options=
                             {
                                 [
