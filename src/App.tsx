@@ -6,7 +6,7 @@ import 'primeflex/primeflex.css'
 import React from 'react';
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
-import ParameterModel from './ParameterModel';
+import ParameterModel, { ParameterTypes } from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
 import SplitPane from 'react-split-pane';
 import trim from 'lodash-es/trim';
@@ -25,7 +25,7 @@ import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
 import { YesNoDialog, YesNoResponse } from "./askUserYesNoDlg";
-
+import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
@@ -33,6 +33,7 @@ import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
 import { ParseBash, IParseState } from './parseBash';
+
 
 
 
@@ -65,27 +66,24 @@ enum ValidationOptions {
 
 
 interface IAppState {
-    //
-    //  these get replaced in this.stringify
-    menuOpen: boolean;
+
+    // state that impacts the UI - places in this.stringify
     json: string;
     bash: string;
     input: string;
     SelectedParameter?: ParameterModel;
     debugConfig: string;
     inputJson: string;
-    mode: string; // one of "light" or "dark"
-    builtInParameterSelected: string | null;
-    generateBashScript: boolean;
-
+    mode: string; // one of "light" or "dark"    
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
-    // keep the state of the parameter list so shrinking width doens't break layout
     parameterListHeight: string;
     activeTabIndex: number;
+    ButtonModel: any[];
+
     //
     //  these get stringified
     //  these must match https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ConfigModel.cs
@@ -97,6 +95,7 @@ interface IAppState {
 }
 
 
+
 class App extends React.Component<{}, IAppState> {
 
     private growl = React.createRef<Growl>();
@@ -106,7 +105,7 @@ class App extends React.Component<{}, IAppState> {
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
-
+    private generateBashScript: boolean = true;
 
     constructor(props: {}) {
         super(props);
@@ -119,23 +118,70 @@ class App extends React.Component<{}, IAppState> {
         this.state =
             {
                 //
-                //  these get replaced in this.stringify
-                menuOpen: true,
+                //  these get replaced in this.stringify                
                 json: "",
                 bash: "",
                 input: "",
                 mode: savedMode,
                 debugConfig: "",
                 inputJson: "",
-                builtInParameterSelected: null,
                 parameterListHeight: "calc(100% - 115px)",
-                generateBashScript: true,
                 dialogVisible: false,
                 dialogMessage: "",
                 dialogCallback: this.yesNoReset,
                 errors: [],
                 selectedError: undefined,
                 activeTabIndex: 0,
+                ButtonModel: [
+                    {
+                        label: 'Add Verbose Support',
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addVerboseParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        label: 'Add Logging Support',
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addloggingParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        label: 'Add Input File Support',
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addInputFileParameter();
+                        }
+                    },
+                    {
+                        label: 'Add Create, Validate, Delete',
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addcvdParameters();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    }
+                    ,
+                    {
+                        label: 'Add All Built-in Parameters',
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addVerboseParameter();
+                            await this.addloggingParameter();
+                            await this.addInputFileParameter();
+                            await this.addcvdParameters();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    }
+
+                ],
                 // these do not get replaced
                 ScriptName: "",
                 Description: "",
@@ -223,7 +269,7 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-    private menuDeleteParameter = async (): Promise<void> => {
+    private onDeleteParameter = async (): Promise<void> => {
 
         if (this.state.SelectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.SelectedParameter;
@@ -244,6 +290,8 @@ class App extends React.Component<{}, IAppState> {
                 //
                 //  select the first one if the first one was deleted, otherwise select the previous one
                 this.state.Parameters[index].selected = true;
+
+                this.clearErrorsAndValidateParameters();
             }
             else {
                 console.log("index of selected item is -1!")
@@ -266,10 +314,7 @@ class App extends React.Component<{}, IAppState> {
 
             debugConfig: "",
             inputJson: "",
-            builtInParameterSelected: null,
-
-
-
+          
             // these do not get replaced
             ScriptName: "",
             Description: "",
@@ -319,8 +364,12 @@ class App extends React.Component<{}, IAppState> {
     //  given the state of the app, return a valid bash script
     private toBash = (): string => {
 
-        console.log("ToBash BuiltIns: %o", this.builtInParameters);
+        if (!this.generateBashScript) {
+            return this.state.bash;
+        }
 
+        console.log("ToBash BuiltIns: %o", this.builtInParameters);
+        console.count("toBash:");
         try {
 
             if (this.state.Parameters.length === 0) {
@@ -773,8 +822,9 @@ class App extends React.Component<{}, IAppState> {
         }
         finally {
             this._settingState = false;
-
-            await this.updateAllText();
+            if (name !== "selected" && name !== "focus") {
+                await this.updateAllText();
+            }
         }
 
     }
@@ -789,7 +839,10 @@ class App extends React.Component<{}, IAppState> {
         /*  const list: ParameterModel[] = this.state.Parameters.concat(model);
          await this.setStateAsync({ Parameters: list }) */
 
-        this.setState({ Parameters: [...this.state.Parameters, model] });
+        //
+        //  if you just call setState() on this, then the call to updateAllText() calls toBash()
+        //  and toBash() reads this.state.Parameters and the item won't be there. 
+        await this.setStateAsync({ Parameters: [...this.state.Parameters, model] });
         await this.updateAllText();
 
         // tslint:disable-next-line
@@ -815,6 +868,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "$2";
         p.variableName = "inputFile";
+        p.type = ParameterTypes.InputFileSupport;
         this.builtInParameters.InputFileSupport = p;
         await this.addParameter(p, true);
 
@@ -831,11 +885,13 @@ class App extends React.Component<{}, IAppState> {
         p.default = "false";
         p.description = "echos script data";
         p.longParameter = "verbose";
+        p.type = ParameterTypes.VerboseSupport;
         p.shortParameter = "b";
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
         p.variableName = "verbose"
+        p.type = ParameterTypes.VerboseSupport;
         this.builtInParameters.VerboseSupport = p;
         await this.addParameter(p, true);
 
@@ -856,9 +912,11 @@ class App extends React.Component<{}, IAppState> {
         p.description = "Directory for the log file. The log file name will be based on the script name.";
         p.variableName = "logDirectory";
         p.default = "\"./\"";
+        p.type = ParameterTypes.LoggingSupport;
         p.requiresInputString = true;
         p.requiredParameter = false;
         p.valueIfSet = "$2";
+        p.type = ParameterTypes.LoggingSupport;
         this.builtInParameters.LoggingSupport = p;
         await this.addParameter(p, true);
 
@@ -886,6 +944,7 @@ class App extends React.Component<{}, IAppState> {
         p.registerNotify(this.onPropertyChanged)
         p.selected = false;
         this.builtInParameters.Create = p;
+        p.type = ParameterTypes.Create;
         params.push(p);
         if (this.builtInParameters.Verify !== undefined) {
             await this.deleteParameter(this.builtInParameters.Verify);
@@ -903,6 +962,7 @@ class App extends React.Component<{}, IAppState> {
         p.registerNotify(this.onPropertyChanged)
         p.selected = false;
         this.builtInParameters.Verify = p;
+        p.type = ParameterTypes.Verify;
         params.push(p);
 
         if (this.builtInParameters.Delete !== undefined) {
@@ -921,39 +981,13 @@ class App extends React.Component<{}, IAppState> {
         p.registerNotify(this.onPropertyChanged)
         p.selected = false;
         this.builtInParameters.Delete = p;
+        p.type = ParameterTypes.Delete;
         params.push(p);
 
         this.setState({ Parameters: [...this.state.Parameters, ...params] });
 
     }
-    //
-    //  message handler for the toolbar button "add"
-    private addBuiltIn = async () => {
-        switch (this.state.builtInParameterSelected) {
-            case "inputFileParameter":
-                await this.addInputFileParameter();
-                break;
-            case "verboseParameter":
-                await this.addVerboseParameter();
-                break;
-            case "loggingParameter":
-                await this.addloggingParameter();
-                break;
-            case "cvdParameters":
-                await this.addcvdParameters();
-                break;
-            case "All":
-                await this.addInputFileParameter();
-                await this.addVerboseParameter();
-                await this.addloggingParameter();
-                await this.addcvdParameters();
-                break;
-            default:
-                console.log(`WARNING: ${this.state.builtInParameterSelected} is not supported in addBuiltIn`)
-                break;
 
-        }
-    }
 
 
     private setStateAsync = (newState: object): Promise<void> => {
@@ -1067,24 +1101,9 @@ class App extends React.Component<{}, IAppState> {
                                     </button>
 
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.menuDeleteParameter()} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Add" icon="pi pi-list" onClick={this.addBuiltIn} />
-                                    <Dropdown options=
-                                        {
-                                            [
-                                                { label: "All Built Ins", value: "All" },
-                                                { label: "Verbose", value: "verboseParameter" },
-                                                { label: "Input File Support", value: "inputFileParameter" },
-                                                { label: "Logging Support", value: "loggingParameter" },
-                                                { label: "Create, Verify, Delete", value: "cvdParameters" }
-                                            ]
-                                        }
-                                        placeholder="Select Parameter"
-                                        style={{ width: "165px", marginLeft: "5px" }}
-                                        value={this.state.builtInParameterSelected}
-                                        onChange={(e: { originalEvent: Event, value: any }) => this.setState({ builtInParameterSelected: e.value })}
-                                    />
+                                    <SplitButton model={this.state.ButtonModel} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
+                                    
                                 </div>
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
@@ -1092,7 +1111,7 @@ class App extends React.Component<{}, IAppState> {
                                         onChange={async (e: { originalEvent: Event, value: boolean }) => {
                                             await this.setStateAsync({ mode: e.value ? "dark" : "light" });
                                             this.saveSettings();
-                                            this.growlCallback({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
+                                            this.growl.current!.show({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
                                         }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
@@ -1107,7 +1126,7 @@ class App extends React.Component<{}, IAppState> {
                                                 onBlur={async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
                                                     const end: string = e.currentTarget.value!.slice(-3);
                                                     if (end !== ".sh" && end !== "") {
-                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
+                                                        this.growl.current!.show({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
                                                         await this.setStateAsync({ ScriptName: e.currentTarget.value + ".sh" });
                                                         // tslint:disable-next-line
                                                         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
@@ -1234,7 +1253,7 @@ class App extends React.Component<{}, IAppState> {
             //  do it in this order in case the json parse throws, we don't wipe any UI
             const objs = JSON.parse(json);
             this.reset()
-            this._loading = true;
+            this.generateBashScript = false;
             await this.setStateAsync({
                 ScriptName: objs.ScriptName,
                 Description: objs.Description,
@@ -1254,6 +1273,8 @@ class App extends React.Component<{}, IAppState> {
                 model.shortParameter = p.ShortParameter;
                 model.variableName = p.VariableName;
                 model.requiresInputString = p.RequiresInputString;
+                model.registerNotify(this.onPropertyChanged);
+                model.uniqueName = uniqueId("JSON_PARAMETER");
                 params.push(model)
             }
             await this.setStateAsync({ Parameters: params })
@@ -1261,10 +1282,10 @@ class App extends React.Component<{}, IAppState> {
             this.state.Parameters[0].selected = true;
         }
         catch (e) {
-            this.setState({ bash: "Error parsing JSON" + e.message });
+            this.addErrorMessage("warning", `Error parsing JSON: ${e}`);
         }
         finally {
-            this._loading = false;
+            this.generateBashScript = true;
             await this.updateAllText();
 
         }
