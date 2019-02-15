@@ -180,7 +180,8 @@ export class ParameterModel {
     }
     public set longParameter(value: string) {
         if (value !== this.LongParameter) {
-            this.LongParameter = value.replace(new RegExp(/^-{2}/, "i"), "");
+            this.LongParameter = value.replace(new RegExp(/^-{2}/, "i"), ""); // get rid of starting --
+            this.LongParameter = this.LongParameter.replace(new RegExp(/\s/, "g"), "-"); // no whitespace in variable names
             this.NotifyPropertyChanged("longParameter")
         }
     }
@@ -191,6 +192,7 @@ export class ParameterModel {
     public set shortParameter(value: string) {
         if (value !== this.ShortParameter) {
             this.ShortParameter = value.replace(new RegExp(/^-{1}/, "i"), "");
+            this.ShortParameter = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("shortParameter")
         }
     }
@@ -222,6 +224,7 @@ export class ParameterModel {
     set variableName(value: string) {
         if (value !== this.VariableName) {
             this.VariableName = value;
+            this.VariableName = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("variableName")
         }
     }

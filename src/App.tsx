@@ -21,6 +21,7 @@ import { Button } from 'primereact/button';
 import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
+import MenuModel from "primereact/menu"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
@@ -145,9 +146,8 @@ class App extends React.Component<{}, IAppState> {
                         }
                     }, 
                     {
-                        separator: true,
-                        id: "bw-menu-seperator",
-                        style: {left: "5% !important", border: "black 1px solid !important",padding: "0em !important", height: "2px !important", position: "relative !important", width: "90% !important"}
+                        //  target allows us to use CSS to style this item               
+                        disabled: true, target: 'separator'
                     },
                     {
                         label: 'Add Verbose Support',
@@ -204,6 +204,7 @@ class App extends React.Component<{}, IAppState> {
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
     }
+    
     //
     //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
     //  this means that if we set the height of the parameter list in css, then we have to
