@@ -11,7 +11,8 @@ import "./index.css"
 
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
-import { uniqueId } from 'lodash-es';
+import { Button } from "primereact/button"
+import { uniqueId, stubFalse } from 'lodash-es';
 
 
 
@@ -37,6 +38,8 @@ interface IParameterState {
     selected: boolean;
     GrowlCallback: IGrowlCallback;
     type: ParameterTypes;
+    collapsed: boolean;
+    uniqueId: string;
 }
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
@@ -45,8 +48,10 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     private refLongName = React.createRef<HTMLInputElement>();
     constructor(props: IParameterProperties) {
         super(props);
-
+        const id: string = uniqueId("ParameterView");
+        console.log("creating ParameterView: " + id);
         this.state = {
+            uniqueId: id,
             default: this.props.Model.default,
             description: this.props.Model.description,
             longParameter: this.props.Model.longParameter,
@@ -58,7 +63,8 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             selected: false,
             Model: this.props.Model,
             GrowlCallback: this.props.GrowlCallback,
-            type: this.props.Model.type
+            type: this.props.Model.type,
+            collapsed: this.props.Model.type !== ParameterTypes.Custom
         };
 
         this._updatingModel = false;
@@ -90,6 +96,23 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         });
     }
 
+    public focus = () => {
+
+        /* const longParamInputClassName: string = "param-input " + this.state.uniqueId;
+        console.log("setting focus to " + longParamInputClassName)
+        const input:any = window.document.getElementsByClassName(longParamInputClassName)[0];
+        input.focus(); */
+        this.setState({ collapsed: false }, () => {
+            if (this.refLongName.current !== null) {
+                console.log("setting focus to " + this.state.uniqueId);
+                const reactTypeScriptWorkAround: any = this.refLongName.current;
+                reactTypeScriptWorkAround.element.focus();
+            }
+        });
+
+
+
+    }
     //
     //  this is the callback from the model...if the App changes the data
     //  (e.g. picks a short name), then the model calls here.  You might think
@@ -103,10 +126,10 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
     public onPropertyChanged = async (model: ParameterModel, key: string) => {
 
-        //  console.log(`ParameterView.onPropertyChanged: [${key}=${model[key]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
+        // console.log(`ParameterView.onPropertyChanged: [${key}=${model[key]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
 
-        if (key === "focus" && this.refParameterForm.current !== null) {
-            this.refParameterForm.current.focus();
+        if (key === "focus" && this.refLongName.current !== null) {
+            this.focus();
             return;
         }
 
@@ -284,11 +307,12 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         const value: string = e.currentTarget.value;
         const obj: object = {}
         obj[key] = value;
-        
+
 
         if (key === "shortParameter") {
-            if (value.length > 1){
-                this.setState({shortParameter: e.currentTarget.value.substr(-1)}); // short parameter can only be one char long -- always put in the last one typed
+            if (value.length > 1) {
+                console.log("trimming parameter)")
+                this.setState({ shortParameter: e.currentTarget.value.substr(-1) }); // short parameter can only be one char long -- always put in the last one typed
                 return;
             }
         }
@@ -318,78 +342,79 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  which will then call this.setState()
     //
     public render = () => {
-        return (
-            <Fieldset className="parameter-field-set"
-                toggleable={true}
-                collapsed={this.state.type !== ParameterTypes.Custom}
-                legend={this.state.type === ParameterTypes.Custom ? `${this.state.type} (${this.state.Model.longParameter})` : this.state.type}>
-                <fieldset className="parameter-field-set" style={{ borderWidth: "0px", margin: "0px", padding: "0px" }} disabled={this.state.type !== ParameterTypes.Custom}> {/* need this to make it easy to disable the built in params*/}
-                    <div className="parameterItem"
-                        onFocus={() => {
-                            this.state.Model.selected = true;
-                            /*  this was an attempt to set the focus on the first input box whenever the form got focus 
-                                it doesn't work -- not sure why. will debug later.
-                                if (this.refLongName.current !== null){
-                                this.refLongName.current.focus();
-                            } */
-                        }}
-                        ref={this.refParameterForm} tabIndex={0} >
-                        <div className="p-grid parameter-item-grid">
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="longParameter" className="param-label">Long Name</label>
-                                </span>
-                            </div>
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText id="shortParameter" spellCheck={false} value={this.state.shortParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="shortParameter" className="param-label">Short Name</label>
-                                </span>
-                            </div>
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="variableName" className="param-label">Variable Name</label>
-                                </span>
-                            </div>
-                        </div>
-                        <div className="p-grid parameter-item-grid">
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="default" className="param-label">Default</label>
-                                </span>
-                            </div>
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText id="description" spellCheck={false} value={this.state.description} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="description" className="param-label">Description</label>
-                                </span>
-                            </div>
 
-                            <div className="p-col-fixed param-column">
-                                <span className="p-float-label">
-                                    <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} />
-                                    <label htmlFor="valueIfSet" className="param-label">Value if Set</label>
-                                </span>
-                            </div>
+        return (
+            <div className="parameter-layout-root" key={this.state.uniqueId}
+               /*  onClick={() => {console.log("root clicked"); this.state.Model.selected = true; this.focus(); }}
+                onFocus={() => { this.state.Model.selected = true; this.focus(); }} */>
+                <Button className="collapse-button p-button-secondary"
+                    icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
+                    onClick={() => this.setState({ collapsed: !this.state.collapsed })} />
+                <fieldset className={this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset"}
+                    disabled={this.state.type !== ParameterTypes.Custom}
+                /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}
+                onClick={() => { console.log("fieldset clicked"); this.state.Model.selected = true; this.focus(); }} */
+                >
+                    <legend>{this.state.type === ParameterTypes.Custom ? `${this.state.type} ${this.state.Model.longParameter}` : this.state.type}</legend>
+                    <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
+                    /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
+                    >
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter}
+                                    className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="longParameter" className="param-label">Long Name</label>
+                            </span>
                         </div>
-                        <div className="p-grid checkbox-grid">
-                            <div className="p-col-fixed param-column">
-                                <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
-                                <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom} />
-                            </div>
-                            <div className="p-col-fixed param-column">
-                                <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
-                                <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterTypes.Custom} />
-                            </div>
-                            <div className="p-col-fixed param-column" />
-                                                           
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText id="shortParameter" spellCheck={false} value={this.state.shortParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="shortParameter" className="param-label">Short Name</label>
+                            </span>
                         </div>
-                    </div >
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="variableName" className="param-label">Variable Name</label>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="p-grid parameter-item-grid">
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="default" className="param-label">Default</label>
+                            </span>
+                        </div>
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText id="description" spellCheck={false} value={this.state.description} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="description" className="param-label">Description</label>
+                            </span>
+                        </div>
+
+                        <div className="p-col-fixed param-column">
+                            <span className="p-float-label">
+                                <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <label htmlFor="valueIfSet" className="param-label">Value if Set</label>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="p-grid checkbox-grid">
+                        <div className="p-col-fixed param-column">
+                            <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
+                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom} />
+                        </div>
+                        <div className="p-col-fixed param-column">
+                            <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
+                            <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterTypes.Custom} />
+                        </div>
+                        <div className="p-col-fixed param-column" />
+
+                    </div>
                 </fieldset>
-            </Fieldset>
+            </div>
+
 
 
         )

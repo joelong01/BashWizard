@@ -1,55 +1,66 @@
-.parameterItem
-{
-    border: 1px solid;
-    height: 10.5em;
+.parameter-layout-root{
+    background-color: transparent;
+    margin-bottom: 0.25em;
+}
+.parameter-item-grid{
+    position: relative;    
+    height: 3.25em;
     border-radius: .25em;
     padding: .5em;
     margin: .5em;
-    width: calc(100% - 1.0em);
+    width: calc(100% - 1.0em);    
+   
 }
 
-.param-label
-{
+.parameter-item-grid-collapsed{
+  visibility: collapse;
+    
+}
+.parameter-fieldset{
+    margin: -1.5em 0.25em 0em 1.25em;   
+    border: 1px solid black;
+    border-radius: .25em;
+    height: 10em;
+   
+    
+}
+.parameter-fieldset-collapsed{
+    height: 2em !important;
+    overflow: hidden;   
+    border: 0em; 
+}
+
+.parameter-fieldset:focus-within{
+    border: 3px solid blue;
+    border-radius: .25em;
+}
+
+
+
+.param-label{
     margin: 10px;
 }
 
-.param-input
-{    
+.param-input{    
     width: 100%;    
 }
 
-.param-column
-{
+.param-column{
     width: 33%;
 }
 
-.parameter-item-grid
-{
-    margin-top: .5em !important;
-}
-
-.checkbox-grid
-{
+.checkbox-grid{
     margin-top: -.75em !important;
     margin-left: 0em;
 }
-.p-checkbox-label
-{
+
+.p-checkbox-label{
     margin-left: 0em !important; 
 }
-.parameter-type
-{
-    font-style: italic;
-    font-weight: 500;
-}
-
-.parameter-field-set
-{
-    margin: 0.5em;
-}
-
-.parameter-field-set:focus-within
-{
-    border: 3px solid blue;
-    border-radius: .25em;
+.collapse-button{
+    margin-left: 1em!important;
+    top: .5em;
+    width: 1em !important;
+    height: 1em;
+    z-index: 10;
 }

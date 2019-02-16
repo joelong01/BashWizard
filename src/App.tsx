@@ -900,7 +900,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         p.variableName = "verbose"
-        p.type = ParameterTypes.VerboseSupport;
+        p.type = ParameterTypes.VerboseSupport;        
         this.builtInParameters.VerboseSupport = p;
         await this.addParameter(p, true);
 
