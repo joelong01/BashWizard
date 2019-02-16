@@ -355,7 +355,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                 /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}
                 onClick={() => { console.log("fieldset clicked"); this.state.Model.selected = true; this.focus(); }} */
                 >
-                    <legend>{this.state.type === ParameterTypes.Custom ? `${this.state.type} ${this.state.Model.longParameter}` : this.state.type}</legend>
+                    <legend>{this.state.type === ParameterTypes.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
                     <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
                     /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
                     >
