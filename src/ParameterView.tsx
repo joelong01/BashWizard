@@ -64,7 +64,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             Model: this.props.Model,
             GrowlCallback: this.props.GrowlCallback,
             type: this.props.Model.type,
-            collapsed: this.props.Model.type !== ParameterTypes.Custom
+            collapsed: this.props.Model.collapsed
         };
 
         this._updatingModel = false;
@@ -136,7 +136,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         if (!(key in this.state)) {
             console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
             throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
-        }
+        }        
         /*  commenting out because Type is now read only
              if (key === "type") {
              this.changeType(model);
@@ -146,6 +146,10 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         obj[key] = model[key];
         await this.setStateAsync(obj);
 
+        if (key === "collapsed") {
+            console.log(`setting collapsed=${model[key]} for ${model.longParameter}`)
+        }
+        
         if (key === "selected" && model.selected === true && this.refParameterForm.current !== null) {
             this.refParameterForm.current.focus();
         }
@@ -351,7 +355,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
                     onClick={() => this.setState({ collapsed: !this.state.collapsed })} />
                 <fieldset className={this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset"}
-                    disabled={this.state.type !== ParameterTypes.Custom}
+                    
                 /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}
                 onClick={() => { console.log("fieldset clicked"); this.state.Model.selected = true; this.focus(); }} */
                 >
@@ -360,9 +364,9 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                     /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
                     >
                         <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
+                            <span className="p-float-label" >
                                 <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter}
-                                    className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} />
+                                    className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom} />
                                 <label htmlFor="longParameter" className="param-label">Long Name</label>
                             </span>
                         </div>
@@ -374,7 +378,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                         </div>
                         <div className="p-col-fixed param-column">
                             <span className="p-float-label">
-                                <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
                                 <label htmlFor="variableName" className="param-label">Variable Name</label>
                             </span>
                         </div>
@@ -382,7 +386,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                     <div className="p-grid parameter-item-grid">
                         <div className="p-col-fixed param-column">
                             <span className="p-float-label">
-                                <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
                                 <label htmlFor="default" className="param-label">Default</label>
                             </span>
                         </div>
@@ -395,15 +399,15 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
                         <div className="p-col-fixed param-column">
                             <span className="p-float-label">
-                                <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} />
+                                <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
                                 <label htmlFor="valueIfSet" className="param-label">Value if Set</label>
                             </span>
                         </div>
                     </div>
-                    <div className="p-grid checkbox-grid">
+                    <div className="p-grid checkbox-grid" >
                         <div className="p-col-fixed param-column">
                             <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
-                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom} />
+                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom}  />
                         </div>
                         <div className="p-col-fixed param-column">
                             <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>

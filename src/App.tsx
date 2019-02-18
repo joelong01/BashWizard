@@ -877,6 +877,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "$2";
         p.variableName = "inputFile";
+        p.collapsed = true;
         p.type = ParameterTypes.InputFileSupport;
         this.builtInParameters.InputFileSupport = p;
         await this.addParameter(p, true);
@@ -900,6 +901,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "true";
         p.variableName = "verbose"
+        p.collapsed = true;
         p.type = ParameterTypes.VerboseSupport;        
         this.builtInParameters.VerboseSupport = p;
         await this.addParameter(p, true);
@@ -925,6 +927,7 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = true;
         p.requiredParameter = false;
         p.valueIfSet = "$2";
+        p.collapsed = true;
         p.type = ParameterTypes.LoggingSupport;
         this.builtInParameters.LoggingSupport = p;
         await this.addParameter(p, true);
@@ -954,6 +957,7 @@ class App extends React.Component<{}, IAppState> {
         p.selected = false;
         this.builtInParameters.Create = p;
         p.type = ParameterTypes.Create;
+        p.collapsed = true;
         params.push(p);
         if (this.builtInParameters.Verify !== undefined) {
             await this.deleteParameter(this.builtInParameters.Verify);
@@ -970,6 +974,7 @@ class App extends React.Component<{}, IAppState> {
         p.uniqueName = uniqueId("PARAMETER_DIV_")
         p.registerNotify(this.onPropertyChanged)
         p.selected = false;
+        p.collapsed = true;
         this.builtInParameters.Verify = p;
         p.type = ParameterTypes.Verify;
         params.push(p);
@@ -990,6 +995,7 @@ class App extends React.Component<{}, IAppState> {
         p.registerNotify(this.onPropertyChanged)
         p.selected = false;
         this.builtInParameters.Delete = p;
+        p.collapsed = true;
         p.type = ParameterTypes.Delete;
         params.push(p);
 
@@ -1112,6 +1118,22 @@ class App extends React.Component<{}, IAppState> {
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
                                     <SplitButton model={this.state.ButtonModel} menuStyle={{width: "16.5em"}} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Expand All" icon="pi pi-eye" 
+                                            onClick={ () => { 
+                                                console.log ("callapseAll=false");
+                                                this.generateBashScript = false;
+                                                this.state.Parameters.map( (p) => p.collapsed = false);
+                                                this.generateBashScript = true;
+                                            }} 
+                                            style={{ marginRight: '.25em' }}/>
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Collapse All" icon="pi pi-eye-slash" 
+                                            onClick={ () => { 
+                                                console.log ("callapseAll=true");
+                                                this.generateBashScript = false;
+                                                this.state.Parameters.map( (p) => p.collapsed = true);
+                                                this.generateBashScript = true;
+                                            }} 
+                                            style={{ marginRight: '.25em' }} />
                                     
                                 </div>
                                 <div className="p-toolbar-group-right">
@@ -1281,6 +1303,7 @@ class App extends React.Component<{}, IAppState> {
                 model.requiredParameter = p.RequiredParameter;
                 model.shortParameter = p.ShortParameter;
                 model.variableName = p.VariableName;
+                model.collapsed = p.collapsed;
                 model.requiresInputString = p.RequiresInputString;
                 model.registerNotify(this.onPropertyChanged);
                 model.uniqueName = uniqueId("JSON_PARAMETER");

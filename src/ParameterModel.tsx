@@ -28,6 +28,7 @@ export class ParameterModel {
     private ValueIfSet: string = "";
     private Type: ParameterTypes = ParameterTypes.Custom;
     private fireChangeNotifications: boolean = true;
+    private _collapsed:boolean = false;
 
     private propertyChangedNotify: INotifyPropertyChanged[] = []
 
@@ -53,6 +54,18 @@ export class ParameterModel {
 
             this.fireChangeNotifications = value;
 
+        }
+    }
+
+    get collapsed(): boolean {
+        return this._collapsed;
+    }
+
+    set collapsed(value: boolean) {
+        if (value !== this._collapsed) {
+
+            this._collapsed = value;
+            this.NotifyPropertyChanged("collapsed");
         }
     }
 

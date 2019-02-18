@@ -9,11 +9,13 @@
     padding: .5em;
     margin: .5em;
     width: calc(100% - 1.0em);    
-   
+    transition: all 10ms linear;
+    
 }
 
 .parameter-item-grid-collapsed{
   visibility: collapse;
+  opacity: 0.0;
     
 }
 .parameter-fieldset{
@@ -21,6 +23,9 @@
     border: 1px solid black;
     border-radius: .25em;
     height: 10em;
+    transition: all 100ms linear;
+    transition-delay: 25ms;
+    
    
     
 }
