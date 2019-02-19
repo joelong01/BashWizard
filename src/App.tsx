@@ -6,7 +6,7 @@ import 'primeflex/primeflex.css'
 import React from 'react';
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
-import ParameterModel from './ParameterModel';
+import ParameterModel, { ParameterTypes } from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
 import SplitPane from 'react-split-pane';
 import trim from 'lodash-es/trim';
@@ -21,11 +21,12 @@ import { Button } from 'primereact/button';
 import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Dropdown } from "primereact/dropdown"
+import MenuModel from "primereact/menu"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
 import { YesNoDialog, YesNoResponse } from "./askUserYesNoDlg";
-
+import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
@@ -33,6 +34,7 @@ import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
 import { ParseBash, IParseState } from './parseBash';
+
 
 
 
@@ -65,27 +67,24 @@ enum ValidationOptions {
 
 
 interface IAppState {
-    //
-    //  these get replaced in this.stringify
-    menuOpen: boolean;
+
+    // state that impacts the UI - places in this.stringify
     json: string;
     bash: string;
     input: string;
     SelectedParameter?: ParameterModel;
     debugConfig: string;
     inputJson: string;
-    mode: string; // one of "light" or "dark"
-    builtInParameterSelected: string | null;
-    generateBashScript: boolean;
-
+    mode: string; // one of "light" or "dark"    
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
-    // keep the state of the parameter list so shrinking width doens't break layout
     parameterListHeight: string;
     activeTabIndex: number;
+    ButtonModel: any[];
+
     //
     //  these get stringified
     //  these must match https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ConfigModel.cs
@@ -96,9 +95,7 @@ interface IAppState {
 
 }
 
-
 class App extends React.Component<{}, IAppState> {
-
     private growl = React.createRef<Growl>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
@@ -106,7 +103,7 @@ class App extends React.Component<{}, IAppState> {
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
-
+    private generateBashScript: boolean = true;
 
     constructor(props: {}) {
         super(props);
@@ -119,23 +116,82 @@ class App extends React.Component<{}, IAppState> {
         this.state =
             {
                 //
-                //  these get replaced in this.stringify
-                menuOpen: true,
+                //  these get replaced in this.stringify                
                 json: "",
                 bash: "",
                 input: "",
                 mode: savedMode,
                 debugConfig: "",
                 inputJson: "",
-                builtInParameterSelected: null,
                 parameterListHeight: "calc(100% - 115px)",
-                generateBashScript: true,
                 dialogVisible: false,
                 dialogMessage: "",
                 dialogCallback: this.yesNoReset,
                 errors: [],
                 selectedError: undefined,
                 activeTabIndex: 0,
+                ButtonModel: [
+
+                    {
+                        label: 'Add All',
+                        icon: "pi pi-globe",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addVerboseParameter();
+                            await this.addloggingParameter();
+                            await this.addInputFileParameter();
+                            await this.addcvdParameters();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        //  target allows us to use CSS to style this item               
+                        disabled: true, target: 'separator'
+                    },
+                    {
+                        label: 'Add Verbose Support',
+                        icon: "pi pi-camera",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addVerboseParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        label: 'Add Logging Support',
+                        icon: "pi pi-pencil",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addloggingParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        label: 'Add Input File Support',
+                        icon: "pi pi-list",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addInputFileParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    },
+                    {
+                        label: 'Add Create, Validate, Delete',
+                        icon: "pi pi-table",
+                        command: async () => {
+                            this.generateBashScript = false;
+                            await this.addcvdParameters();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
+                        }
+                    }
+
+
+                ],
                 // these do not get replaced
                 ScriptName: "",
                 Description: "",
@@ -150,6 +206,7 @@ class App extends React.Component<{}, IAppState> {
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
     }
+
     //
     //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
     //  this means that if we set the height of the parameter list in css, then we have to
@@ -223,27 +280,19 @@ class App extends React.Component<{}, IAppState> {
 
     }
 
-    private menuDeleteParameter = async (): Promise<void> => {
+    private onDeleteParameter = async (): Promise<void> => {
 
         if (this.state.SelectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.SelectedParameter;
-            this.state.SelectedParameter.selected = false;
             let index: number = this.state.Parameters.indexOf(this.state.SelectedParameter)
             if (index !== -1) {
-                await this.deleteParameter(toDelete) // after this point the state has been changed
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
-                const newLength = this.state.Parameters.length;
-                if (newLength === 0) {
-                    return;
-                }
-                if (index === newLength) {
-                    index--;
-                }
 
-                //
-                //  select the first one if the first one was deleted, otherwise select the previous one
-                this.state.Parameters[index].selected = true;
+                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined                
+                this.selectParameter(toSelect); // select a new one (or nothing)
+                await this.deleteParameter(toDelete) // delte the one we want            
+                this.clearErrorsAndValidateParameters();
             }
             else {
                 console.log("index of selected item is -1!")
@@ -266,9 +315,6 @@ class App extends React.Component<{}, IAppState> {
 
             debugConfig: "",
             inputJson: "",
-            builtInParameterSelected: null,
-
-
 
             // these do not get replaced
             ScriptName: "",
@@ -319,8 +365,11 @@ class App extends React.Component<{}, IAppState> {
     //  given the state of the app, return a valid bash script
     private toBash = (): string => {
 
-        console.log("ToBash BuiltIns: %o", this.builtInParameters);
+        if (!this.generateBashScript) {
+            return this.state.bash;
+        }
 
+        // console.count("toBash:");
         try {
 
             if (this.state.Parameters.length === 0) {
@@ -710,6 +759,20 @@ class App extends React.Component<{}, IAppState> {
         return this.state.errors.length === 0;
     }
 
+    private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
+
+        if (this.state.SelectedParameter === toSelect) {
+            return;
+        }
+        if (this.state.SelectedParameter !== undefined) {
+            this.state.SelectedParameter.selected = false; // old selected no longer selected
+        }
+        if (toSelect !== undefined) {
+            toSelect.selected = true;
+        }
+        await this.setStateAsync({ SelectedParameter: toSelect })
+    }
+
     //
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
@@ -729,13 +792,7 @@ class App extends React.Component<{}, IAppState> {
 
             this._settingState = true;
             if (name === "selected") {
-                if (this.state.SelectedParameter === parameter) {
-                    return;
-                }
-                if (this.state.SelectedParameter !== undefined) {
-                    this.state.SelectedParameter.selected = false; // old selected no longer selected
-                }
-                await this.setStateAsync({ SelectedParameter: parameter })
+                await this.selectParameter(parameter);
                 return;
             }
 
@@ -773,8 +830,9 @@ class App extends React.Component<{}, IAppState> {
         }
         finally {
             this._settingState = false;
-
-            await this.updateAllText();
+            if (name !== "selected" && name !== "focus") {
+                await this.updateAllText();
+            }
         }
 
     }
@@ -784,17 +842,19 @@ class App extends React.Component<{}, IAppState> {
 
         model.uniqueName = uniqueId("PARAMETER_DIV_")
         model.registerNotify(this.onPropertyChanged)
-        model.selected = select;
-
-        /*  const list: ParameterModel[] = this.state.Parameters.concat(model);
-         await this.setStateAsync({ Parameters: list }) */
-
-        this.setState({ Parameters: [...this.state.Parameters, model] });
+        
+        //
+        //  if you just call setState() on this, then the call to updateAllText() calls toBash()
+        //  and toBash() reads this.state.Parameters and the item won't be there. 
+        await this.setStateAsync({ Parameters: [...this.state.Parameters, model] });
         await this.updateAllText();
 
         // tslint:disable-next-line
-        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors);
-
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
+        model.FireChangeNotifications = true;
+        if (select) {
+            await this.selectParameter(model);
+        }
 
     }
 
@@ -815,6 +875,8 @@ class App extends React.Component<{}, IAppState> {
         p.requiredParameter = false;
         p.valueIfSet = "$2";
         p.variableName = "inputFile";
+        p.collapsed = true;
+        p.type = ParameterTypes.InputFileSupport;
         this.builtInParameters.InputFileSupport = p;
         await this.addParameter(p, true);
 
@@ -831,11 +893,14 @@ class App extends React.Component<{}, IAppState> {
         p.default = "false";
         p.description = "echos script data";
         p.longParameter = "verbose";
+        p.type = ParameterTypes.VerboseSupport;
         p.shortParameter = "b";
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
         p.variableName = "verbose"
+        p.collapsed = true;
+        p.type = ParameterTypes.VerboseSupport;
         this.builtInParameters.VerboseSupport = p;
         await this.addParameter(p, true);
 
@@ -856,9 +921,12 @@ class App extends React.Component<{}, IAppState> {
         p.description = "Directory for the log file. The log file name will be based on the script name.";
         p.variableName = "logDirectory";
         p.default = "\"./\"";
+        p.type = ParameterTypes.LoggingSupport;
         p.requiresInputString = true;
         p.requiredParameter = false;
         p.valueIfSet = "$2";
+        p.collapsed = true;
+        p.type = ParameterTypes.LoggingSupport;
         this.builtInParameters.LoggingSupport = p;
         await this.addParameter(p, true);
 
@@ -866,12 +934,15 @@ class App extends React.Component<{}, IAppState> {
 
     private addcvdParameters = async () => {
 
-        let params: ParameterModel[] = []
-        //
-        //  this way we always go back to the default - e.g. if somebody messes with the built in then
-        //  they can just readd it and the right thing will happen.
+        
+        if (this.builtInParameters.Verify !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Verify);
+        }
         if (this.builtInParameters.Create !== undefined) {
             await this.deleteParameter(this.builtInParameters.Create);
+        }
+        if (this.builtInParameters.Delete !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Delete);
         }
         let p: ParameterModel = new ParameterModel();
         p.longParameter = "create";
@@ -882,14 +953,12 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
+        
         this.builtInParameters.Create = p;
-        params.push(p);
-        if (this.builtInParameters.Verify !== undefined) {
-            await this.deleteParameter(this.builtInParameters.Verify);
-        }
+        p.type = ParameterTypes.Create;
+        p.collapsed = true;
+        await this.addParameter(p,false);
+        
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -899,15 +968,11 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
+        p.collapsed = true;
         this.builtInParameters.Verify = p;
-        params.push(p);
+        p.type = ParameterTypes.Verify;
+        await this.addParameter(p, false);
 
-        if (this.builtInParameters.Delete !== undefined) {
-            await this.deleteParameter(this.builtInParameters.Delete);
-        }
         p = new ParameterModel();
         p.longParameter = "delete";
         p.shortParameter = "d";
@@ -917,43 +982,13 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
         this.builtInParameters.Delete = p;
-        params.push(p);
-
-        this.setState({ Parameters: [...this.state.Parameters, ...params] });
+        p.collapsed = true;
+        p.type = ParameterTypes.Delete;
+        await this.addParameter(p, true);
 
     }
-    //
-    //  message handler for the toolbar button "add"
-    private addBuiltIn = async () => {
-        switch (this.state.builtInParameterSelected) {
-            case "inputFileParameter":
-                await this.addInputFileParameter();
-                break;
-            case "verboseParameter":
-                await this.addVerboseParameter();
-                break;
-            case "loggingParameter":
-                await this.addloggingParameter();
-                break;
-            case "cvdParameters":
-                await this.addcvdParameters();
-                break;
-            case "All":
-                await this.addInputFileParameter();
-                await this.addVerboseParameter();
-                await this.addloggingParameter();
-                await this.addcvdParameters();
-                break;
-            default:
-                console.log(`WARNING: ${this.state.builtInParameterSelected} is not supported in addBuiltIn`)
-                break;
 
-        }
-    }
 
 
     private setStateAsync = (newState: object): Promise<void> => {
@@ -1049,7 +1084,7 @@ class App extends React.Component<{}, IAppState> {
                 <Growl ref={this.growl} />
                 <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
-                    <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} /* primary={"second"} */ onDragFinished={(newSize: number) => {
+                    <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} minSize={"125"} onDragFinished={(newSize: number) => {
                         //
                         //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
                         window.dispatchEvent(new Event('resize'));
@@ -1067,24 +1102,23 @@ class App extends React.Component<{}, IAppState> {
                                     </button>
 
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.menuDeleteParameter()} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="Add" icon="pi pi-list" onClick={this.addBuiltIn} />
-                                    <Dropdown options=
-                                        {
-                                            [
-                                                { label: "All Built Ins", value: "All" },
-                                                { label: "Verbose", value: "verboseParameter" },
-                                                { label: "Input File Support", value: "inputFileParameter" },
-                                                { label: "Logging Support", value: "loggingParameter" },
-                                                { label: "Create, Verify, Delete", value: "cvdParameters" }
-                                            ]
-                                        }
-                                        placeholder="Select Parameter"
-                                        style={{ width: "165px", marginLeft: "5px" }}
-                                        value={this.state.builtInParameterSelected}
-                                        onChange={(e: { originalEvent: Event, value: any }) => this.setState({ builtInParameterSelected: e.value })}
-                                    />
+                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Expand All" icon="pi pi-eye"
+                                        onClick={() => {
+                                            this.generateBashScript = false;
+                                            this.state.Parameters.map((p) => p.collapsed = false);
+                                            this.generateBashScript = true;
+                                        }}
+                                        style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Collapse All" icon="pi pi-eye-slash"
+                                        onClick={() => {
+                                            this.generateBashScript = false;
+                                            this.state.Parameters.map((p) => p.collapsed = true);
+                                            this.generateBashScript = true;
+                                        }}
+                                        style={{ marginRight: '.25em' }} />
+
                                 </div>
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
@@ -1092,7 +1126,7 @@ class App extends React.Component<{}, IAppState> {
                                         onChange={async (e: { originalEvent: Event, value: boolean }) => {
                                             await this.setStateAsync({ mode: e.value ? "dark" : "light" });
                                             this.saveSettings();
-                                            this.growlCallback({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
+                                            this.growl.current!.show({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
                                         }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
@@ -1107,7 +1141,7 @@ class App extends React.Component<{}, IAppState> {
                                                 onBlur={async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
                                                     const end: string = e.currentTarget.value!.slice(-3);
                                                     if (end !== ".sh" && end !== "") {
-                                                        this.growlCallback({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
+                                                        this.growl.current!.show({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
                                                         await this.setStateAsync({ ScriptName: e.currentTarget.value + ".sh" });
                                                         // tslint:disable-next-line
                                                         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl);
@@ -1234,7 +1268,7 @@ class App extends React.Component<{}, IAppState> {
             //  do it in this order in case the json parse throws, we don't wipe any UI
             const objs = JSON.parse(json);
             this.reset()
-            this._loading = true;
+            this.generateBashScript = false;
             await this.setStateAsync({
                 ScriptName: objs.ScriptName,
                 Description: objs.Description,
@@ -1253,18 +1287,22 @@ class App extends React.Component<{}, IAppState> {
                 model.requiredParameter = p.RequiredParameter;
                 model.shortParameter = p.ShortParameter;
                 model.variableName = p.VariableName;
+                model.collapsed = p.collapsed;
                 model.requiresInputString = p.RequiresInputString;
+                model.registerNotify(this.onPropertyChanged);
+                model.uniqueName = uniqueId("JSON_PARAMETER");
                 params.push(model)
             }
             await this.setStateAsync({ Parameters: params })
             this._loading = false;
-            this.state.Parameters[0].selected = true;
+            await this.selectParameter(this.state.Parameters[0]);
+
         }
         catch (e) {
-            this.setState({ bash: "Error parsing JSON" + e.message });
+            this.addErrorMessage("warning", `Error parsing JSON: ${e}`);
         }
         finally {
-            this._loading = false;
+            this.generateBashScript = true;
             await this.updateAllText();
 
         }

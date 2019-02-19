@@ -1,8 +1,17 @@
 import { GrowlMessage } from 'primereact/growl';
+import { uniqueId } from 'lodash-es';
 
 type INotifyPropertyChanged = (parameter: ParameterModel, property: string) => void;
-export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void; 
-
+export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void;
+export enum ParameterTypes {
+    Create = "Create",
+    Verify = "Verify",
+    Delete = "Delete",
+    LoggingSupport = "Logging",
+    InputFileSupport = "Input File",
+    VerboseSupport = "Verbose",
+    Custom = "Custom"
+}
 
 //
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
@@ -17,11 +26,48 @@ export class ParameterModel {
     private ShortParameter: string = "";
     private VariableName: string = "";
     private ValueIfSet: string = "";
+    private Type: ParameterTypes = ParameterTypes.Custom;
+    private fireChangeNotifications: boolean = false;
+    private _collapsed:boolean = false;
+
     private propertyChangedNotify: INotifyPropertyChanged[] = []
+
+    public updateAll = () => {
+        this.NotifyPropertyChanged("default")
+        this.NotifyPropertyChanged("description")
+        this.NotifyPropertyChanged("longParameter")
+        this.NotifyPropertyChanged("shortParameter")
+        this.NotifyPropertyChanged("variableName") 
+        this.NotifyPropertyChanged("valueIfSet")                
+    }
+
     //
     // not stringified
     private _selected: boolean = false;
-    private _uniqueName: string;
+    private _uniqueName: string = uniqueId("PARAMETER-MODEL");
+    get FireChangeNotifications(): boolean {
+        return this.fireChangeNotifications;
+    }
+
+    set FireChangeNotifications(value: boolean) {
+        if (value !== this.fireChangeNotifications) {
+
+            this.fireChangeNotifications = value;
+
+        }
+    }
+
+    get collapsed(): boolean {
+        return this._collapsed;
+    }
+
+    set collapsed(value: boolean) {
+        if (value !== this._collapsed) {
+
+            this._collapsed = value;
+            this.NotifyPropertyChanged("collapsed");
+        }
+    }
 
     // we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option    
     private _oldValueIfSet: string = "";
@@ -31,13 +77,22 @@ export class ParameterModel {
 
     set oldValueIfSet(value: string) {
         if (value !== this._oldValueIfSet) {
-
             this._oldValueIfSet = value;
-
         }
     }
 
-    public focus = () =>{
+    get type(): ParameterTypes {
+        return this.Type;
+    }
+
+    set type(value: ParameterTypes) {
+        if (value !== this.Type) {
+            this.Type = value;
+            this.NotifyPropertyChanged("type")
+        }
+    }
+
+    public focus = () => {
         this.NotifyPropertyChanged("focus");
     }
 
@@ -57,7 +112,8 @@ export class ParameterModel {
     //
     //  this is an "opt in" replacer -- if you want something in the json you have to add it here
     public static jsonReplacer(name: string, value: any) {
-        if (name === "Default" || name === "Description" || name === "LongParameter" || name === "RequiresInputString" || name === "RequiredParameter" || name === "ShortParameter" || name === "VariableName" || name === "ValueIfSet") {
+        if (name === "Default" || name === "Description" || name === "LongParameter" || name === "RequiresInputString" || name === "RequiredParameter" ||
+            name === "ShortParameter" || name === "VariableName" || name === "ValueIfSet" || name === "Type") {
             return value;
         }
         return undefined;
@@ -70,17 +126,21 @@ export class ParameterModel {
     public removeNotify(callback: INotifyPropertyChanged) {
         const index: number = this.propertyChangedNotify.indexOf(callback)
         if (index === -1) {
-            throw new Error("attempt to remove a callback that wasn't in the callback array")
+            throw new Error("ParameterModel.tsx:removeNotify(): attempt to remove a callback that wasn't in the callback array")
         }
         this.propertyChangedNotify.splice(index, 1)
 
     }
     public NotifyPropertyChanged(property: string): void {
-        for (const notify of this.propertyChangedNotify) {
-            notify(this, property)
+        if (this.fireChangeNotifications) {
+            for (const notify of this.propertyChangedNotify) {
+                notify(this, property)
+            }
         }
 
     }
+
+  
 
     get default(): string {
         return this.Default;
@@ -113,7 +173,7 @@ export class ParameterModel {
 
     set selected(value: boolean) {
         if (value !== this._selected) {
-
+            console.log(`${this._uniqueName}.selected=${value} notify count = ${this.propertyChangedNotify.length}`);
             this._selected = value;
             this.NotifyPropertyChanged("selected")
         }
@@ -133,7 +193,8 @@ export class ParameterModel {
     }
     public set longParameter(value: string) {
         if (value !== this.LongParameter) {
-            this.LongParameter = value.replace(new RegExp(/^-{2}/, "i"), "");
+            this.LongParameter = value.replace(new RegExp(/^-{2}/, "i"), ""); // get rid of starting --
+            this.LongParameter = this.LongParameter.replace(new RegExp(/\s/, "g"), "-"); // no whitespace in variable names
             this.NotifyPropertyChanged("longParameter")
         }
     }
@@ -144,6 +205,7 @@ export class ParameterModel {
     public set shortParameter(value: string) {
         if (value !== this.ShortParameter) {
             this.ShortParameter = value.replace(new RegExp(/^-{1}/, "i"), "");
+            this.ShortParameter = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("shortParameter")
         }
     }
@@ -175,6 +237,7 @@ export class ParameterModel {
     set variableName(value: string) {
         if (value !== this.VariableName) {
             this.VariableName = value;
+            this.VariableName = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("variableName")
         }
     }

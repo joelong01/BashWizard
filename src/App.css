@@ -209,9 +209,18 @@
     top: 50%;
     margin-top: -.5em;
     height: 1.25em;
-    margin-left: .25em;
-    
+    margin-left: .25em; 
   }
+
+  .p-menuitem-link[target=separator] {
+    height: 0px;
+    display: block;
+    padding: 0;
+    min-height: 0;
+    border-bottom: 1px #525252 solid;
+    padding: 0em !important;
+  }
+
 /* splitter */
   .Resizer.horizontal {
     height: .5em; 
@@ -220,6 +229,7 @@
     cursor: row-resize;
     transition: background-color 0.2s, box-shadow 0.2s;
     width: 100%;
+    
   }
 
   .Resizer.horizontal:hover {

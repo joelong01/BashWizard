@@ -89,9 +89,9 @@ __REQUIRED_PARAMETERS__
 __LOGGING_SUPPORT_
 __VERBOSE_ECHO__
 
-# --- BEGIN USER CODE ---
-__USER_CODE_1__
-# --- END USER CODE ---
+    # --- BEGIN USER CODE ---
+    __USER_CODE_1__
+    # --- END USER CODE ---
 __END_LOGGING_SUPPORT__`,
 logTemplate:
 `#logging support
@@ -128,47 +128,49 @@ if __REQUIRED_FILES_IF__; then
     exit 2
 fi`,
 endOfBash:
-`time=$(date +"%m/%d/%y @ %r")
-echo "ended: $time"
-} | tee -a \"\${LOG_FILE}\"`,
+`
+    time=$(date +"%m/%d/%y @ %r")
+    echo "ended: $time"
+} | tee -a \"\${LOG_FILE}\"
+`,
 verifyCreateDelete:
-`function onVerify() {
-    echo "onVerify"
-}
-function onDelete() {
-    echo "onDelete"
-}
-function onCreate() {
-    echo "onCreate"
-}
+`   function onVerify() {
+        echo "onVerify"
+    }
+    function onDelete() {
+        echo "onDelete"
+    }
+    function onCreate() {
+        echo "onCreate"
+    }
 
-__USER_CODE_1__
+    __USER_CODE_1__
 
-#
-#  this order makes it so that passing in /cvd will result in a verified resource being created
-#
+    #
+    #  this order makes it so that passing in /cvd will result in a verified resource being created
+    #
 
-if [[ $delete == "true" ]]; then
-    onDelete
-fi
+    if [[ $delete == "true" ]]; then
+        onDelete
+    fi
 
-if [[ $create == "true" ]]; then
-    onCreate
-fi
+    if [[ $create == "true" ]]; then
+        onCreate
+    fi
 
-if [[ $verify == "true" ]]; then
-    onVerify
-fi`,
-jqDependency: 
-`# we have a dependency on jq
-if [[ ! -x "$(command -v jq)" ]]; then
-    echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
-    exit 1
-fi`,
+    if [[ $verify == "true" ]]; then
+        onVerify
+    fi`,
+    jqDependency: 
+    `# we have a dependency on jq
+    if [[ ! -x "$(command -v jq)" ]]; then
+        echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
+        exit 1
+    fi`,
 verboseEcho:
-`if [[ $"verbose" == true ]];then
-    echoInput
-fi`
+`   if [[ $"verbose" == true ]];then
+        echoInput
+    fi`
 }
 
 export default bashTemplates;
