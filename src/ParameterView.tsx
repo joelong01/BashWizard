@@ -49,7 +49,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     constructor(props: IParameterProperties) {
         super(props);
         const id: string = uniqueId("ParameterView");
-        console.log("creating ParameterView: " + id);
+      //  console.log("creating ParameterView: " + id);
         this.state = {
             uniqueId: id,
             default: this.props.Model.default,
@@ -104,15 +104,21 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         input.focus(); */
         this.setState({ collapsed: false }, () => {
             if (this.refLongName.current !== null) {
-                console.log("setting focus to " + this.state.uniqueId);
+                // console.log("setting focus to " + this.state.uniqueId);
                 const reactTypeScriptWorkAround: any = this.refLongName.current;
                 reactTypeScriptWorkAround.element.focus();
             }
         });
-
-
-
     }
+
+    private setFocus = () => {
+        if (this.refLongName.current !== null) {
+         //   console.log("setting focus to " + this.state.uniqueId);
+            const reactTypeScriptWorkAround: any = this.refLongName.current;
+            reactTypeScriptWorkAround.element.focus();
+        }
+    }
+
     //
     //  this is the callback from the model...if the App changes the data
     //  (e.g. picks a short name), then the model calls here.  You might think
@@ -132,11 +138,12 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             this.focus();
             return;
         }
-
+     
         if (!(key in this.state)) {
             console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
             throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
         }        
+
         /*  commenting out because Type is now read only
              if (key === "type") {
              this.changeType(model);
@@ -151,6 +158,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
         
         if (key === "selected" && model.selected === true && this.refParameterForm.current !== null) {
+          //  console.log(`${this.Model.uniqueName} is getting focus`);
             this.refParameterForm.current.focus();
         }
 
@@ -238,9 +246,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  where we update the internal state, which will then call render()
     private requiresInputStringChanged = (e: { originalEvent: Event, value: any, checked: boolean }): void => {
 
-        if (e.checked === undefined) {
-            console.log(`undefined checked ${e}`)
-        }
         //
         //  if they check "requiresInputString", set valueIfSet to $2
         //  but remember what they had before and put it back if they uncheck it.
@@ -292,7 +297,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
 
         this.state.Model.requiredParameter = e.checked;
-        console.log("required Parameter: " + this.state.Model.requiredParameter);
+     //   console.log("required Parameter: " + this.state.Model.requiredParameter);
 
         //
         //  do not call this.setState -- this will happen in the notification
@@ -315,7 +320,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
         if (key === "shortParameter") {
             if (value.length > 1) {
-                console.log("trimming parameter)")
                 this.setState({ shortParameter: e.currentTarget.value.substr(-1) }); // short parameter can only be one char long -- always put in the last one typed
                 return;
             }
@@ -346,18 +350,27 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  which will then call this.setState()
     //
     public render = () => {
-
+        let fieldSetName:string = this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset";
+        if (this.state.Model.selected) {
+            fieldSetName += " parameter-fieldset-selected";
+        }
+     //   console.log (`${this.state.Model.uniqueName}=${fieldSetName}`);
         return (
             <div className="parameter-layout-root" key={this.state.uniqueId}
-               /*  onClick={() => {console.log("root clicked"); this.state.Model.selected = true; this.focus(); }}
-                onFocus={() => { this.state.Model.selected = true; this.focus(); }} */>
+                 onClick={() => {this.state.Model.selected = true;}}
+              /*  onFocus={() => { this.state.Model.selected = true; this.focus(); }} */
+                
+                onBlur = { () => this.state.Model.selected = false}
+                
+                >
+                
                 <Button className="collapse-button p-button-secondary"
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
-                    onClick={() => this.setState({ collapsed: !this.state.collapsed })} />
-                <fieldset className={this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset"}
+                    onClick={() => {this.setState({ collapsed: !this.state.collapsed}); this.state.Model.selected = true;}} />
+                <fieldset className={fieldSetName}
                     
-                /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}
-                onClick={() => { console.log("fieldset clicked"); this.state.Model.selected = true; this.focus(); }} */
+                /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}*/
+                onClick={() => {this.state.Model.selected = true; }} 
                 >
                     <legend>{this.state.type === ParameterTypes.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
                     <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}

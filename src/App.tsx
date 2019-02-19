@@ -131,7 +131,7 @@ class App extends React.Component<{}, IAppState> {
                 selectedError: undefined,
                 activeTabIndex: 0,
                 ButtonModel: [
-                    
+
                     {
                         label: 'Add All',
                         icon: "pi pi-globe",
@@ -144,7 +144,7 @@ class App extends React.Component<{}, IAppState> {
                             this.generateBashScript = true;
                             await this.updateAllText();
                         }
-                    }, 
+                    },
                     {
                         //  target allows us to use CSS to style this item               
                         disabled: true, target: 'separator'
@@ -175,6 +175,8 @@ class App extends React.Component<{}, IAppState> {
                         command: async () => {
                             this.generateBashScript = false;
                             await this.addInputFileParameter();
+                            this.generateBashScript = true;
+                            await this.updateAllText();
                         }
                     },
                     {
@@ -187,7 +189,7 @@ class App extends React.Component<{}, IAppState> {
                             await this.updateAllText();
                         }
                     }
-                   
+
 
                 ],
                 // these do not get replaced
@@ -204,7 +206,7 @@ class App extends React.Component<{}, IAppState> {
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
     }
-    
+
     //
     //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
     //  this means that if we set the height of the parameter list in css, then we have to
@@ -282,24 +284,14 @@ class App extends React.Component<{}, IAppState> {
 
         if (this.state.SelectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.SelectedParameter;
-            this.state.SelectedParameter.selected = false;
             let index: number = this.state.Parameters.indexOf(this.state.SelectedParameter)
             if (index !== -1) {
-                await this.deleteParameter(toDelete) // after this point the state has been changed
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
-                const newLength = this.state.Parameters.length;
-                if (newLength === 0) {
-                    return;
-                }
-                if (index === newLength) {
-                    index--;
-                }
 
-                //
-                //  select the first one if the first one was deleted, otherwise select the previous one
-                this.state.Parameters[index].selected = true;
-
+                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined                
+                this.selectParameter(toSelect); // select a new one (or nothing)
+                await this.deleteParameter(toDelete) // delte the one we want            
                 this.clearErrorsAndValidateParameters();
             }
             else {
@@ -323,7 +315,7 @@ class App extends React.Component<{}, IAppState> {
 
             debugConfig: "",
             inputJson: "",
-          
+
             // these do not get replaced
             ScriptName: "",
             Description: "",
@@ -377,8 +369,7 @@ class App extends React.Component<{}, IAppState> {
             return this.state.bash;
         }
 
-        console.log("ToBash BuiltIns: %o", this.builtInParameters);
-        console.count("toBash:");
+        // console.count("toBash:");
         try {
 
             if (this.state.Parameters.length === 0) {
@@ -768,6 +759,20 @@ class App extends React.Component<{}, IAppState> {
         return this.state.errors.length === 0;
     }
 
+    private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
+
+        if (this.state.SelectedParameter === toSelect) {
+            return;
+        }
+        if (this.state.SelectedParameter !== undefined) {
+            this.state.SelectedParameter.selected = false; // old selected no longer selected
+        }
+        if (toSelect !== undefined) {
+            toSelect.selected = true;
+        }
+        await this.setStateAsync({ SelectedParameter: toSelect })
+    }
+
     //
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
@@ -787,13 +792,7 @@ class App extends React.Component<{}, IAppState> {
 
             this._settingState = true;
             if (name === "selected") {
-                if (this.state.SelectedParameter === parameter) {
-                    return;
-                }
-                if (this.state.SelectedParameter !== undefined) {
-                    this.state.SelectedParameter.selected = false; // old selected no longer selected
-                }
-                await this.setStateAsync({ SelectedParameter: parameter })
+                await this.selectParameter(parameter);
                 return;
             }
 
@@ -843,11 +842,7 @@ class App extends React.Component<{}, IAppState> {
 
         model.uniqueName = uniqueId("PARAMETER_DIV_")
         model.registerNotify(this.onPropertyChanged)
-        model.selected = select;
-
-        /*  const list: ParameterModel[] = this.state.Parameters.concat(model);
-         await this.setStateAsync({ Parameters: list }) */
-
+        
         //
         //  if you just call setState() on this, then the call to updateAllText() calls toBash()
         //  and toBash() reads this.state.Parameters and the item won't be there. 
@@ -855,8 +850,11 @@ class App extends React.Component<{}, IAppState> {
         await this.updateAllText();
 
         // tslint:disable-next-line
-        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors);
-
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
+        model.FireChangeNotifications = true;
+        if (select) {
+            await this.selectParameter(model);
+        }
 
     }
 
@@ -902,7 +900,7 @@ class App extends React.Component<{}, IAppState> {
         p.valueIfSet = "true";
         p.variableName = "verbose"
         p.collapsed = true;
-        p.type = ParameterTypes.VerboseSupport;        
+        p.type = ParameterTypes.VerboseSupport;
         this.builtInParameters.VerboseSupport = p;
         await this.addParameter(p, true);
 
@@ -936,12 +934,15 @@ class App extends React.Component<{}, IAppState> {
 
     private addcvdParameters = async () => {
 
-        let params: ParameterModel[] = []
-        //
-        //  this way we always go back to the default - e.g. if somebody messes with the built in then
-        //  they can just readd it and the right thing will happen.
+        
+        if (this.builtInParameters.Verify !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Verify);
+        }
         if (this.builtInParameters.Create !== undefined) {
             await this.deleteParameter(this.builtInParameters.Create);
+        }
+        if (this.builtInParameters.Delete !== undefined) {
+            await this.deleteParameter(this.builtInParameters.Delete);
         }
         let p: ParameterModel = new ParameterModel();
         p.longParameter = "create";
@@ -952,16 +953,12 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
+        
         this.builtInParameters.Create = p;
         p.type = ParameterTypes.Create;
         p.collapsed = true;
-        params.push(p);
-        if (this.builtInParameters.Verify !== undefined) {
-            await this.deleteParameter(this.builtInParameters.Verify);
-        }
+        await this.addParameter(p,false);
+        
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -971,17 +968,11 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
         p.collapsed = true;
         this.builtInParameters.Verify = p;
         p.type = ParameterTypes.Verify;
-        params.push(p);
+        await this.addParameter(p, false);
 
-        if (this.builtInParameters.Delete !== undefined) {
-            await this.deleteParameter(this.builtInParameters.Delete);
-        }
         p = new ParameterModel();
         p.longParameter = "delete";
         p.shortParameter = "d";
@@ -991,15 +982,10 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        p.uniqueName = uniqueId("PARAMETER_DIV_")
-        p.registerNotify(this.onPropertyChanged)
-        p.selected = false;
         this.builtInParameters.Delete = p;
         p.collapsed = true;
         p.type = ParameterTypes.Delete;
-        params.push(p);
-
-        this.setState({ Parameters: [...this.state.Parameters, ...params] });
+        await this.addParameter(p, true);
 
     }
 
@@ -1116,25 +1102,23 @@ class App extends React.Component<{}, IAppState> {
                                     </button>
 
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel} menuStyle={{width: "16.5em"}} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Expand All" icon="pi pi-eye" 
-                                            onClick={ () => { 
-                                                console.log ("callapseAll=false");
-                                                this.generateBashScript = false;
-                                                this.state.Parameters.map( (p) => p.collapsed = false);
-                                                this.generateBashScript = true;
-                                            }} 
-                                            style={{ marginRight: '.25em' }}/>
-                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Collapse All" icon="pi pi-eye-slash" 
-                                            onClick={ () => { 
-                                                console.log ("callapseAll=true");
-                                                this.generateBashScript = false;
-                                                this.state.Parameters.map( (p) => p.collapsed = true);
-                                                this.generateBashScript = true;
-                                            }} 
-                                            style={{ marginRight: '.25em' }} />
-                                    
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Expand All" icon="pi pi-eye"
+                                        onClick={() => {
+                                            this.generateBashScript = false;
+                                            this.state.Parameters.map((p) => p.collapsed = false);
+                                            this.generateBashScript = true;
+                                        }}
+                                        style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Collapse All" icon="pi pi-eye-slash"
+                                        onClick={() => {
+                                            this.generateBashScript = false;
+                                            this.state.Parameters.map((p) => p.collapsed = true);
+                                            this.generateBashScript = true;
+                                        }}
+                                        style={{ marginRight: '.25em' }} />
+
                                 </div>
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
@@ -1311,7 +1295,8 @@ class App extends React.Component<{}, IAppState> {
             }
             await this.setStateAsync({ Parameters: params })
             this._loading = false;
-            this.state.Parameters[0].selected = true;
+            await this.selectParameter(this.state.Parameters[0]);
+
         }
         catch (e) {
             this.addErrorMessage("warning", `Error parsing JSON: ${e}`);

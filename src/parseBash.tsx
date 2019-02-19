@@ -37,20 +37,6 @@ export class ParseBash {
         }
 
         return answer.filter((e) => e); // remove empty entries
-
-        /*         let regex: string = "/(";
-                console.log(`split params: ${split}`);
-                for (let i = 0; i < split.length; i++) {
-                    regex += split[i];
-                    if (i < split.length - 1) {
-                        regex += "|";
-                    }
-                }
-                regex += ")/";
-                console.log(`regular rexpression for splitByArray: ${regex}`);        
-                const answer: string[] = from.split(new RegExp(regex));
-                console.log(`answer has ${answer.length} answers`)
-                return answer; */
     }
 
     private getStringBetween = (str: string, begin: string, end: string): string | null => {
@@ -63,14 +49,6 @@ export class ParseBash {
         }
 
         return null;
-        /*   const regExString: RegExp = new RegExp("(?:" + begin + ")(.*?)(?:" + end + ")", "ig"); // set ig flag for global search and case insensitive
-          const ret: RegExpExecArray | null = regExString.exec(str);
-          if (ret !== null && ret.length > 1) // RegEx has found something and has more than one entry.
-          {
-              return ret[1]; // is the matched group if found
-          }
-  
-          return null; */
     }
 
     private findParameterByLongName = (params: ParameterModel[], longParam: string): ParameterModel | undefined => {
@@ -86,8 +64,7 @@ export class ParseBash {
     private findParameterByVarName = (params: ParameterModel[], name: string): ParameterModel | undefined => {
 
         for (let p of params) {
-            if (p.variableName === name) {
-                console.log("log-directory supported");
+            if (p.variableName === name) {                
                 return p;
             }
         }
@@ -150,7 +127,6 @@ export class ParseBash {
     // public findCVDFuncs = (script:string)
 
     public fromBash = (input: string): IParseState => {
-        console.log("in fromBash. %o", bashTemplates);
         //
         //  Error Messages constants used when parsing the Bash file
         const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";

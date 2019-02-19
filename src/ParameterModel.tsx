@@ -27,7 +27,7 @@ export class ParameterModel {
     private VariableName: string = "";
     private ValueIfSet: string = "";
     private Type: ParameterTypes = ParameterTypes.Custom;
-    private fireChangeNotifications: boolean = true;
+    private fireChangeNotifications: boolean = false;
     private _collapsed:boolean = false;
 
     private propertyChangedNotify: INotifyPropertyChanged[] = []
@@ -173,7 +173,7 @@ export class ParameterModel {
 
     set selected(value: boolean) {
         if (value !== this._selected) {
-
+            console.log(`${this._uniqueName}.selected=${value} notify count = ${this.propertyChangedNotify.length}`);
             this._selected = value;
             this.NotifyPropertyChanged("selected")
         }
