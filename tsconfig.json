@@ -4,7 +4,10 @@
     "outDir": "build/dist",
     "module": "esnext",
     "target": "es6",
-    "lib": ["es6", "dom"],
+    "lib": [
+      "es6",
+      "dom"
+    ],
     "sourceMap": true,
     "allowJs": true,
     "jsx": "react",
@@ -22,13 +25,10 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "noUnusedParameters": false,
-    
-    
   },
   "rules": {
     "named-imports-order": "any",
     "object-literal-sort-keys": false,
-    
   },
   "exclude": [
     "node_modules",

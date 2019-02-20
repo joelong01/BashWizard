@@ -34,6 +34,7 @@ import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
 import { ParseBash, IParseState } from './parseBash';
+// import electron from "electron";
 
 
 
@@ -104,6 +105,7 @@ class App extends React.Component<{}, IAppState> {
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
     private generateBashScript: boolean = true;
+
 
     constructor(props: {}) {
         super(props);
@@ -842,7 +844,7 @@ class App extends React.Component<{}, IAppState> {
 
         model.uniqueName = uniqueId("PARAMETER_DIV_")
         model.registerNotify(this.onPropertyChanged)
-        
+
         //
         //  if you just call setState() on this, then the call to updateAllText() calls toBash()
         //  and toBash() reads this.state.Parameters and the item won't be there. 
@@ -934,7 +936,7 @@ class App extends React.Component<{}, IAppState> {
 
     private addcvdParameters = async () => {
 
-        
+
         if (this.builtInParameters.Verify !== undefined) {
             await this.deleteParameter(this.builtInParameters.Verify);
         }
@@ -953,12 +955,12 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        
+
         this.builtInParameters.Create = p;
         p.type = ParameterTypes.Create;
         p.collapsed = true;
-        await this.addParameter(p,false);
-        
+        await this.addParameter(p, false);
+
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -1075,6 +1077,46 @@ class App extends React.Component<{}, IAppState> {
             item.Parameter.focus();
         }
     }
+
+    private onLoadFile = () => {
+        // tslint:disable-next-line:no-string-literal
+        if (typeof window['require'] !== "undefined") {
+            // tslint:disable-next-line:no-string-literal
+            let electron = window['require']("electron");
+            if (electron !== undefined) {
+                console.log("electron %o", electron);
+                electron.shell.showItemInFolder(".")
+                if (electron.dialog !== undefined) {
+                    (electron.dialog as any).showOpenDialog({
+                        filters: [
+                            { name: 'Bash Files', extensions: ['.sh'] }
+                        ]
+                    }, (fileNames: string[]) => {
+
+                        if (fileNames === undefined) {
+                            return;
+                        }
+                        console.log("picked " + fileNames.toString())
+
+                    });
+                }
+            }
+        }
+
+
+        /* 
+                    fs.readFile(filepath, 'utf-8', (err, data) => {
+                        if (err) {
+                            alert("An error ocurred reading the file :" + err.message);
+                            return;
+                        }
+        
+                        // Change how to handle the file content
+                        console.log("The file content is : " + data);
+                    });
+    }); */
+    }
+
     public render = () => {
 
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
@@ -1100,7 +1142,7 @@ class App extends React.Component<{}, IAppState> {
                                         <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-
+                                    <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-upload" onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
                                     <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
