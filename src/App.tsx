@@ -35,7 +35,10 @@ import "./ParameterView.css"
 import "./App.css"
 import { ParseBash, IParseState } from './parseBash';
 import { Dialog } from 'electron';
-import fs from "fs";
+import {IStorageProvider} from "./electron/storageProviderFactory";
+import {LocalFileSystem} from "./electron/localFileSystem";
+
+
 
 // import electron from "electron";
 
@@ -1107,22 +1110,21 @@ class App extends React.Component<{}, IAppState> {
                     }
                     
                     console.log("picked " + fileNames.toString())
+
+                      // tslint:disable-next-line:no-string-literal
+                     /*  
+                      const loadFile=requireTaskPool(require.resolve("./file"));
+                      loadFile(fileNames[0]).then((result: string) => {
+                            console.log(result);
+                      }); */
                     
-                    fs.readFile(fileNames[0], 'utf-8', (err:NodeJS.ErrnoException, data:string) => {
-                        if (err) {
-                            alert("An error ocurred reading the file :" + err.message);
-                            return;
-                        }
-
-                        console.log("The file content is : " + data);
-
-                        // this.setState({bash: data});
-                    });
-
+                   
                 });
             }
         }
     }
+
+    
 
 
     /* 
