@@ -34,6 +34,9 @@ import "brace/theme/cobalt"
 import "./ParameterView.css"
 import "./App.css"
 import { ParseBash, IParseState } from './parseBash';
+import { Dialog } from 'electron';
+import fs from "fs";
+
 // import electron from "electron";
 
 
@@ -1079,46 +1082,73 @@ class App extends React.Component<{}, IAppState> {
     }
 
     private onLoadFile = () => {
+
         // tslint:disable-next-line:no-string-literal
-        if (typeof window['require'] !== "undefined") {
+        console.log("electron %o: ", window["require"]("electron"));
+        // tslint:disable-next-line:no-string-literal
+        console.log("remote %o: ", window["require"]("electron").remote);
+        // tslint:disable-next-line:no-string-literal
+        console.log("dialog %o: ", window["require"]("electron").remote.dialog);
+        // tslint:disable-next-line:no-string-literal
+        if (typeof window["require"] !== "undefined") {
             // tslint:disable-next-line:no-string-literal
-            let electron = window['require']("electron");
-            if (electron !== undefined) {
-                console.log("electron %o", electron);
-                electron.shell.showItemInFolder(".")
-                if (electron.dialog !== undefined) {
-                    (electron.dialog as any).showOpenDialog({
-                        filters: [
-                            { name: 'Bash Files', extensions: ['.sh'] }
-                        ]
-                    }, (fileNames: string[]) => {
+            let dialog: Dialog = window["require"]("electron").remote.dialog;
+            console.log("Dialog %o", dialog);
 
-                        if (fileNames === undefined) {
-                            return;
-                        }
-                        console.log("picked " + fileNames.toString())
+            if (dialog !== undefined) {
+                (dialog as any).showOpenDialog({
+                    filters: [
+                        { name: 'Bash Files', extensions: ['sh'] }
+                    ]
+                }, (fileNames: string[]) => {
 
-                    });
-                }
-            }
-        }
-
-
-        /* 
-                    fs.readFile(filepath, 'utf-8', (err, data) => {
+                    if (fileNames === undefined) {
+                        return;
+                    }
+                    
+                    console.log("picked " + fileNames.toString())
+                    
+                    fs.readFile(fileNames[0], 'utf-8', (err:NodeJS.ErrnoException, data:string) => {
                         if (err) {
                             alert("An error ocurred reading the file :" + err.message);
                             return;
                         }
-        
-                        // Change how to handle the file content
+
                         console.log("The file content is : " + data);
+
+                        // this.setState({bash: data});
                     });
-    }); */
+
+                });
+            }
+        }
     }
+
+
+    /* 
+                fs.readFile(filepath, 'utf-8', (err, data) => {
+                    if (err) {
+                        alert("An error ocurred reading the file :" + err.message);
+                        return;
+                    }
+    
+                    // Change how to handle the file content
+                    console.log("The file content is : " + data);
+                });
+}); */
+
 
     public render = () => {
 
+
+        let electronEnabled: boolean = false;
+        // tslint:disable-next-line:no-string-literal        
+        if (window["require"] !== undefined) {            
+            // tslint:disable-next-line:no-string-literal
+            if (typeof window["require"]("electron") !== undefined) {
+                electronEnabled = true;
+            }
+        }
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
 
         return (
@@ -1135,14 +1165,15 @@ class App extends React.Component<{}, IAppState> {
                         <div className="DIV_Top">
                             <Toolbar className="toolbar" id="toolbar">
                                 <div className="p-toolbar-group-left">
-
-                                    {/* need to use standard button here because Prime Icons doesn't have a good "New File" icon */}
-
                                     <button className="bw-button p-component" onClick={this.onNew}>
                                         <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-                                    <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-upload" onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
+                                    {  (electronEnabled) ?
+                                        <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
+                                        :
+                                        ""
+                                    }
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
                                     <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
