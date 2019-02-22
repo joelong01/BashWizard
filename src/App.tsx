@@ -1,8 +1,4 @@
-import "./index.css"
-import 'primereact/resources/themes/nova-light/theme.css';
-import 'primereact/resources/primereact.min.css';
-import 'primeicons/primeicons.css';
-import 'primeflex/primeflex.css'
+
 import React from 'react';
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
@@ -20,8 +16,6 @@ import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
 import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
-import { Dropdown } from "primereact/dropdown"
-import MenuModel from "primereact/menu"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
@@ -31,13 +25,10 @@ import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/cobalt"
-import "./ParameterView.css"
-import "./App.css"
+
 import { ParseBash, IParseState } from './parseBash';
-
-
-
-
+import { LocalFileSystemProxy } from "./localFileSystemProxy"
+import { FileFilter, IpcRenderer } from "electron";
 
 export interface IErrorMessage {
     severity: "warning" | "error" | "info";
@@ -66,7 +57,10 @@ enum ValidationOptions {
 }
 
 
-interface IAppState {
+//
+//  represents the properties that will impact the UI
+//
+interface IAppUiState {
 
     // state that impacts the UI - places in this.stringify
     json: string;
@@ -75,15 +69,17 @@ interface IAppState {
     SelectedParameter?: ParameterModel;
     debugConfig: string;
     inputJson: string;
-    mode: string; // one of "light" or "dark"    
-    dialogVisible: boolean;
+    mode: string; // one of "light" or "dark"
+    autoSave: boolean;
+    showYesNoDialog: boolean;
     dialogMessage: string;
-    dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
     parameterListHeight: string;
     activeTabIndex: number;
     ButtonModel: any[];
+    FileName: string;
+    Loaded: boolean;
 
     //
     //  these get stringified
@@ -95,41 +91,60 @@ interface IAppState {
 
 }
 
-class App extends React.Component<{}, IAppState> {
+class App extends React.Component<{}, IAppUiState> {
     private growl = React.createRef<Growl>();
+    private yesNoDlg = React.createRef<YesNoDialog>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
+    private savingFile: boolean = false;
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
     private generateBashScript: boolean = true;
+    private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
+
 
     constructor(props: {}) {
         super(props);
         let savedMode = this.cookie.get("mode");
-
-        if (savedMode === "" || savedMode === null) {
-            savedMode = "dark";
+        let autoSaveSetting = this.cookie.get("autosave");
+        if (autoSaveSetting === undefined) {
+            autoSaveSetting = false;
         }
+        //
+        //  send settings to the main app to update the browser UI
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.sendSync("synchronous-message", { autoSave: autoSaveSetting });
+        }
+
+        if (savedMode === "" || savedMode === null || savedMode === undefined) {
+            savedMode = "light";
+        }
+
+        console.log(`mode=${savedMode} autoSave=${autoSaveSetting}`);
         const params: ParameterModel[] = []
         this.state =
             {
                 //
-                //  these get replaced in this.stringify                
+                //  these get replaced in this.stringify
                 json: "",
                 bash: "",
                 input: "",
                 mode: savedMode,
+                autoSave: autoSaveSetting,
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
-                dialogVisible: false,
+                showYesNoDialog: false,
                 dialogMessage: "",
-                dialogCallback: this.yesNoReset,
                 errors: [],
                 selectedError: undefined,
                 activeTabIndex: 0,
+                FileName: "",
+                Loaded: false,
+
                 ButtonModel: [
 
                     {
@@ -146,7 +161,7 @@ class App extends React.Component<{}, IAppState> {
                         }
                     },
                     {
-                        //  target allows us to use CSS to style this item               
+                        //  target allows us to use CSS to style this item
                         disabled: true, target: 'separator'
                     },
                     {
@@ -199,9 +214,159 @@ class App extends React.Component<{}, IAppState> {
             }
     }
 
+    private getIpcRenderer(): IpcRenderer | undefined {
+        if (typeof window["require"] !== "undefined") {
+            // tslint:disable-next-line:no-string-literal
+            return window["require"]("electron").ipcRenderer;
+
+        }
+        return undefined;
+    }
+    private setupCallbacks = () => {
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.on("on-new", async (event: any, message: any) => {
+                this.reset(); // this gets verified in the main process
+            });
+
+            ipcRenderer.on("on-open", async (event: any, message: any[]) => {
+                await this.setBashScript(message[0], message[1]);
+            });
+
+            ipcRenderer.on("on-save", async (event: any, message: any[]) => {
+                await this.onSave(false);
+            });
+
+            ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
+                await this.onSave(true);
+            });
+
+            ipcRenderer.on("on-auto-save-checked", async (event: any, message: any[]) => {
+                console.log(`ipcRenderer: ${JSON.stringify(message)}`)
+                await this.setStateAsync({ autoSave: message[0] });
+                this.saveSettings();
+            });
+
+            ipcRenderer.on('asynchronous-reply', (event: string, arg: string) => {
+                if (arg === "file-changed") {
+                    this.onFileChanged(this.state.FileName);
+                }
+            })
+
+
+        }
+    }
+
+    private onSave = async (alwaysPrompt: boolean): Promise<void> => {
+        if (this.savingFile) {
+            return;
+        }
+        try {
+            this.savingFile = true; // we don't want notifications of changes that we started
+            if (this.state.FileName === "" || alwaysPrompt === true) {
+                const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+                if (fn === "" || fn === undefined) {
+                    return;
+                }
+                this.watchFile(fn);
+            }
+            await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.bash);
+        }
+        catch (error) {
+            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error saving the file.  Details: \n" + error });
+        }
+        finally {
+            this.savingFile = false;
+        }
+
+    }
+
+    //
+    //  this starts in the render process and then calls to the main process.
+    //  setBashScript is called from the main process and then data is pushed to the render process
+    private onLoadFile = async (): Promise<boolean> => {
+
+        try {
+            const fn = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            if (fn !== "" || fn !== undefined) {
+                const contents: string = await this.mainFileSystemProxy.readText(fn);
+                if (contents !== "") {
+                    const ret: boolean = await this.setBashScript(fn, contents);
+                    if (ret) {
+                        this.watchFile(fn);
+                    }
+                    return ret;
+                }
+            }
+        }
+        catch (error) {
+            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error loading the file.  Details: \n" + error });
+        }
+        return false;
+    }
+
+    //
+    //  called when the main process opens a file, reads the conents, and sends it back to the render process
+    private setBashScript = async (filename: string, contents: string): Promise<boolean> => {
+        if (contents !== "") {
+            this.watchFile(filename);
+            await this.setStateAsync({ bash: contents, FileName: filename });
+            await this.bashToUi(this.state.bash);
+            return true;
+        }
+        return false;
+    }
+    //
+    //  called when you open or save a file
+    //
+    private watchFile = async (fn: string) => {
+
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
+            await this.setStateAsync({ FileName: fn }); // need read after write
+            ipcRenderer.send("asynchronous-message", { eventType: "watch", filename: fn });
+        }
+
+    }
+
+    private onFileChanged = async (filename: string) => {
+        if (this.savingFile) {
+            return;
+        }
+        await this.setStateAsync({ showYesNoDialog: true });
+        const response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`);
+        if (response === "yes") {
+
+            const contents: string = await this.mainFileSystemProxy.readText(filename);
+            if (contents !== "") {
+                await this.setBashScript(filename, contents);
+                return;
+            }
+            else {
+
+                return;
+            }
+
+
+        }
+    }
+
+
+
+
     public componentDidMount = () => {
         window.addEventListener<"resize">('resize', this.handleResize);
-        this.handleResize();
+        this.setupCallbacks();
+        //
+        //   need to stop the "react shows unstyled windows" problem
+        //  
+        window.setTimeout(() => {
+            this.setState({ Loaded: true });
+            window.resizeBy(1, 0);
+        }, 150);
+
+
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -211,20 +376,27 @@ class App extends React.Component<{}, IAppState> {
     //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
     //  this means that if we set the height of the parameter list in css, then we have to
     //  deal with 3 different calcs - instead i'll do it hear by listening to the window
-    //  size event and calculating the height of the parameter list based on the height of 
+    //  size event and calculating the height of the parameter list based on the height of
     //  the toolbar.  note that 64px is the size of the div we enter script name in plus
     //  various margins.
     private handleResize = () => {
 
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
-        if (toolbar !== null) {
-            const htStyle: string = `calc(100% - ${toolbar.clientHeight + 69}px)`
+        const geDiv: HTMLElement | null = window.document.getElementById("div-global-entry");
+        if (toolbar !== null && geDiv !== null) {
+            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
+            const htStyle: string = `calc(100% - ${height}px)`
             this.setState({ parameterListHeight: htStyle });
+        } else {
+            console.log("handleResize() => toolbar || geDiv is null")
         }
+
 
     };
     private saveSettings = (): void => {
+        console.log(`mode=${this.state.mode} autoSave=${this.state.autoSave}`);
         this.cookie.set("mode", this.state.mode);
+        this.cookie.set("autosave", this.state.autoSave);
 
     }
 
@@ -289,9 +461,9 @@ class App extends React.Component<{}, IAppState> {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
 
-                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined                
+                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined
                 this.selectParameter(toSelect); // select a new one (or nothing)
-                await this.deleteParameter(toDelete) // delte the one we want            
+                await this.deleteParameter(toDelete) // delte the one we want
                 this.clearErrorsAndValidateParameters();
             }
             else {
@@ -315,6 +487,7 @@ class App extends React.Component<{}, IAppState> {
 
             debugConfig: "",
             inputJson: "",
+            errors: [],
 
             // these do not get replaced
             ScriptName: "",
@@ -326,6 +499,9 @@ class App extends React.Component<{}, IAppState> {
 
     private updateAllText = async () => {
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput(), debugConfig: this.getDebugConfig("BashScripts"), inputJson: this.toInput() });
+        if (this.state.autoSave) {
+            await this.onSave(false);
+        }
 
     }
 
@@ -408,7 +584,7 @@ class App extends React.Component<{}, IAppState> {
                 usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
 
                 //
-                // the  echoInput function                
+                // the  echoInput function
                 echoInput += `${this.Tabs(1)}echo -n \"${this.Tabs(1)}${padEnd(param.longParameter, longestLongParameter, '.')} \"${nl}`;
                 echoInput += `${this.Tabs(1)}echoInfo \"\$${param.variableName}\"${nl}`;
 
@@ -440,7 +616,7 @@ class App extends React.Component<{}, IAppState> {
 
             }
             //
-            //  phase 2 - fix up any of the string created above         
+            //  phase 2 - fix up any of the string created above
 
             usageLine += "\""
 
@@ -510,7 +686,7 @@ class App extends React.Component<{}, IAppState> {
             }
             /*
               replace anyplace we have 3 new lines with 2 new lines.  this will get rid of double black lines...
-              e.g. 
+              e.g.
                         function onCreate() { (\n)
                             (\n)
                             (\n)
@@ -555,7 +731,7 @@ class App extends React.Component<{}, IAppState> {
             return value;
         }
         //
-        //  JSON.strinfigy passes in indexes as strings for array elements                
+        //  JSON.strinfigy passes in indexes as strings for array elements
         if (!isNaN(Number(name))) {
             return value;
         }
@@ -659,7 +835,7 @@ class App extends React.Component<{}, IAppState> {
     //
     //  returns an array of validation errors with no side effects
     //
-    //  
+    //
     private getValidationErrors = (options: ValidationOptions): IErrorMessage[] => {
         const errors: IErrorMessage[] = []
         const nameObject = Object.create(null);
@@ -703,7 +879,7 @@ class App extends React.Component<{}, IAppState> {
         //  I'm taking out these chars because they are "special" in JSON.  I found that the ":" messed up JQ processing
         //  and it seems a small price to pay to not take any risks with the names.  Note that we always trim() the names
         //  in the ParameterOrScriptData_PropertyChanged method
-        //  
+        //
         const illegalNameChars: string = ":{}[]\\\'\"";
         if (this.state.ScriptName !== "") {
             for (let c of illegalNameChars) {
@@ -799,7 +975,7 @@ class App extends React.Component<{}, IAppState> {
             if (name === "longParameter") {
                 //
                 //  attempt to autofill short name and variable name
-                //  
+                //
 
                 if (parameter.shortParameter === "") {
                     for (const c of parameter.longParameter) {
@@ -842,10 +1018,10 @@ class App extends React.Component<{}, IAppState> {
 
         model.uniqueName = uniqueId("PARAMETER_DIV_")
         model.registerNotify(this.onPropertyChanged)
-        
+
         //
         //  if you just call setState() on this, then the call to updateAllText() calls toBash()
-        //  and toBash() reads this.state.Parameters and the item won't be there. 
+        //  and toBash() reads this.state.Parameters and the item won't be there.
         await this.setStateAsync({ Parameters: [...this.state.Parameters, model] });
         await this.updateAllText();
 
@@ -934,7 +1110,7 @@ class App extends React.Component<{}, IAppState> {
 
     private addcvdParameters = async () => {
 
-        
+
         if (this.builtInParameters.Verify !== undefined) {
             await this.deleteParameter(this.builtInParameters.Verify);
         }
@@ -953,12 +1129,12 @@ class App extends React.Component<{}, IAppState> {
         p.requiresInputString = false;
         p.requiredParameter = false;
         p.valueIfSet = "true";
-        
+
         this.builtInParameters.Create = p;
         p.type = ParameterTypes.Create;
         p.collapsed = true;
-        await this.addParameter(p,false);
-        
+        await this.addParameter(p, false);
+
         p = new ParameterModel();
         p.longParameter = "verify";
         p.shortParameter = "v";
@@ -1006,9 +1182,9 @@ class App extends React.Component<{}, IAppState> {
 
     // this took *hours* to track down.  do not *ever* use the index as the key
     // react will use the key to render.  say you have 3 items -- with key=0, 1, 2
-    // you delete the key=1 leaving 0 and 2.  but then you run render() again and you 
+    // you delete the key=1 leaving 0 and 2.  but then you run render() again and you
     // get key 0 and 1 again ...and the item you just deleted is still referenced as item 1
-    // and it'll look like you deleted the wrong item.         
+    // and it'll look like you deleted the wrong item.
     //
     //  AND!!!
     //
@@ -1019,7 +1195,7 @@ class App extends React.Component<{}, IAppState> {
     //  (which causes the <App/> to update state) and the form stops taking input
     //
     //  the solution is to store the unique name and generate one when you create a new ParameterModel
-    //  
+    //
     //  leasson:  the name is really a name.  treat it like one.
     //
     public renderParameters = () => {
@@ -1042,23 +1218,29 @@ class App extends React.Component<{}, IAppState> {
     //  note that we have some async stuff going on.  we'll resturn from this function
     //  and the answer to the dialog comes back to this.yesNoReset
     private onNew = async () => {
-
+        console.log("onNew");
         if (this.state.Parameters.length > 0) {
-            const msg: string = "Create a new bash file?";
-            const obj: object = { dialogMessage: msg, dialogVisible: true, dialogCallback: this.yesNoReset };
-            await this.setStateAsync(obj);
-        }
-        else {
-            this.reset();
+            const response = await this.askUserQuestion("Create a new bash file?");
+            if (response === "yes") {
+                this.reset();
+            }
         }
     }
 
-    private yesNoReset = async (response: "yes" | "no") => {
-        this.setState({ dialogVisible: false });
-        if (response === "yes") {
-            this.reset();
+    private askUserQuestion = async (question: string): Promise<string> => {
+        try {
+            await this.setStateAsync({ showYesNoDialog: true });
+            if (this.yesNoDlg !== null && this.yesNoDlg.current !== null) {
+                const response = await this.yesNoDlg.current.waitForDlgAnswer(question);
+                return response;
+            }
+            return "no";
+        }
+        finally {
+            await this.setStateAsync({ showYesNoDialog: false });
         }
     }
+
     private onErrorClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
         if (this.state.selectedError !== undefined) {
             this.state.selectedError.selected = false;
@@ -1075,14 +1257,28 @@ class App extends React.Component<{}, IAppState> {
             item.Parameter.focus();
         }
     }
-    public render = () => {
 
+
+
+    public render = () => {
+        let electronEnabled: boolean = false;
+        // tslint:disable-next-line:no-string-literal
+        if (window["require"] !== undefined) {
+            // tslint:disable-next-line:no-string-literal
+            if (typeof window["require"]("electron") !== undefined) {
+                electronEnabled = true;
+            }
+        }
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
+        const root: HTMLElement | null = window.document.getElementById("root");
 
         return (
-            <div className="outer-container" id="outer-container">
+
+            <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
                 <Growl ref={this.growl} />
-                <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
+                {
+                    (this.state.showYesNoDialog) ? <YesNoDialog ref={this.yesNoDlg} /> : ""
+                }
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
                     <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} minSize={"125"} onDragFinished={(newSize: number) => {
                         //
@@ -1093,14 +1289,15 @@ class App extends React.Component<{}, IAppState> {
                         <div className="DIV_Top">
                             <Toolbar className="toolbar" id="toolbar">
                                 <div className="p-toolbar-group-left">
-
-                                    {/* need to use standard button here because Prime Icons doesn't have a good "New File" icon */}
-
                                     <button className="bw-button p-component" onClick={this.onNew}>
                                         <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-
+                                    {(electronEnabled) ?
+                                        <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
+                                        :
+                                        ""
+                                    }
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
                                     <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.Parameters.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
@@ -1133,7 +1330,7 @@ class App extends React.Component<{}, IAppState> {
                                 </div>
                             </Toolbar>
                             {/* this is the section for entering script name and description */}
-                            <div className="DIV_globalEntry">
+                            <div className="DIV_globalEntry" id="div-global-entry">
                                 <div className="p-grid grid-global-entry">
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
@@ -1248,7 +1445,9 @@ class App extends React.Component<{}, IAppState> {
             for (let p of state.Parameters) {
                 p.registerNotify(this.onPropertyChanged);
                 p.uniqueName = uniqueId("PARAMETER_DIV_")
+                p.FireChangeNotifications = true;
                 p.selected = false;
+                p.collapsed = (p.type !== ParameterTypes.Custom)
             }
             await this.setStateAsync({
                 Parameters: state.Parameters,

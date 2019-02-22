@@ -37,8 +37,8 @@ export class ParameterModel {
         this.NotifyPropertyChanged("description")
         this.NotifyPropertyChanged("longParameter")
         this.NotifyPropertyChanged("shortParameter")
-        this.NotifyPropertyChanged("variableName") 
-        this.NotifyPropertyChanged("valueIfSet")                
+        this.NotifyPropertyChanged("variableName")
+        this.NotifyPropertyChanged("valueIfSet")
     }
 
     //
@@ -69,7 +69,7 @@ export class ParameterModel {
         }
     }
 
-    // we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option    
+    // we set valueIfSet to $2 when requiresInputString is set.  we save the old value in case the user de-selects the option
     private _oldValueIfSet: string = "";
     get oldValueIfSet(): string {
         return this._oldValueIfSet;
@@ -140,7 +140,7 @@ export class ParameterModel {
 
     }
 
-  
+
 
     get default(): string {
         return this.Default;
@@ -205,7 +205,7 @@ export class ParameterModel {
     public set shortParameter(value: string) {
         if (value !== this.ShortParameter) {
             this.ShortParameter = value.replace(new RegExp(/^-{1}/, "i"), "");
-            this.ShortParameter = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
+            this.ShortParameter = this.ShortParameter.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("shortParameter")
         }
     }

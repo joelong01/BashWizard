@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "outDir": "build/dist",
     "module": "esnext",
     "target": "es6",
-    "lib": ["es6", "dom"],
+    "lib": [
+      "es2015",
+      "dom"
+    ],
     "sourceMap": true,
-    "allowJs": true,
-    "jsx": "react",
+    "allowJs": false,
+    "jsx": "preserve",
     "moduleResolution": "node",
     "rootDir": "src",
     "forceConsistentCasingInFileNames": true,
@@ -22,14 +24,20 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "noUnusedParameters": false,
-    
-    
+    "skipLibCheck": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "isolatedModules": true,
+    "noEmit": true,
+    "experimentalDecorators": true
   },
   "rules": {
     "named-imports-order": "any",
-    "object-literal-sort-keys": false,
-    
+    "object-literal-sort-keys": false
   },
+  "include": [
+    "src"
+  ],
   "exclude": [
     "node_modules",
     "build",

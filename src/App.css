@@ -1,244 +1,206 @@
 /* trying to set the fonts consistently everywhere. p-component is a shared class with prime react, so this will set
    all components to use these fonts.  the internal components are set to the same font in ./index.css */
-.p-component
-{
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  
+.p-component {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
 }
-.outer-container
-{
-  margin-left: 0px;
-  position: absolute;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  overflow:hidden;
-  min-width: 20em;
+.outer-container {
+    margin-left: 0px;
+    position: absolute;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    min-width: 20em;
 }
 
-.DIV_LayoutRoot
-{
-  position: relative;
-  float:right;
-  width: 100%;
-  height: 100;
-  
+.DIV_LayoutRoot {
+    position: relative;
+    float: right;
+    width: 100%;
+    height: 100%;
 }
+
 /* the div that holds the form for entering description and scriptname */
-.DIV_globalEntry
-{
-  position: relative;
-  width: 100%;
-  top: .5em;
-  height: 4.25em;
-  
-
+.DIV_globalEntry {
+    position: relative;
+    width: 100%;
+    top: 0.5em;
+    height: 4.25em;
 }
-.column-global-entry
-{
-  width:50%;
-
+.column-global-entry {
+    width: 50%;
 }
 
-.grid-global-entry
-{
-  padding-top: 0.5em;
-  
+.grid-global-entry {
+    padding-top: 0.5em;
 }
 
-.tabControl
-{
-  /* the Tabs inherit these font settings */
-  position: absolute;
-  font-size: 1em;
-  font-weight: bolder;
-  height: 100%;
-  width: 100%;
-  margin: 0em;
+.tabControl {
+    /* the Tabs inherit these font settings */
+    position: absolute;
+    font-size: 1em;
+    font-weight: bolder;
+    height: 100%;
+    width: 100%;
+    margin: 0em;
 }
-.p-tabview-panels
-{
-  background-color: lightgray;
-  height: calc(100% - 40px);
+.p-tabview-panels {
+    background-color: lightgray;
+    height: calc(100% - 40px);
 }
 
-
-.param-label
-{
-  margin-left: 0px !important;
-  font-style: italic;
+.param-label {
+    margin-left: 0px !important;
+    font-style: italic;
 }
 
 /* the Ace Editors */
-.bw-ace
-{
-  width: 100% !important;
-  height: 100% !important;
+.bw-ace {
+    width: 100% !important;
+    height: 100% !important;
 }
 
-.divEditor
-{
-  position: absolute;
-  width: calc(100% - 1em);
-  height: calc(100% - 4em);  
-  top: 3.25em;
-  left: .5em;
-  border-radius: 3px;
-  
-  
+.divEditor {
+    position: absolute;
+    width: calc(100% - 1em);
+    height: calc(100% - 4em);
+    top: 3.25em;
+    left: 0.5em;
+    border-radius: 3px;
 }
 
-.DIV_Top
-{
-  
-  width: 100%;
-  margin: .25em .25em 0.25em .25em;  
-  position: relative;
-  background-color: transparent;
-  left: 0px;
-  top: 0px;
+.DIV_Top {
+    width: 100%;
+    margin: 0.25em 0.25em 0.25em 0.25em;
+    position: relative;
+    background-color: transparent;
+    left: 0px;
+    top: 0px;
 }
-   
-.Parameter_List
-{
-  overflow: auto;
-  position: relative;
-  border: 1px solid blue;
-  border-radius: 3px; 
-  margin: 0em;
-  /* height: calc(100% - 115px); Height calculated in this.handleResize() and set as style in code*/
-  
+
+.Parameter_List {
+    overflow: auto;
+    position: relative;
+    border: 1px solid blue;
+    border-radius: 3px;
+    margin: 0em;
+    /* height: calc(100% - 115px); Height calculated in this.handleResize() and set as style in code*/
 }
 
 /* this is the little dot next to the light/dark mode.
    it makes the circle dark when in dark mode */
-.pi-circle-on
-{
-  color: black !important;
+.pi-circle-on {
+    color: black !important;
 }
-
 
 /*  the New Button on the Toolbar */
 
-.bw-button
-{
-  margin-top: 0px;
-  color: #333333;
-  background-color: #f4f4f4;
-  border: 1px solid #f4f4f4;
-  vertical-align: middle;
-  transition: background-color 0.2s, box-shadow 0.2s;
-  border-radius: 3px;
-  display: inline-block;
-  position: relative;
-  padding: 0;
-  text-decoration: none !important;
-  cursor: pointer;
-  text-align: left;
-  zoom: 1;
-  overflow: visible;      
-  width: 7.5em;  
-  height: 2.5em;
-  margin-right: 0.25em;
-  
+.bw-button {
+    margin-top: 0px;
+    color: #333333;
+    background-color: #f4f4f4;
+    border: 1px solid #f4f4f4;
+    vertical-align: middle;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    border-radius: 3px;
+    display: inline-block;
+    position: relative;
+    padding: 0;
+    text-decoration: none !important;
+    cursor: pointer;
+    text-align: left;
+    zoom: 1;
+    overflow: visible;
+    width: 7.5em;
+    height: 2.5em;
+    margin-right: 0.25em;
 }
 
 /* error list support */
-  .bw-error-list
-  {
+.bw-error-list {
     width: calc(100% - 17px) !important;
     height: calc(100% - 63px);
     position: absolute;
-    left: .75em;
+    left: 0.75em;
     border-radius: 3px;
     overflow: auto;
-  }
-  .bw-error-item
-  {
-    height: 2.0em;
+}
+.bw-error-item {
+    height: 2em;
     overflow: hidden;
     transition: background-color 0.2s, box-shadow 0.2s;
     font-weight: 400;
     width: 100%;
-  }
-  .bw-error-item-selected
-  {
+}
+.bw-error-item-selected {
     border: 2px lightblue solid;
-    border-radius: .25em;
-  }
-  .bw-error-item:hover
-  {
+    border-radius: 0.25em;
+}
+.bw-error-item:hover {
     background-color: #c8c8c8;
     color: #333333;
     border-color: #c8c8c8;
-    border-radius: .25em;
-  }
-  .bw-error-span
-  {
+    border-radius: 0.25em;
+}
+.bw-error-span {
     margin-right: 2em;
     margin-top: 0em;
-    font-size: 1.25em;      
-  }
+    font-size: 1.25em;
+}
 
-  
-  .error-col1
-  {
+.error-col1 {
     display: inline-block;
     width: 9em;
-  }
+}
 
 /* toolbar button */
-  .bw-button:hover
-  {  
+.bw-button:hover {
     background-color: #c8c8c8;
     color: #333333;
     border-color: #c8c8c8;
-    border-radius: .25em;
-  }
-  .bw-button-span
-  {
+    border-radius: 0.25em;
+}
+.bw-button-span {
     position: relative;
     font-size: 1em;
-    font-weight: normal;              
+    font-weight: normal;
     left: 1.75em;
-  }
+}
 
-  .bw-button-icon
-  {
+.bw-button-icon {
     position: absolute;
     top: 50%;
-    margin-top: -.5em;
+    margin-top: -0.5em;
     height: 1.25em;
-    margin-left: .25em; 
-  }
+    margin-left: 0.25em;
+}
 
-  .p-menuitem-link[target=separator] {
+.p-menuitem-link[target="separator"] {
     height: 0px;
     display: block;
     padding: 0;
     min-height: 0;
     border-bottom: 1px #525252 solid;
     padding: 0em !important;
-  }
+}
 
 /* splitter */
-  .Resizer.horizontal {
-    height: .5em; 
-    background-color: lightgray;    
-    border: .125em solid darkgray;
+.Resizer.horizontal {
+    height: 0.5em;
+    background-color: lightgray;
+    border: 0.125em solid darkgray;
     cursor: row-resize;
     transition: background-color 0.2s, box-shadow 0.2s;
     width: 100%;
-    
-  }
+}
 
-  .Resizer.horizontal:hover {
-    background-color:darkgray;
-  }
+.Resizer.horizontal:hover {
+    background-color: darkgray;
+}
 
-  .Resizer.disabled {
-  cursor: not-allowed;
-  }
-  .Resizer.disabled:hover {
-  border-color: transparent;
-  }
+.Resizer.disabled {
+    cursor: not-allowed;
+}
+.Resizer.disabled:hover {
+    border-color: transparent;
+}

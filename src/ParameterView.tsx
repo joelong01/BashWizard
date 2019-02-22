@@ -1,13 +1,5 @@
 import React from 'react';
 import { ParameterModel, ParameterTypes, IGrowlCallback } from './ParameterModel';
-import { Fieldset } from "primereact/fieldset"
-
-import "primereact/resources/primereact.min.css";
-import "primeicons/primeicons.css";
-import "primeflex/primeflex.css"
-import "./ParameterView.css"
-import "./App.css"
-import "./index.css"
 
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
@@ -138,11 +130,11 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             this.focus();
             return;
         }
-     
+
         if (!(key in this.state)) {
             console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
             throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
-        }        
+        }
 
         /*  commenting out because Type is now read only
              if (key === "type") {
@@ -156,7 +148,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         if (key === "collapsed") {
             console.log(`setting collapsed=${model[key]} for ${model.longParameter}`)
         }
-        
+
         if (key === "selected" && model.selected === true && this.refParameterForm.current !== null) {
           //  console.log(`${this.Model.uniqueName} is getting focus`);
             this.refParameterForm.current.focus();
@@ -329,16 +321,16 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
         if (key === "default" && value !== "" && this.state.Model.requiredParameter === true) {
             this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "You cannot have a \"Required Property\" and a \"Default\" at the same time.  Unchecking \"Required Parameter\"." });
-            this.state.Model.requiredParameter = false; // internal statue updated via callback            
+            this.state.Model.requiredParameter = false; // internal statue updated via callback
         }
         if (key === "valueIfSet" && value === "$2" && this.state.Model.requiresInputString === false) {
             this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the \"Value if set\" is \"$2\", then \"Requires Input String\" must be true.  Checking \"Requires Input String\"." });
-            this.state.Model.requiresInputString = true; // internal statue updated via callback            
+            this.state.Model.requiresInputString = true; // internal statue updated via callback
         }
 
         if (key === "valueIfSet" && value !== "$2" && this.state.Model.requiresInputString === true) {
             this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the \"Value if set\" is not \"$2\", then \"Requires Input String\" must be false.  Unchecking \"Requires Input String\"." });
-            this.state.Model.requiresInputString = false; // internal statue updated via callback            
+            this.state.Model.requiresInputString = false; // internal statue updated via callback
         }
     }
 
@@ -359,20 +351,21 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             <div className="parameter-layout-root" key={this.state.uniqueId}
                  onClick={() => {this.state.Model.selected = true;}}
               /*  onFocus={() => { this.state.Model.selected = true; this.focus(); }} */
-                
+
                 onBlur = { () => this.state.Model.selected = false}
-                
+
                 >
-                
+
                 <Button className="collapse-button p-button-secondary"
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
                     onClick={() => {this.setState({ collapsed: !this.state.collapsed}); this.state.Model.selected = true;}} />
                 <fieldset className={fieldSetName}
-                    
+
                 /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}*/
-                onClick={() => {this.state.Model.selected = true; }} 
+                onClick={() => {this.state.Model.selected = true; }}
                 >
                     <legend>{this.state.type === ParameterTypes.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
+                    <div className="TheWholeThing">
                     <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
                     /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
                     >
@@ -428,6 +421,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                         </div>
                         <div className="p-col-fixed param-column" />
 
+                    </div>
                     </div>
                 </fieldset>
             </div>
