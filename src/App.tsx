@@ -28,7 +28,7 @@ import "brace/theme/cobalt"
 
 import { ParseBash, IParseState } from './parseBash';
 import { LocalFileSystemProxy } from "./localFileSystemProxy"
-import { FileFilter } from "electron";
+import { FileFilter, IpcRenderer } from "electron";
 
 export interface IErrorMessage {
     severity: "warning" | "error" | "info";
@@ -57,7 +57,10 @@ enum ValidationOptions {
 }
 
 
-interface IAppState {
+//
+//  represents the properties that will impact the UI
+//
+interface IAppUiState {
 
     // state that impacts the UI - places in this.stringify
     json: string;
@@ -68,9 +71,8 @@ interface IAppState {
     inputJson: string;
     mode: string; // one of "light" or "dark"
     autoSave: boolean;
-    dialogVisible: boolean;
+    showYesNoDialog: boolean;
     dialogMessage: string;
-    dialogCallback: YesNoResponse;
     errors: IErrorMessage[];
     selectedError: IErrorMessage | undefined;
     parameterListHeight: string;
@@ -89,11 +91,13 @@ interface IAppState {
 
 }
 
-class App extends React.Component<{}, IAppState> {
+class App extends React.Component<{}, IAppUiState> {
     private growl = React.createRef<Growl>();
+    private yesNoDlg = React.createRef<YesNoDialog>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
+    private savingFile: boolean = false;
     private UserCode: string = "";
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
@@ -108,14 +112,14 @@ class App extends React.Component<{}, IAppState> {
         if (autoSaveSetting === undefined) {
             autoSaveSetting = false;
         }
-        if (typeof window["require"] !== "undefined") {
-            // tslint:disable-next-line:no-string-literal
-            const ipcRenderer = window["require"]("electron").ipcRenderer;
-            console.log(`updating autoSave=${autoSaveSetting}`)
-            ipcRenderer.sendSync("synchronous-message", {autoSave: autoSaveSetting});
+        //
+        //  send settings to the main app to update the browser UI
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.sendSync("synchronous-message", { autoSave: autoSaveSetting });
         }
 
-        if (savedMode === "" || savedMode === null || savedMode===undefined) {
+        if (savedMode === "" || savedMode === null || savedMode === undefined) {
             savedMode = "light";
         }
 
@@ -133,9 +137,8 @@ class App extends React.Component<{}, IAppState> {
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
-                dialogVisible: false,
+                showYesNoDialog: false,
                 dialogMessage: "",
-                dialogCallback: this.yesNoReset,
                 errors: [],
                 selectedError: undefined,
                 activeTabIndex: 0,
@@ -211,18 +214,23 @@ class App extends React.Component<{}, IAppState> {
             }
     }
 
-    private setupCallbacks = () => {
-        // tslint:disable-next-line:no-string-literal
+    private getIpcRenderer(): IpcRenderer | undefined {
         if (typeof window["require"] !== "undefined") {
             // tslint:disable-next-line:no-string-literal
-            const ipcRenderer = window["require"]("electron").ipcRenderer;
+            return window["require"]("electron").ipcRenderer;
 
+        }
+        return undefined;
+    }
+    private setupCallbacks = () => {
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
             ipcRenderer.on("on-new", async (event: any, message: any) => {
                 this.reset(); // this gets verified in the main process
             });
 
             ipcRenderer.on("on-open", async (event: any, message: any[]) => {
-                await this.onOpen(message[0], message[1]);
+                await this.setBashScript(message[0], message[1]);
             });
 
             ipcRenderer.on("on-save", async (event: any, message: any[]) => {
@@ -238,57 +246,124 @@ class App extends React.Component<{}, IAppState> {
                 await this.setStateAsync({ autoSave: message[0] });
                 this.saveSettings();
             });
+
+            ipcRenderer.on('asynchronous-reply', (event: string, arg: string) => {
+                if (arg === "file-changed") {
+                    this.onFileChanged(this.state.FileName);
+                }
+            })
+
+
         }
     }
 
     private onSave = async (alwaysPrompt: boolean): Promise<void> => {
-        console.log(`onSave alwaysPrompt=${alwaysPrompt} FileName=${this.state.FileName}`)
-        if (this.state.FileName === "" || alwaysPrompt === true) {
-            const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-            console.log(`Filename=${fn}`)
-            if (fn === "" || fn === undefined) {
-                console.log("filename is undefined or empty")
-                return;
-            }
-
-            await this.setStateAsync({ FileName: fn });
-
+        if (this.savingFile) {
+            return;
         }
-
-        console.log(`saving to ${this.state.FileName}`);
-        await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.bash);
+        try {
+            this.savingFile = true; // we don't want notifications of changes that we started
+            if (this.state.FileName === "" || alwaysPrompt === true) {
+                const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+                if (fn === "" || fn === undefined) {
+                    return;
+                }
+                this.watchFile(fn);
+            }
+            await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.bash);
+        }
+        catch (error) {
+            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error saving the file.  Details: \n" + error });
+        }
+        finally {
+            this.savingFile = false;
+        }
 
     }
 
     //
     //  this starts in the render process and then calls to the main process.
-    //  onOpen is called from the main process and then data is pushed to the render process
+    //  setBashScript is called from the main process and then data is pushed to the render process
     private onLoadFile = async (): Promise<boolean> => {
 
-
-        const fn = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-        const contents: string = await this.mainFileSystemProxy.readText(fn);
-        if (contents !== "") {
-            return await this.onOpen(fn, contents);
+        try {
+            const fn = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            if (fn !== "" || fn !== undefined) {
+                const contents: string = await this.mainFileSystemProxy.readText(fn);
+                if (contents !== "") {
+                    const ret: boolean = await this.setBashScript(fn, contents);
+                    if (ret) {
+                        this.watchFile(fn);
+                    }
+                    return ret;
+                }
+            }
+        }
+        catch (error) {
+            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error loading the file.  Details: \n" + error });
         }
         return false;
     }
 
-    private onOpen = async (filename: string, contents: string): Promise<boolean> => {
+    //
+    //  called when the main process opens a file, reads the conents, and sends it back to the render process
+    private setBashScript = async (filename: string, contents: string): Promise<boolean> => {
         if (contents !== "") {
+            this.watchFile(filename);
             await this.setStateAsync({ bash: contents, FileName: filename });
             await this.bashToUi(this.state.bash);
             return true;
         }
         return false;
     }
+    //
+    //  called when you open or save a file
+    //
+    private watchFile = async (fn: string) => {
+
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
+            await this.setStateAsync({ FileName: fn }); // need read after write
+            ipcRenderer.send("asynchronous-message", { eventType: "watch", filename: fn });
+        }
+
+    }
+
+    private onFileChanged = async (filename: string) => {
+        if (this.savingFile) {
+            return;
+        }
+        await this.setStateAsync({ showYesNoDialog: true });
+        const response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`);
+        if (response === "yes") {
+
+            const contents: string = await this.mainFileSystemProxy.readText(filename);
+            if (contents !== "") {
+                await this.setBashScript(filename, contents);
+                return;
+            }
+            else {
+
+                return;
+            }
+
+
+        }
+    }
+
+
+
 
     public componentDidMount = () => {
         window.addEventListener<"resize">('resize', this.handleResize);
-        //   window.resizeBy(1, 1);
         this.setupCallbacks();
+        //
+        //   need to stop the "react shows unstyled windows" problem
+        //  
         window.setTimeout(() => {
             this.setState({ Loaded: true });
+            window.resizeBy(1, 0);
         }, 150);
 
 
@@ -1143,23 +1218,29 @@ class App extends React.Component<{}, IAppState> {
     //  note that we have some async stuff going on.  we'll resturn from this function
     //  and the answer to the dialog comes back to this.yesNoReset
     private onNew = async () => {
-
+        console.log("onNew");
         if (this.state.Parameters.length > 0) {
-            const msg: string = "Create a new bash file?";
-            const obj: object = { dialogMessage: msg, dialogVisible: true, dialogCallback: this.yesNoReset };
-            await this.setStateAsync(obj);
-        }
-        else {
-            this.reset();
+            const response = await this.askUserQuestion("Create a new bash file?");
+            if (response === "yes") {
+                this.reset();
+            }
         }
     }
 
-    private yesNoReset = async (response: "yes" | "no") => {
-        this.setState({ dialogVisible: false });
-        if (response === "yes") {
-            this.reset();
+    private askUserQuestion = async (question: string): Promise<string> => {
+        try {
+            await this.setStateAsync({ showYesNoDialog: true });
+            if (this.yesNoDlg !== null && this.yesNoDlg.current !== null) {
+                const response = await this.yesNoDlg.current.waitForDlgAnswer(question);
+                return response;
+            }
+            return "no";
+        }
+        finally {
+            await this.setStateAsync({ showYesNoDialog: false });
         }
     }
+
     private onErrorClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
         if (this.state.selectedError !== undefined) {
             this.state.selectedError.selected = false;
@@ -1195,7 +1276,9 @@ class App extends React.Component<{}, IAppState> {
 
             <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
                 <Growl ref={this.growl} />
-                <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
+                {
+                    (this.state.showYesNoDialog) ? <YesNoDialog ref={this.yesNoDlg} /> : ""
+                }
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
                     <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} minSize={"125"} onDragFinished={(newSize: number) => {
                         //

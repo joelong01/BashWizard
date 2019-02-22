@@ -8,13 +8,13 @@ import {
     Menu,
     MenuItem,
     MenuItemConstructorOptions,
-    dialog,
-    FileFilter,
-    TouchBarColorPicker
+    dialog
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import LocalFileSystem from "./localFileSystem";
 import Cookies, { Cookie } from "universal-cookie"
+import fs from "fs";
+
 
 const cookie: Cookie = new Cookies();
 
@@ -26,10 +26,29 @@ let ipcMainProxy: IpcMainProxy;
 //
 //  this receives messages from the renderer to update the settings in the main app
 ipcMain.on('synchronous-message', (event: any, arg: any): any => {
-    console.count("ipcMain.on");
     console.log(`data: ${JSON.stringify(arg)} autoSave=${arg.autoSave}`)
     createMainMenu(mainWindow, arg.autoSave);
     event.returnValue = true;
+})
+
+//
+//  this receives messages from the renderer to update the settings in the main app
+//
+//  arg should look like {eventyType: "watch" | "unwatch", filename: string}
+ipcMain.on('asynchronous-message', (event: any, arg: any): any => {
+    console.log(`asynchronous-message-data: ${JSON.stringify(arg)}`)
+    if (arg.eventType === "watch") {
+        fs.watch(arg.filename, { persistent: false }, (eventType: string, filename: string) => {
+            console.log(`${filename} ${eventType} `)
+            event.sender.send('asynchronous-reply', "file-changed");
+        });
+    } else if (arg.eventType === "unwatch") {
+        fs.unwatchFile(arg.filename);
+    } else {
+        console.log("ERROR: BAD MESSAGE TYPE IN MAIN.TS");
+    }
+
+
 })
 
 function createWindow() {
@@ -66,7 +85,7 @@ function createWindow() {
     registerContextMenu(mainWindow);
 
     let autoSaveSetting = cookie.get("autosave");
-    if (autoSaveSetting === undefined){
+    if (autoSaveSetting === undefined) {
         autoSaveSetting = false;
     }
     console.log("autosave=" + autoSaveSetting);
@@ -228,7 +247,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             { role: "front" }
         ];
     }
-    console.log(`menuTemplate: ${JSON.stringify(template)}`);
+    // console.log(`menuTemplate: ${JSON.stringify(template)}`);
     const menu = Menu.buildFromTemplate(template);
 
     // Menu.setApplicationMenu(menu);
