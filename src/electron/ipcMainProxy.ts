@@ -13,11 +13,12 @@ export class IpcMainProxy {
     }
 
     public register<T>(type: string, handler: IpcProxyHandler<T>) {
-        this.handlers[type] = handler;
+       this.handlers[type] = handler;
     }
 
     public registerProxy(proxyPrefix:any, provider:any) {
         Object.getOwnPropertyNames(provider.__proto__).forEach((memberName) => {
+            // console.log(`registerProxy: [memberName=${memberName}] [proxyPrefix=${proxyPrefix}] [type=${typeof (provider[memberName])}]`)
             if (typeof (provider[memberName]) === "function") {
                 this.register(`${proxyPrefix}:${memberName}`, (sender: any, eventArgs: any[]) => {
                     return provider[memberName].apply(provider, eventArgs);

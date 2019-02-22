@@ -3,7 +3,7 @@ const path = require("path");
 
 module.exports = {
   target: "electron-main",
-  entry: "./src/electron/main.js",
+  entry: "./src/electron/main.ts",
   module: {
     rules: [
       {

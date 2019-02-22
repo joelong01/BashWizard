@@ -1,12 +1,13 @@
 {
     "name": "bw-react",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "private": true,
     "main": "./build/main.js",
     "homepage": ".",
     "dependencies": {
         "@babel/runtime": "^7.3.1",
         "@types/lodash-es": "^4.17.2",
+        "@types/shortid": "0.0.29",
         "classnames": "^2.2.6",
         "fs": "0.0.1-security",
         "jquery": "^3.3.1",
@@ -23,7 +24,11 @@
         "react-split-pane": "^0.1.85",
         "react-splitter-layout": "^3.0.1",
         "react-transition-group": "^2.5.3",
+        "shortid": "^2.2.14",
         "universal-cookie": "^3.0.7"
+    },
+    "eslintConfig": {
+        "extends": "react-app"
     },
     "scripts": {
         "start": "nf start -p 3000",

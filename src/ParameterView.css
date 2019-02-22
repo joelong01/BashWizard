@@ -1,14 +1,13 @@
 .parameter-layout-root {
     background-color: transparent;
     margin-bottom: 0.25em;
+    position: relative;
 }
 
 .parameter-item-grid {
     position: relative;
-    height: 3.25em;
     border-radius: .25em;
-    padding: .5em;
-    margin: .5em;
+    margin: 0em .5em;
     width: calc(100% - 1.0em);
     transition: all 10ms linear;
 }
@@ -17,12 +16,14 @@
     visibility: collapse;
     opacity: 0.0;
 }
+.TheWholeThing{
+    margin: 0em;
+}
 
 .parameter-fieldset {
-    margin: -1.5em 0.25em 0em 1.25em;
+    margin: 0em .5em;
     border: 1px solid black;
     border-radius: .25em;
-    height: 10em;
     transition: all 100ms linear;
     transition-delay: 25ms;
 }
@@ -56,18 +57,19 @@
 }
 
 .checkbox-grid {
-    margin-top: -.75em !important;
-    margin-left: 0em;
+
+    margin: 0px;
 }
 
 .p-checkbox-label {
-    margin-left: 0em !important;
+    margin: 0em .5em;
 }
 
 .collapse-button {
-    margin-left: 1em !important;
-    top: .5em;
-    width: 1em !important;
+    left: 0.125em;
     height: 1em;
+    top: .25em;
+    width: 1em !important;
     z-index: 10;
+    position: absolute;;
 }

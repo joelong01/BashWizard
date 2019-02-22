@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from "electron";
+import { BrowserWindow, dialog, FileFilter } from "electron";
 import fs from "fs";
 import path from "path";
 import { IStorageProvider } from "./storageProviderFactory";
@@ -6,11 +6,26 @@ import { IStorageProvider } from "./storageProviderFactory";
 export class LocalFileSystem implements IStorageProvider {
     constructor(private browserWindow: BrowserWindow) {}
 
-    public getFile(dlgTitle: string, extensions: string[]): Promise<string> {
+    public getOpenFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             const fileNames = dialog.showOpenDialog({
                 title: dlgTitle,
-                filters: [{ name: "Bash Files", extensions: ["sh"] }]
+                filters: exts
+            });
+
+            if (fileNames === undefined || fileNames.length !== 1) {
+                return reject;
+            }
+            return resolve(fileNames[0]);
+        });
+    }
+
+
+    public getSaveFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            const fileNames = dialog.showSaveDialog({
+                title: dlgTitle,
+                filters: exts
             });
 
             if (fileNames === undefined || fileNames.length !== 1) {

@@ -1,8 +1,4 @@
-import "./index.css"
-import 'primereact/resources/themes/nova-light/theme.css';
-import 'primereact/resources/primereact.min.css';
-import 'primeicons/primeicons.css';
-import 'primeflex/primeflex.css'
+
 import React from 'react';
 import svgFiles from "./images"
 import { ParameterView } from './ParameterView';
@@ -20,8 +16,6 @@ import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
 import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
-import { Dropdown } from "primereact/dropdown"
-import MenuModel from "primereact/menu"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
@@ -31,20 +25,10 @@ import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/cobalt"
-import "./ParameterView.css"
-import "./App.css"
+
 import { ParseBash, IParseState } from './parseBash';
-import { Dialog } from 'electron';
-import {IStorageProvider} from "./electron/storageProviderFactory";
-import {LocalFileSystem} from "./electron/localFileSystem";
-
-
-
-// import electron from "electron";
-
-
-
-
+import { LocalFileSystemProxy } from "./localFileSystemProxy"
+import { FileFilter } from "electron";
 
 export interface IErrorMessage {
     severity: "warning" | "error" | "info";
@@ -82,7 +66,7 @@ interface IAppState {
     SelectedParameter?: ParameterModel;
     debugConfig: string;
     inputJson: string;
-    mode: string; // one of "light" or "dark"    
+    mode: string; // one of "light" or "dark"
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
@@ -91,6 +75,8 @@ interface IAppState {
     parameterListHeight: string;
     activeTabIndex: number;
     ButtonModel: any[];
+    FileName: string;
+    Loaded: boolean;
 
     //
     //  these get stringified
@@ -111,7 +97,8 @@ class App extends React.Component<{}, IAppState> {
     private Version: string = "0.907";
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
     private generateBashScript: boolean = true;
-
+    private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
+    private autoSave: boolean = false;
 
     constructor(props: {}) {
         super(props);
@@ -124,7 +111,7 @@ class App extends React.Component<{}, IAppState> {
         this.state =
             {
                 //
-                //  these get replaced in this.stringify                
+                //  these get replaced in this.stringify
                 json: "",
                 bash: "",
                 input: "",
@@ -138,6 +125,9 @@ class App extends React.Component<{}, IAppState> {
                 errors: [],
                 selectedError: undefined,
                 activeTabIndex: 0,
+                FileName: "",
+                Loaded: false,
+
                 ButtonModel: [
 
                     {
@@ -154,7 +144,7 @@ class App extends React.Component<{}, IAppState> {
                         }
                     },
                     {
-                        //  target allows us to use CSS to style this item               
+                        //  target allows us to use CSS to style this item
                         disabled: true, target: 'separator'
                     },
                     {
@@ -207,9 +197,82 @@ class App extends React.Component<{}, IAppState> {
             }
     }
 
+    private setupCallbacks = () => {
+        // tslint:disable-next-line:no-string-literal
+        if (typeof window["require"] !== "undefined") {
+            // tslint:disable-next-line:no-string-literal
+            const ipcRenderer = window["require"]("electron").ipcRenderer;
+
+            ipcRenderer.on("on-new", async (event: any, message: any) => {
+                this.reset(); // this gets verified in the main process
+            });
+
+            ipcRenderer.on("on-open", async (event: any, message: any[]) => {
+                await this.onOpen(message[0], message[1]);
+            });
+
+            ipcRenderer.on("on-save", async (event: any, message: any[]) => {
+                await this.onSave();
+            });
+
+            ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
+                await this.onSave(true);
+            });
+
+            ipcRenderer.on("on-auto-save-checked", async (event: any, message: any[]) => {
+                this.autoSave = message[0];
+                console.log(`AutoSave: ${this.autoSave}`);
+            });
+        }
+    }
+
+    private onSave = async (alwaysPrompt?: boolean): Promise<void> => {
+        if (this.state.FileName === "" || alwaysPrompt === true) {
+            const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            if (fn === "" || fn === undefined){
+                return;
+            }
+            await this.setStateAsync({FileName: fn});
+
+        }
+
+
+        await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.bash);
+
+    }
+
+    //
+    //  this starts in the render process and then calls to the main process.
+    //  onOpen is called from the main process and then data is pushed to the render process
+    private onLoadFile = async (): Promise<boolean> => {
+
+
+        const fn = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+        const contents: string = await this.mainFileSystemProxy.readText(fn);
+        if (contents !== "") {
+            return await this.onOpen(fn, contents);
+        }
+        return false;
+    }
+
+    private onOpen = async (filename: string, contents: string): Promise<boolean> => {
+        if (contents !== "") {
+            await this.setStateAsync({ bash: contents, FileName: filename });
+            await this.bashToUi(this.state.bash);
+            return true;
+        }
+        return false;
+    }
+
     public componentDidMount = () => {
         window.addEventListener<"resize">('resize', this.handleResize);
-        this.handleResize();
+     //   window.resizeBy(1, 1);
+        this.setupCallbacks();
+        window.setTimeout( () => {
+            this.setState({Loaded: true});
+        }, 150);
+
+
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -219,16 +282,23 @@ class App extends React.Component<{}, IAppState> {
     //  when the prime react toolbar changes width, it goes to 2 row and then 3 row state
     //  this means that if we set the height of the parameter list in css, then we have to
     //  deal with 3 different calcs - instead i'll do it hear by listening to the window
-    //  size event and calculating the height of the parameter list based on the height of 
+    //  size event and calculating the height of the parameter list based on the height of
     //  the toolbar.  note that 64px is the size of the div we enter script name in plus
     //  various margins.
     private handleResize = () => {
 
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
-        if (toolbar !== null) {
-            const htStyle: string = `calc(100% - ${toolbar.clientHeight + 69}px)`
+        const geDiv: HTMLElement | null = window.document.getElementById("div-global-entry");
+        if (toolbar !== null && geDiv !== null) {
+            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
+            const htStyle: string = `calc(100% - ${height}px)`
+            console.log(`setting height to ${htStyle}`)
+
             this.setState({ parameterListHeight: htStyle });
+        } else {
+            console.log("handleResize() => toolbar || geDiv is null")
         }
+
 
     };
     private saveSettings = (): void => {
@@ -297,9 +367,9 @@ class App extends React.Component<{}, IAppState> {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
 
-                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined                
+                let toSelect: ParameterModel | undefined = this.state.Parameters[index === 0 ? 0 : index - 1]; // might be undefined
                 this.selectParameter(toSelect); // select a new one (or nothing)
-                await this.deleteParameter(toDelete) // delte the one we want            
+                await this.deleteParameter(toDelete) // delte the one we want
                 this.clearErrorsAndValidateParameters();
             }
             else {
@@ -323,6 +393,7 @@ class App extends React.Component<{}, IAppState> {
 
             debugConfig: "",
             inputJson: "",
+            errors: [],
 
             // these do not get replaced
             ScriptName: "",
@@ -416,7 +487,7 @@ class App extends React.Component<{}, IAppState> {
                 usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
 
                 //
-                // the  echoInput function                
+                // the  echoInput function
                 echoInput += `${this.Tabs(1)}echo -n \"${this.Tabs(1)}${padEnd(param.longParameter, longestLongParameter, '.')} \"${nl}`;
                 echoInput += `${this.Tabs(1)}echoInfo \"\$${param.variableName}\"${nl}`;
 
@@ -448,7 +519,7 @@ class App extends React.Component<{}, IAppState> {
 
             }
             //
-            //  phase 2 - fix up any of the string created above         
+            //  phase 2 - fix up any of the string created above
 
             usageLine += "\""
 
@@ -518,7 +589,7 @@ class App extends React.Component<{}, IAppState> {
             }
             /*
               replace anyplace we have 3 new lines with 2 new lines.  this will get rid of double black lines...
-              e.g. 
+              e.g.
                         function onCreate() { (\n)
                             (\n)
                             (\n)
@@ -563,7 +634,7 @@ class App extends React.Component<{}, IAppState> {
             return value;
         }
         //
-        //  JSON.strinfigy passes in indexes as strings for array elements                
+        //  JSON.strinfigy passes in indexes as strings for array elements
         if (!isNaN(Number(name))) {
             return value;
         }
@@ -667,7 +738,7 @@ class App extends React.Component<{}, IAppState> {
     //
     //  returns an array of validation errors with no side effects
     //
-    //  
+    //
     private getValidationErrors = (options: ValidationOptions): IErrorMessage[] => {
         const errors: IErrorMessage[] = []
         const nameObject = Object.create(null);
@@ -711,7 +782,7 @@ class App extends React.Component<{}, IAppState> {
         //  I'm taking out these chars because they are "special" in JSON.  I found that the ":" messed up JQ processing
         //  and it seems a small price to pay to not take any risks with the names.  Note that we always trim() the names
         //  in the ParameterOrScriptData_PropertyChanged method
-        //  
+        //
         const illegalNameChars: string = ":{}[]\\\'\"";
         if (this.state.ScriptName !== "") {
             for (let c of illegalNameChars) {
@@ -807,7 +878,7 @@ class App extends React.Component<{}, IAppState> {
             if (name === "longParameter") {
                 //
                 //  attempt to autofill short name and variable name
-                //  
+                //
 
                 if (parameter.shortParameter === "") {
                     for (const c of parameter.longParameter) {
@@ -853,7 +924,7 @@ class App extends React.Component<{}, IAppState> {
 
         //
         //  if you just call setState() on this, then the call to updateAllText() calls toBash()
-        //  and toBash() reads this.state.Parameters and the item won't be there. 
+        //  and toBash() reads this.state.Parameters and the item won't be there.
         await this.setStateAsync({ Parameters: [...this.state.Parameters, model] });
         await this.updateAllText();
 
@@ -1014,9 +1085,9 @@ class App extends React.Component<{}, IAppState> {
 
     // this took *hours* to track down.  do not *ever* use the index as the key
     // react will use the key to render.  say you have 3 items -- with key=0, 1, 2
-    // you delete the key=1 leaving 0 and 2.  but then you run render() again and you 
+    // you delete the key=1 leaving 0 and 2.  but then you run render() again and you
     // get key 0 and 1 again ...and the item you just deleted is still referenced as item 1
-    // and it'll look like you deleted the wrong item.         
+    // and it'll look like you deleted the wrong item.
     //
     //  AND!!!
     //
@@ -1027,7 +1098,7 @@ class App extends React.Component<{}, IAppState> {
     //  (which causes the <App/> to update state) and the form stops taking input
     //
     //  the solution is to store the unique name and generate one when you create a new ParameterModel
-    //  
+    //
     //  leasson:  the name is really a name.  treat it like one.
     //
     public renderParameters = () => {
@@ -1084,77 +1155,23 @@ class App extends React.Component<{}, IAppState> {
         }
     }
 
-    private onLoadFile = () => {
-
-        // tslint:disable-next-line:no-string-literal
-        console.log("electron %o: ", window["require"]("electron"));
-        // tslint:disable-next-line:no-string-literal
-        console.log("remote %o: ", window["require"]("electron").remote);
-        // tslint:disable-next-line:no-string-literal
-        console.log("dialog %o: ", window["require"]("electron").remote.dialog);
-        // tslint:disable-next-line:no-string-literal
-        if (typeof window["require"] !== "undefined") {
-            // tslint:disable-next-line:no-string-literal
-            let dialog: Dialog = window["require"]("electron").remote.dialog;
-            console.log("Dialog %o", dialog);
-
-            if (dialog !== undefined) {
-                (dialog as any).showOpenDialog({
-                    filters: [
-                        { name: 'Bash Files', extensions: ['sh'] }
-                    ]
-                }, (fileNames: string[]) => {
-
-                    if (fileNames === undefined) {
-                        return;
-                    }
-                    
-                    console.log("picked " + fileNames.toString())
-
-                      // tslint:disable-next-line:no-string-literal
-                     /*  
-                      const loadFile=requireTaskPool(require.resolve("./file"));
-                      loadFile(fileNames[0]).then((result: string) => {
-                            console.log(result);
-                      }); */
-                    
-                   
-                });
-            }
-        }
-    }
-
-    
-
-
-    /* 
-                fs.readFile(filepath, 'utf-8', (err, data) => {
-                    if (err) {
-                        alert("An error ocurred reading the file :" + err.message);
-                        return;
-                    }
-    
-                    // Change how to handle the file content
-                    console.log("The file content is : " + data);
-                });
-}); */
 
 
     public render = () => {
-
-
         let electronEnabled: boolean = false;
-        // tslint:disable-next-line:no-string-literal        
-        if (window["require"] !== undefined) {            
+        // tslint:disable-next-line:no-string-literal
+        if (window["require"] !== undefined) {
             // tslint:disable-next-line:no-string-literal
             if (typeof window["require"]("electron") !== undefined) {
                 electronEnabled = true;
             }
         }
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
-
+        const root: HTMLElement | null = window.document.getElementById("root");
+        console.log(`Window Width: ${root!.clientHeight}`)
         return (
-            <div className="outer-container" id="outer-container">
+
+            <div className="outer-container" id="outer-container" style={{opacity: this.state.Loaded ? 1.0 : 0.01}}>
                 <Growl ref={this.growl} />
                 <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
@@ -1171,7 +1188,7 @@ class App extends React.Component<{}, IAppState> {
                                         <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-                                    {  (electronEnabled) ?
+                                    {(electronEnabled) ?
                                         <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
                                         :
                                         ""
@@ -1208,7 +1225,7 @@ class App extends React.Component<{}, IAppState> {
                                 </div>
                             </Toolbar>
                             {/* this is the section for entering script name and description */}
-                            <div className="DIV_globalEntry">
+                            <div className="DIV_globalEntry" id="div-global-entry">
                                 <div className="p-grid grid-global-entry">
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
@@ -1323,7 +1340,9 @@ class App extends React.Component<{}, IAppState> {
             for (let p of state.Parameters) {
                 p.registerNotify(this.onPropertyChanged);
                 p.uniqueName = uniqueId("PARAMETER_DIV_")
+                p.FireChangeNotifications = true;
                 p.selected = false;
+                p.collapsed = (p.type !== ParameterTypes.Custom)
             }
             await this.setStateAsync({
                 Parameters: state.Parameters,
