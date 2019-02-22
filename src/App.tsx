@@ -67,6 +67,7 @@ interface IAppState {
     debugConfig: string;
     inputJson: string;
     mode: string; // one of "light" or "dark"
+    autoSave: boolean;
     dialogVisible: boolean;
     dialogMessage: string;
     dialogCallback: YesNoResponse;
@@ -98,15 +99,27 @@ class App extends React.Component<{}, IAppState> {
     private builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {}; // this isn't in the this.state object because it doesn't affect the UI
     private generateBashScript: boolean = true;
     private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
-    private autoSave: boolean = false;
+
 
     constructor(props: {}) {
         super(props);
         let savedMode = this.cookie.get("mode");
-
-        if (savedMode === "" || savedMode === null) {
-            savedMode = "dark";
+        let autoSaveSetting = this.cookie.get("autosave");
+        if (autoSaveSetting === undefined) {
+            autoSaveSetting = false;
         }
+        if (typeof window["require"] !== "undefined") {
+            // tslint:disable-next-line:no-string-literal
+            const ipcRenderer = window["require"]("electron").ipcRenderer;
+            console.log(`updating autoSave=${autoSaveSetting}`)
+            ipcRenderer.sendSync("synchronous-message", {autoSave: autoSaveSetting});
+        }
+
+        if (savedMode === "" || savedMode === null || savedMode===undefined) {
+            savedMode = "light";
+        }
+
+        console.log(`mode=${savedMode} autoSave=${autoSaveSetting}`);
         const params: ParameterModel[] = []
         this.state =
             {
@@ -116,6 +129,7 @@ class App extends React.Component<{}, IAppState> {
                 bash: "",
                 input: "",
                 mode: savedMode,
+                autoSave: autoSaveSetting,
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
@@ -212,7 +226,7 @@ class App extends React.Component<{}, IAppState> {
             });
 
             ipcRenderer.on("on-save", async (event: any, message: any[]) => {
-                await this.onSave();
+                await this.onSave(false);
             });
 
             ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
@@ -220,23 +234,28 @@ class App extends React.Component<{}, IAppState> {
             });
 
             ipcRenderer.on("on-auto-save-checked", async (event: any, message: any[]) => {
-                this.autoSave = message[0];
-                console.log(`AutoSave: ${this.autoSave}`);
+                console.log(`ipcRenderer: ${JSON.stringify(message)}`)
+                await this.setStateAsync({ autoSave: message[0] });
+                this.saveSettings();
             });
         }
     }
 
-    private onSave = async (alwaysPrompt?: boolean): Promise<void> => {
+    private onSave = async (alwaysPrompt: boolean): Promise<void> => {
+        console.log(`onSave alwaysPrompt=${alwaysPrompt} FileName=${this.state.FileName}`)
         if (this.state.FileName === "" || alwaysPrompt === true) {
             const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-            if (fn === "" || fn === undefined){
+            console.log(`Filename=${fn}`)
+            if (fn === "" || fn === undefined) {
+                console.log("filename is undefined or empty")
                 return;
             }
-            await this.setStateAsync({FileName: fn});
+
+            await this.setStateAsync({ FileName: fn });
 
         }
 
-
+        console.log(`saving to ${this.state.FileName}`);
         await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.bash);
 
     }
@@ -266,10 +285,10 @@ class App extends React.Component<{}, IAppState> {
 
     public componentDidMount = () => {
         window.addEventListener<"resize">('resize', this.handleResize);
-     //   window.resizeBy(1, 1);
+        //   window.resizeBy(1, 1);
         this.setupCallbacks();
-        window.setTimeout( () => {
-            this.setState({Loaded: true});
+        window.setTimeout(() => {
+            this.setState({ Loaded: true });
         }, 150);
 
 
@@ -292,8 +311,6 @@ class App extends React.Component<{}, IAppState> {
         if (toolbar !== null && geDiv !== null) {
             let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
             const htStyle: string = `calc(100% - ${height}px)`
-            console.log(`setting height to ${htStyle}`)
-
             this.setState({ parameterListHeight: htStyle });
         } else {
             console.log("handleResize() => toolbar || geDiv is null")
@@ -302,7 +319,9 @@ class App extends React.Component<{}, IAppState> {
 
     };
     private saveSettings = (): void => {
+        console.log(`mode=${this.state.mode} autoSave=${this.state.autoSave}`);
         this.cookie.set("mode", this.state.mode);
+        this.cookie.set("autosave", this.state.autoSave);
 
     }
 
@@ -405,6 +424,9 @@ class App extends React.Component<{}, IAppState> {
 
     private updateAllText = async () => {
         await this.setStateAsync({ json: this.stringify(), bash: this.toBash(), input: this.toInput(), debugConfig: this.getDebugConfig("BashScripts"), inputJson: this.toInput() });
+        if (this.state.autoSave) {
+            await this.onSave(false);
+        }
 
     }
 
@@ -1168,10 +1190,10 @@ class App extends React.Component<{}, IAppState> {
         }
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
         const root: HTMLElement | null = window.document.getElementById("root");
-        console.log(`Window Width: ${root!.clientHeight}`)
+
         return (
 
-            <div className="outer-container" id="outer-container" style={{opacity: this.state.Loaded ? 1.0 : 0.01}}>
+            <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
                 <Growl ref={this.growl} />
                 <YesNoDialog visible={this.state.dialogVisible} message={"Create new bash file?"} Notify={this.state.dialogCallback} />
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">

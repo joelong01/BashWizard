@@ -23,15 +23,16 @@ export class LocalFileSystem implements IStorageProvider {
 
     public getSaveFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
-            const fileNames = dialog.showSaveDialog({
+            const fileName:string | undefined = dialog.showSaveDialog({
                 title: dlgTitle,
                 filters: exts
             });
 
-            if (fileNames === undefined || fileNames.length !== 1) {
+            if (fileName === undefined) {
                 return reject;
             }
-            return resolve(fileNames[0]);
+            console.log('getSaveFile: ${fileName}')
+            return resolve(fileName);
         });
     }
 

@@ -2,6 +2,7 @@
     background-color: transparent;
     margin-bottom: 0.25em;
     position: relative;
+    margin: .5em;
 }
 
 .parameter-item-grid {
@@ -72,4 +73,5 @@
     width: 1em !important;
     z-index: 10;
     position: absolute;;
+    border: 1px solid blue !important;
 }

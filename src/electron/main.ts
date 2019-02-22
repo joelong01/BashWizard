@@ -9,15 +9,28 @@ import {
     MenuItem,
     MenuItemConstructorOptions,
     dialog,
-    FileFilter
+    FileFilter,
+    TouchBarColorPicker
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import LocalFileSystem from "./localFileSystem";
+import Cookies, { Cookie } from "universal-cookie"
+
+const cookie: Cookie = new Cookies();
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow: BrowserWindow;
 let ipcMainProxy: IpcMainProxy;
+
+//
+//  this receives messages from the renderer to update the settings in the main app
+ipcMain.on('synchronous-message', (event: any, arg: any): any => {
+    console.count("ipcMain.on");
+    console.log(`data: ${JSON.stringify(arg)} autoSave=${arg.autoSave}`)
+    createMainMenu(mainWindow, arg.autoSave);
+    event.returnValue = true;
+})
 
 function createWindow() {
     // and load the index.html of the app.
@@ -51,7 +64,13 @@ function createWindow() {
     });
 
     registerContextMenu(mainWindow);
-    createMainMenu(mainWindow);
+
+    let autoSaveSetting = cookie.get("autosave");
+    if (autoSaveSetting === undefined){
+        autoSaveSetting = false;
+    }
+    console.log("autosave=" + autoSaveSetting);
+    createMainMenu(mainWindow, autoSaveSetting);
 
     ipcMainProxy = new IpcMainProxy(ipcMain, mainWindow);
     ipcMainProxy.register("RELOAD_APP", onReloadApp);
@@ -94,7 +113,7 @@ function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): 
 async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
 
     const fs: LocalFileSystem = new LocalFileSystem(mainWindow);
-    const filename: string = await fs.getOpenFile("Bash Wizard", [{extensions: ["sh"], name: "Bash Script"}]);
+    const filename: string = await fs.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
 
     if (filename !== null && filename !== "") {
         const contents: string = await fs.readText(filename);
@@ -105,7 +124,7 @@ async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: E
     }
 }
 
-function onSave(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void{
+function onSave(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
     mainWindow.webContents.send('on-save', "");
 }
 
@@ -113,11 +132,15 @@ function onSaveAs(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event
     mainWindow.webContents.send('on-save-as', "");
 }
 function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
+    console.log(`onAutoSaveChecked.event=${JSON.stringify(event)} menuItem=${JSON.stringify(menuItem["keys"])} checked=${menuItem.checked}`);
     mainWindow.webContents.send('on-auto-save-checked', [menuItem.checked]);
+    cookie.set("autosave", menuItem.checked);
 }
 
-function createMainMenu(browserWindow: BrowserWindow): void {
-    const template: MenuItemConstructorOptions[] = [
+function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
+    console.log(`createMainMenu autoSave=${autoSave}`)
+    let template: MenuItemConstructorOptions[];
+    template = [
         {
             label: "File",
             submenu: [
@@ -126,7 +149,9 @@ function createMainMenu(browserWindow: BrowserWindow): void {
                 { label: "Save", accelerator: "CommandOrControl+s", click: onSave },
                 { label: "Save As...", accelerator: "CommandOrControl+SHIFT+s", click: onSaveAs },
                 { type: "separator" },
-                { label: "Auto Save", type: "checkbox", checked: false, click: onAutoSaveChecked },
+                { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked },
+                { type: "separator" },
+                { role: "reload" },
                 { type: "separator" },
                 { role: "quit" }
             ]
@@ -203,9 +228,14 @@ function createMainMenu(browserWindow: BrowserWindow): void {
             { role: "front" }
         ];
     }
-
+    console.log(`menuTemplate: ${JSON.stringify(template)}`);
     const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
+
+    // Menu.setApplicationMenu(menu);
+
+    browserWindow.setMenu(null);
+    browserWindow.setMenu(menu);
+
 }
 
 /**
@@ -248,7 +278,10 @@ function registerContextMenu(browserWindow: BrowserWindow): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on("ready", createWindow);
+app.on("ready", () => {
+    console.log("ready called");
+    createWindow();
+});
 
 // Quit when all windows are closed.
 app.on("window-all-closed", () => {
