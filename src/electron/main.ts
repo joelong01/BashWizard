@@ -26,8 +26,7 @@ let ipcMainProxy: IpcMainProxy;
 //
 //  this receives messages from the renderer to update the settings in the main app
 ipcMain.on('synchronous-message', (event: any, arg: any): any => {
-    console.log(`data: ${JSON.stringify(arg)} autoSave=${arg.autoSave}`)
-    createMainMenu(mainWindow, arg.autoSave);
+    createMainMenu(mainWindow, Boolean(arg.autoSave));
     event.returnValue = true;
 })
 
@@ -84,12 +83,9 @@ function createWindow() {
 
     registerContextMenu(mainWindow);
 
-    let autoSaveSetting = cookie.get("autosave");
-    if (autoSaveSetting === undefined) {
-        autoSaveSetting = false;
-    }
-    console.log("autosave=" + autoSaveSetting);
-    createMainMenu(mainWindow, autoSaveSetting);
+
+    createMainMenu(mainWindow, false);
+
 
     ipcMainProxy = new IpcMainProxy(ipcMain, mainWindow);
     ipcMainProxy.register("RELOAD_APP", onReloadApp);
@@ -158,6 +154,7 @@ function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, eve
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
     console.log(`createMainMenu autoSave=${autoSave}`)
+
     let template: MenuItemConstructorOptions[];
     template = [
         {
@@ -168,7 +165,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                 { label: "Save", accelerator: "CommandOrControl+s", click: onSave },
                 { label: "Save As...", accelerator: "CommandOrControl+SHIFT+s", click: onSaveAs },
                 { type: "separator" },
-                { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked },
+                { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
                 { type: "separator" },
                 { role: "reload" },
                 { type: "separator" },
@@ -248,12 +245,13 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
         ];
     }
     // console.log(`menuTemplate: ${JSON.stringify(template)}`);
+
     const menu = Menu.buildFromTemplate(template);
 
-    // Menu.setApplicationMenu(menu);
+    Menu.setApplicationMenu(null);
+    Menu.setApplicationMenu(menu);
 
-    browserWindow.setMenu(null);
-    browserWindow.setMenu(menu);
+
 
 }
 

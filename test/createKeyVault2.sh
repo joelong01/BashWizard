@@ -13,7 +13,7 @@ function echoWarning() {
     NORMAL=$(tput sgr0)
     echo "${YELLOW}${1}${NORMAL}"
 }
-function echoInfo {
+function echoInfo() {
     GREEN=$(tput setaf 2)
     NORMAL=$(tput sgr0)
     echo "${GREEN}${1}${NORMAL}"
@@ -24,19 +24,19 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     echoError "'getopt --test' failed in this environment. please install getopt."
     read -r -p "install getopt using brew? [y,n]" response
     if [[ $response == 'y' ]] || [[ $response == 'Y' ]]; then
-        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" </dev/null 2>/dev/null
         brew install gnu-getopt
         #shellcheck disable=SC2016
-        echo 'export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"' >> ~/.bash_profile
+        echo 'export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"' >>~/.bash_profile
         echoWarning "you'll need to restart the shell instance to load the new path"
     fi
-   exit 1
+    exit 1
 fi
 # we have a dependency on jq
-    if [[ ! -x "$(command -v jq)" ]]; then
-        echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
-        exit 1
-    fi
+if [[ ! -x "$(command -v jq)" ]]; then
+    echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
+    exit 1
+fi
 function usage() {
     echoWarning "Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file."
     echo "creates an Azure Key Vault"
@@ -85,7 +85,7 @@ function echoInput() {
 }
 
 function parseInput() {
-    
+
     local OPTIONS=u:e:p:k:l:r:vcdi:o:
     local LONGOPTS=sku:,enabled-for-disk-encryption:,enable-for-deployment:,keyvault-name:,datacenter-location:,resource-group:,verify-script,create,delete,input-file:,log-directory:
 
@@ -159,7 +159,7 @@ function parseInput() {
         esac
     done
 }
-# input variables 
+# input variables
 declare sku="standard"
 declare enableForDiskEncryption=true
 declare enableForDeployment=true
@@ -208,7 +208,7 @@ fi
 #logging support
 declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
 {
-    mkdir -p "${logDirectory}" 
+    mkdir -p "${logDirectory}"
     rm -f "${LOG_FILE}"
 } 2>>/dev/null
 #creating a tee so that we capture all the output to the log file
@@ -217,6 +217,9 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
     echo "started: $time"
 
     # --- BEGIN USER CODE ---
+
+    #help
+
     function verifyKeyVault() {
         kvInfo=$(az keyvault list -g "$resourceGroup" --output json --query "[].{Name:name, ID:id}[?Name=='${keyvaultName}']")
         id=$(echo "$kvInfo" | jq '.[].ID' --raw-output)
