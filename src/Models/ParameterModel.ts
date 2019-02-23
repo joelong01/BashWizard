@@ -1,17 +1,8 @@
-import { GrowlMessage } from 'primereact/growl';
 import { uniqueId } from 'lodash-es';
+import {INotifyPropertyChanged, ParameterType} from "./commonModel"
 
-type INotifyPropertyChanged = (parameter: ParameterModel, property: string) => void;
-export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void;
-export enum ParameterTypes {
-    Create = "Create",
-    Verify = "Verify",
-    Delete = "Delete",
-    LoggingSupport = "Logging",
-    InputFileSupport = "Input File",
-    VerboseSupport = "Verbose",
-    Custom = "Custom"
-}
+
+
 
 //
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
@@ -26,9 +17,9 @@ export class ParameterModel {
     private ShortParameter: string = "";
     private VariableName: string = "";
     private ValueIfSet: string = "";
-    private Type: ParameterTypes = ParameterTypes.Custom;
+    private Type: ParameterType = ParameterType.Custom;
     private fireChangeNotifications: boolean = false;
-    private _collapsed:boolean = false;
+    private _collapsed: boolean = false;
 
     private propertyChangedNotify: INotifyPropertyChanged[] = []
 
@@ -81,11 +72,11 @@ export class ParameterModel {
         }
     }
 
-    get type(): ParameterTypes {
+    get type(): ParameterType {
         return this.Type;
     }
 
-    set type(value: ParameterTypes) {
+    set type(value: ParameterType) {
         if (value !== this.Type) {
             this.Type = value;
             this.NotifyPropertyChanged("type")
@@ -126,7 +117,7 @@ export class ParameterModel {
     public removeNotify(callback: INotifyPropertyChanged) {
         const index: number = this.propertyChangedNotify.indexOf(callback)
         if (index === -1) {
-            throw new Error("ParameterModel.tsx:removeNotify(): attempt to remove a callback that wasn't in the callback array")
+            throw new Error("ParameterModel.ts:removeNotify(): attempt to remove a callback that wasn't in the callback array")
         }
         this.propertyChangedNotify.splice(index, 1)
 

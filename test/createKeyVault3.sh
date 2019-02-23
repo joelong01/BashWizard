@@ -217,6 +217,7 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
     echo "started: $time"
 
     # --- BEGIN USER CODE ---
+    #test
     function verifyKeyVault() {
         kvInfo=$(az keyvault list -g "$resourceGroup" --output json --query "[].{Name:name, ID:id}[?Name=='${keyvaultName}']")
         id=$(echo "$kvInfo" | jq '.[].ID' --raw-output)
@@ -256,6 +257,7 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
         echo "Key Vault name: $(echo "$kvInfo" | jq .name)"
         echo ""
     fi
+    #test
     # --- END USER CODE ---
 
     time=$(date +"%m/%d/%y @ %r")

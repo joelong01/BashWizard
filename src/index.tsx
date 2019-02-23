@@ -3,13 +3,13 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css'
 import "./index.css"
-import "./ParameterView.css"
-import "./App.css"
+import "./Components/ParameterView.css"
+import "./Components/App.css"
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import registerServiceWorker from './registerServiceWorker';
-import App from "./App"
+import App from "./Components/App"
 
 ReactDOM.render(
   <App/>,

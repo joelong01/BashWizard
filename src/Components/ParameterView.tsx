@@ -1,10 +1,11 @@
 import React from 'react';
-import { ParameterModel, ParameterTypes, IGrowlCallback } from './ParameterModel';
+import { ParameterModel } from '../Models/ParameterModel';
+import { ParameterType, IGrowlCallback } from "../Models/commonModel"
 
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
 import { Button } from "primereact/button"
-import { uniqueId, stubFalse } from 'lodash-es';
+import { uniqueId } from 'lodash-es';
 
 
 
@@ -29,7 +30,7 @@ interface IParameterState {
     Model: ParameterModel;
     selected: boolean;
     GrowlCallback: IGrowlCallback;
-    type: ParameterTypes;
+    type: ParameterType;
     collapsed: boolean;
     uniqueId: string;
 }
@@ -41,7 +42,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     constructor(props: IParameterProperties) {
         super(props);
         const id: string = uniqueId("ParameterView");
-      //  console.log("creating ParameterView: " + id);
+        //  console.log("creating ParameterView: " + id);
         this.state = {
             uniqueId: id,
             default: this.props.Model.default,
@@ -94,18 +95,21 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         console.log("setting focus to " + longParamInputClassName)
         const input:any = window.document.getElementsByClassName(longParamInputClassName)[0];
         input.focus(); */
+
         this.setState({ collapsed: false }, () => {
             if (this.refLongName.current !== null) {
-                // console.log("setting focus to " + this.state.uniqueId);
+                console.log("setting focus to " + this.state.uniqueId);
                 const reactTypeScriptWorkAround: any = this.refLongName.current;
+
                 reactTypeScriptWorkAround.element.focus();
+
             }
         });
     }
 
     private setFocus = () => {
         if (this.refLongName.current !== null) {
-         //   console.log("setting focus to " + this.state.uniqueId);
+            //   console.log("setting focus to " + this.state.uniqueId);
             const reactTypeScriptWorkAround: any = this.refLongName.current;
             reactTypeScriptWorkAround.element.focus();
         }
@@ -122,18 +126,18 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  2. this updates the model (model.longParameter) => change notifications sent out
     //  3. the app tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
-    public onPropertyChanged = async (model: ParameterModel, key: string) => {
+    public onPropertyChanged = async (model: ParameterModel, name: string) => {
 
-        // console.log(`ParameterView.onPropertyChanged: [${key}=${model[key]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
+        console.log(`ParameterView.onPropertyChanged: [name=${name}] [${name}=${model[name]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
 
-        if (key === "focus" && this.refLongName.current !== null) {
+        if (name === "focus" && this.refLongName.current !== null) {
             this.focus();
             return;
         }
 
-        if (!(key in this.state)) {
-            console.log(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
-            throw new Error(`ERRROR: ${key} was passed to onPropertyChanged in error.  View: ${this}`);
+        if (!(name in this.state)) {
+            console.log(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
+            throw new Error(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
         }
 
         /*  commenting out because Type is now read only
@@ -142,74 +146,19 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
              this.setState({ type: model.type });
          } */
         const obj: object = {}
-        obj[key] = model[key];
+        obj[name] = model[name];
         await this.setStateAsync(obj);
 
-        if (key === "collapsed") {
-            console.log(`setting collapsed=${model[key]} for ${model.longParameter}`)
+        if (name === "collapsed") {
+            console.log(`setting collapsed=${model[name]} for ${model.longParameter}`)
         }
 
-        if (key === "selected" && model.selected === true && this.refParameterForm.current !== null) {
-          //  console.log(`${this.Model.uniqueName} is getting focus`);
+        if (name === "selected" && model.selected === true && this.refParameterForm.current !== null) {
+            //  console.log(`${this.Model.uniqueName} is getting focus`);
             this.refParameterForm.current.focus();
         }
 
 
-    }
-    //
-    //  right now .Type is read only -- but if we wanted to allow a parameter to change, this is the function we would cuse
-    //
-    private changeType = (model: ParameterModel): void => {
-        try {
-            model.FireChangeNotifications = false;
-            switch (model.type) {
-                case ParameterTypes.Create:
-                    break;
-                case ParameterTypes.Verify:
-                    break;
-                case ParameterTypes.Delete:
-                    break;
-                case ParameterTypes.LoggingSupport:
-                    model.longParameter = "log-directory";
-                    model.shortParameter = "l";
-                    model.description = "Directory for the log file. The log file name will be based on the script name.";
-                    model.variableName = "logDirectory";
-                    model.default = "\"./\"";
-                    model.type = ParameterTypes.LoggingSupport;
-                    model.requiresInputString = true;
-                    model.requiredParameter = false;
-                    model.valueIfSet = "$2";
-                    model.type = ParameterTypes.LoggingSupport;
-                    break;
-                case ParameterTypes.InputFileSupport:
-                    model.default = "";
-                    model.description = "the name of the input file. pay attention to $PWD when setting this";
-                    model.longParameter = "input-file";
-                    model.shortParameter = "i";
-                    model.requiresInputString = true;
-                    model.requiredParameter = false;
-                    model.valueIfSet = "$2";
-                    model.variableName = "inputFile";
-                    break;
-                case ParameterTypes.VerboseSupport:
-                    model.default = "false";
-                    model.description = "echos script data";
-                    model.longParameter = "verbose";
-                    model.type = ParameterTypes.VerboseSupport;
-                    model.shortParameter = "b";
-                    model.requiresInputString = false;
-                    model.requiredParameter = false;
-                    model.valueIfSet = "true";
-                    model.variableName = "verbose"
-                    break;
-                case ParameterTypes.Custom:
-                    break;
-            }
-        }
-        finally {
-            model.FireChangeNotifications = true;
-            model.updateAll();
-        }
     }
 
     //
@@ -289,7 +238,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
 
         this.state.Model.requiredParameter = e.checked;
-     //   console.log("required Parameter: " + this.state.Model.requiredParameter);
+        //   console.log("required Parameter: " + this.state.Model.requiredParameter);
 
         //
         //  do not call this.setState -- this will happen in the notification
@@ -342,86 +291,86 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  which will then call this.setState()
     //
     public render = () => {
-        let fieldSetName:string = this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset";
+        let fieldSetName: string = this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset";
         if (this.state.Model.selected) {
             fieldSetName += " parameter-fieldset-selected";
         }
-     //   console.log (`${this.state.Model.uniqueName}=${fieldSetName}`);
+        //   console.log (`${this.state.Model.uniqueName}=${fieldSetName}`);
         return (
             <div className="parameter-layout-root" key={this.state.uniqueId}
-                 onClick={() => {this.state.Model.selected = true;}}
-              /*  onFocus={() => { this.state.Model.selected = true; this.focus(); }} */
+                onClick={() => { this.state.Model.selected = true; }}
+                /*  onFocus={() => { this.state.Model.selected = true; this.focus(); }} */
 
-                onBlur = { () => this.state.Model.selected = false}
+                onBlur={() => this.state.Model.selected = false}
 
-                >
+            >
 
                 <Button className="collapse-button p-button-secondary"
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
-                    onClick={() => {this.setState({ collapsed: !this.state.collapsed}); this.state.Model.selected = true;}} />
+                    onClick={() => { this.setState({ collapsed: !this.state.collapsed }); this.state.Model.selected = true; }} />
                 <fieldset className={fieldSetName}
 
-                /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}*/
-                onClick={() => {this.state.Model.selected = true; }}
+                    /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}*/
+                    onClick={() => { this.state.Model.selected = true; }}
                 >
-                    <legend>{this.state.type === ParameterTypes.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
+                    <legend>{this.state.type === ParameterType.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
                     <div className="TheWholeThing">
-                    <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
-                    /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
-                    >
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label" >
-                                <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter}
-                                    className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom} />
-                                <label htmlFor="longParameter" className="param-label">Long Name</label>
-                            </span>
+                        <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
+                        /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
+                        >
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label" >
+                                    <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter}
+                                        className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                    <label htmlFor="longParameter" className="param-label">Long Name</label>
+                                </span>
+                            </div>
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label">
+                                    <InputText id="shortParameter" spellCheck={false} value={this.state.shortParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                    <label htmlFor="shortParameter" className="param-label">Short Name</label>
+                                </span>
+                            </div>
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label">
+                                    <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                    <label htmlFor="variableName" className="param-label">Variable Name</label>
+                                </span>
+                            </div>
                         </div>
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
-                                <InputText id="shortParameter" spellCheck={false} value={this.state.shortParameter} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                <label htmlFor="shortParameter" className="param-label">Short Name</label>
-                            </span>
-                        </div>
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
-                                <InputText id="variableName" spellCheck={false} value={this.state.variableName} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
-                                <label htmlFor="variableName" className="param-label">Variable Name</label>
-                            </span>
-                        </div>
-                    </div>
-                    <div className="p-grid parameter-item-grid">
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
-                                <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
-                                <label htmlFor="default" className="param-label">Default</label>
-                            </span>
-                        </div>
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
-                                <InputText id="description" spellCheck={false} value={this.state.description} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
-                                <label htmlFor="description" className="param-label">Description</label>
-                            </span>
-                        </div>
+                        <div className="p-grid parameter-item-grid">
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label">
+                                    <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                    <label htmlFor="default" className="param-label">Default</label>
+                                </span>
+                            </div>
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label">
+                                    <InputText id="description" spellCheck={false} value={this.state.description} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                    <label htmlFor="description" className="param-label">Description</label>
+                                </span>
+                            </div>
 
-                        <div className="p-col-fixed param-column">
-                            <span className="p-float-label">
-                                <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterTypes.Custom}/>
-                                <label htmlFor="valueIfSet" className="param-label">Value if Set</label>
-                            </span>
+                            <div className="p-col-fixed param-column">
+                                <span className="p-float-label">
+                                    <InputText id="valueIfSet" spellCheck={false} value={this.state.valueIfSet} className="param-input " onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                    <label htmlFor="valueIfSet" className="param-label">Value if Set</label>
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="p-grid checkbox-grid" >
-                        <div className="p-col-fixed param-column">
-                            <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
-                            <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterTypes.Custom}  />
-                        </div>
-                        <div className="p-col-fixed param-column">
-                            <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
-                            <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterTypes.Custom} />
-                        </div>
-                        <div className="p-col-fixed param-column" />
+                        <div className="p-grid checkbox-grid" >
+                            <div className="p-col-fixed param-column">
+                                <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
+                                <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterType.Custom} />
+                            </div>
+                            <div className="p-col-fixed param-column">
+                                <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
+                                <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterType.Custom} />
+                            </div>
+                            <div className="p-col-fixed param-column" />
 
-                    </div>
+                        </div>
                     </div>
                 </fieldset>
             </div>
