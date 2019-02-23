@@ -8,13 +8,14 @@ import {
     Menu,
     MenuItem,
     MenuItemConstructorOptions,
-    dialog
+    dialog,
+    ipcRenderer
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import LocalFileSystem from "./localFileSystem";
 import Cookies, { Cookie } from "universal-cookie"
-import fs from "fs";
-
+import fs, { FSWatcher } from "fs";
+import {IAsyncMessage} from "../Models/commonModel"
 
 const cookie: Cookie = new Cookies();
 
@@ -30,25 +31,44 @@ ipcMain.on('synchronous-message', (event: any, arg: any): any => {
     event.returnValue = true;
 })
 
+let lastFileNotificationTime: number = new Date().getTime();
+let myFileWatcher: FSWatcher;
 //
 //  this receives messages from the renderer to update the settings in the main app
 //
 //  arg should look like {eventyType: "watch" | "unwatch", filename: string}
 ipcMain.on('asynchronous-message', (event: any, arg: any): any => {
     console.log(`asynchronous-message-data: ${JSON.stringify(arg)}`)
+
+
     if (arg.eventType === "watch") {
-        fs.watch(arg.filename, { persistent: false }, (eventType: string, filename: string) => {
-            console.log(`${filename} ${eventType} `)
-            event.sender.send('asynchronous-reply', "file-changed");
+        myFileWatcher = fs.watch(arg.filename, { persistent: false }, (eventType: string, name: string) => {
+            const currentTime: number = new Date().getTime();
+            if (currentTime - lastFileNotificationTime < 100) { // unlikely the user saves twice in 100ms...
+                console.log(`rejecting notifcation at time ${currentTime} from ${lastFileNotificationTime} (diff: ${currentTime - lastFileNotificationTime})`)
+                return;
+            }
+            lastFileNotificationTime = currentTime;
+            console.log("watch called");
+            const msgObj:IAsyncMessage  = { fileName: name, event: "file-changed", type: eventType };
+            event.sender.send('asynchronous-reply', JSON.stringify(msgObj));
+
         });
     } else if (arg.eventType === "unwatch") {
-        fs.unwatchFile(arg.filename);
+        console.log(`${typeof myFileWatcher}`)
+        if (myFileWatcher === undefined || myFileWatcher === null) {
+            console.log("myFileWatcher null || undefined");
+            return;
+        }
+        console.log(`myFileWatcher count: ${myFileWatcher.listeners.length}`);
+        fs.unwatchFile(arg.filename, myFileWatcher.listeners[0]);
     } else {
         console.log("ERROR: BAD MESSAGE TYPE IN MAIN.TS");
     }
-
-
 })
+
+
+
 
 function createWindow() {
     // and load the index.html of the app.

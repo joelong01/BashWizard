@@ -1,25 +1,18 @@
 
-import ParameterModel, { ParameterTypes } from './ParameterModel';
+import {ParameterModel} from './ParameterModel';
 import { bashTemplates } from './bashTemplates';
-import { IErrorMessage, IBuiltInParameterName } from "./App"
-import { uniqueId } from 'lodash-es';
+import {ParameterType, IErrorMessage, IParseState } from "../Models/commonModel"
 
-//
-//  used when parsing a bash script
-export interface IParseState {
-    ScriptName: string;
-    Description: string;
-    Parameters: ParameterModel[];
-    ParseErrors: IErrorMessage[];
-    UserCode: string;
-    builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel }; // this isn't in the this.state object because it doesn't affect the UI
-}
+import { uniqueId, fromPairs } from 'lodash-es';
+import { ScriptModel } from './scriptModel';
+
+
 
 //
 //  this class knows how to parse bash Files
 export class ParseBash {
 
-    private addParseError = (errors: IErrorMessage[], msg: string, sev: "error" | "warning" | "info" = "error") => {
+    private addParseError = (errors: IErrorMessage[], msg: string, sev: "error" | "warn" | "info" = "error") => {
         errors.push({ severity: sev, key: uniqueId("PARSEERROR"), message: msg });
     }
     private splitByTwoStrings = (from: string, string1: string, string2: string): string[] => {
@@ -30,8 +23,8 @@ export class ParseBash {
             for (let i = answer.length - 1; i >= 0; i--) { // now look for the second string in each section
                 let a: string = answer[i];
                 if (a.indexOf(string2) !== -1) { // if it has the second string...
-                    answer.splice(i, 1); // take this string out of the asnwer array                    
-                    answer = answer.concat(a.split(string2)); //                     
+                    answer.splice(i, 1); // take this string out of the asnwer array
+                    answer = answer.concat(a.split(string2)); //
                 }
             }
         }
@@ -64,7 +57,7 @@ export class ParseBash {
     private findParameterByVarName = (params: ParameterModel[], name: string): ParameterModel | undefined => {
 
         for (let p of params) {
-            if (p.variableName === name) {                
+            if (p.variableName === name) {
                 return p;
             }
         }
@@ -111,8 +104,8 @@ export class ParseBash {
         return undefined;
     }
     //
-    //  the built in paramater "InputFileSupported" is true iff the "input-file" long parameter exists and 
-    //  the script has the text "if [ \"\${inputFile}\" != "" ]; then"    
+    //  the built in paramater "InputFileSupported" is true iff the "input-file" long parameter exists and
+    //  the script has the text "if [ \"\${inputFile}\" != "" ]; then"
     public inputFileSupported = (script: string, parameters: ParameterModel[]): ParameterModel | undefined => {
 
         const idx: number = script.indexOf("if [ \"\${inputFile}\" != \"\" ]; then");
@@ -124,9 +117,12 @@ export class ParseBash {
         return undefined;
     }
 
-    // public findCVDFuncs = (script:string)
+    public static parseBashScript = (input: string): ScriptModel => {
+        const parser: ParseBash = new ParseBash();
+        return parser.fromBash(input);
+    }
 
-    public fromBash = (input: string): IParseState => {
+    public fromBash = (input: string): ScriptModel => {
         //
         //  Error Messages constants used when parsing the Bash file
         const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
@@ -139,9 +135,9 @@ export class ParseBash {
         const missingVersionInfo: string = "couldn't find script version information";
         const noUsage: string = "There is no usage() function in this bash script";
         const noParseInput: string = "Could not locate the parseInput() function in the bashScript";
+        const parseState:ScriptModel = new ScriptModel();
 
 
-        const parseState: IParseState = { ParseErrors: [], Parameters: [], Description: "", ScriptName: "", UserCode: "", builtInParameters: {} };
         //
         //  make sure that we deal with the case of getting a file with EOL == \n\r.  we only want \n
         //  I've also had scenarios where I get only \r...fix those too.
@@ -150,7 +146,7 @@ export class ParseBash {
              //  we have some new lines, just kill the \r
              if (input.indexOf("\r") !== -1) {
                  input = input.replace(new RegExp(/\r/, "g"), "");
- 
+
              }
          }
          else if (input.indexOf("\r") !== -1) {
@@ -159,7 +155,7 @@ export class ParseBash {
          }
          else {
              // no \r and no \n
-             this.addParseError(parseState.ParseErrors, noNewLines);
+             this.addParseError(parseState.Errors, noNewLines);
              return parseState;
          }
   */
@@ -167,13 +163,13 @@ export class ParseBash {
         //
         // make sure the file doesn't have GIT merge conflicts
         if (input.indexOf("<<<<<<< HEAD") !== -1) {
-            this.addParseError(parseState.ParseErrors, unMergedGitFile);
+            this.addParseError(parseState.Errors, unMergedGitFile);
             return parseState;
         }
 
         /*
-                The general layout of the file is 
-                
+                The general layout of the file is
+
                 #!/bin/bash
                 # bashWizard version <version>
                 <BashWizard Functions>
@@ -181,9 +177,9 @@ export class ParseBash {
 
                 # --- END USER CODE ---
                 <optional BashWizard code>
-                
+
                 the general parse strategy is to separate the user code and then to parse the Bash Wizard Functions to find all the parameter information
-                we *never* want to touch the user code 
+                we *never* want to touch the user code
 
          */
         const userComments: string[] = ["# --- BEGIN USER CODE ---", "# --- END USER CODE ---"];
@@ -194,13 +190,13 @@ export class ParseBash {
 
                 //
                 //  this means we couldn't find any of the comments -- treat this as a non-BW file
-                parseState.UserCode = input.trim(); // make it all user code                        
-                this.addParseError(parseState.ParseErrors, missingComments);
-                this.addParseError(parseState.ParseErrors, addingComments);
+                parseState.UserCode = input.trim(); // make it all user code
+                this.addParseError(parseState.Errors, missingComments);
+                this.addParseError(parseState.Errors, addingComments);
                 return parseState;
             case 1:
-                this.addParseError(parseState.ParseErrors, missingOneUserComment);
-                this.addParseError(parseState.ParseErrors, pleaseFix);
+                this.addParseError(parseState.Errors, missingOneUserComment);
+                this.addParseError(parseState.Errors, pleaseFix);
                 return parseState;
             case 2:
             case 3:
@@ -209,7 +205,7 @@ export class ParseBash {
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
-                this.addParseError(parseState.ParseErrors, tooManyUserComments);
+                this.addParseError(parseState.Errors, tooManyUserComments);
                 return parseState;
         }
 
@@ -227,7 +223,7 @@ export class ParseBash {
             if (Number.isNaN(userBashVersion)) {
                 userBashVersion = parseFloat(bashWizardCode.substring(startPos, startPos + 3)); // 0.9 is a version i have out there...
                 if (Number.isNaN(userBashVersion)) {
-                    this.addParseError(parseState.ParseErrors, missingVersionInfo);
+                    this.addParseError(parseState.Errors, missingVersionInfo);
                 }
             }
         }
@@ -237,7 +233,7 @@ export class ParseBash {
         //  find the usage() function and parse it out - this gives us the 4 properties in the ParameterModel below
         let bashFragment: string | null = this.getStringBetween(bashWizardCode, "usage() {", "}");
         if (bashFragment === null) {
-            this.addParseError(parseState.ParseErrors, noUsage);
+            this.addParseError(parseState.Errors, noUsage);
         }
         else {
             bashFragment = bashFragment.replace(/echoWarning/g, "echo");
@@ -261,11 +257,11 @@ export class ParseBash {
                      *  echoWarning
                      *  echo "<description>"
                      *  ...
-                     * 
+                     *
                      * }
                      *
                      * but the echoWarning isn't always there -- only if the --input-file option was specified.
-                     * 
+                     *
                      */
                     if (line.indexOf("Parameters can be passed in the command line or in the input file.") !== -1) {
                         continue;
@@ -276,7 +272,7 @@ export class ParseBash {
                     //  so always set the flag saying we found it.
 
                     if (!line.startsWith("Usage: $0")) {
-                        parseState.Description = line.trimRight();
+                        parseState.description = line.trimRight();
                     }
 
                     foundDescription = true;
@@ -298,7 +294,7 @@ export class ParseBash {
                     parameterItem.longParameter = paramTokens[1].trim();
                     parameterItem.requiredParameter = (paramTokens[2].trim() === "Required") ? true : false;
                     parameterItem.description = description;
-                    parseState.Parameters.push(parameterItem);
+                    parseState.parameters.push(parameterItem);
                 }
             }
 
@@ -319,7 +315,7 @@ export class ParseBash {
                 //  the line is in the form of: "echo "<scriptName>:"
                 const name: string | null = this.getStringBetween(line, "echo \"", ":");
                 if (name !== null) {
-                    parseState.ScriptName = name;
+                    parseState.scriptName = name;
                 }
                 break;
             };
@@ -331,7 +327,7 @@ export class ParseBash {
 
         bashFragment = this.getStringBetween(bashWizardCode, "eval set -- \"$PARSED\"", "--)");
         if (bashFragment === null) {
-            this.addParseError(parseState.ParseErrors, noParseInput);
+            this.addParseError(parseState.Errors, noParseInput);
         }
         else {
             lines = bashFragment.split("\n");
@@ -341,31 +337,31 @@ export class ParseBash {
                     continue;
                 }
                 if (line === "- |") {
-                  
+
                     continue; // this is an empty parameter
                 }
                 if (line.substring(0, 1) === "-" && lines[index+1] !== undefined) // we have a parameter!
                 {
                     const paramTokens: string[] = lines[index + 1].trim().split("=");
                     if (paramTokens.length !== 2) {
-                        this.addParseError(parseState.ParseErrors,
+                        this.addParseError(parseState.Errors,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index + 1].trim()} which doesn't parse.  It should look like varName=$2 or the like.`);
                     }
                     const nameTokens: string[] = line.split("|");
                     if (nameTokens.length !== 2) // the first is the short param, second long param, and third is empty
                     {
-                        this.addParseError(parseState.ParseErrors,
+                        this.addParseError(parseState.Errors,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index].trim()} which doesn't parse.  It should look like \"-l | --long-name)\" or the like.`,
-                            "warning");
+                            "warn");
                     }
                     // nameTokens[1] looks like "--long-param)
 
                     let longParam: string = nameTokens[1].substring(3, nameTokens[1].length - 1);
 
-                    const param: ParameterModel | undefined = this.findParameterByLongName(parseState.Parameters, longParam);
+                    const param: ParameterModel | undefined = this.findParameterByLongName(parseState.parameters, longParam);
                     if (param === undefined) {
-                        this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
-                            "warning");
+                        this.addParseError(parseState.Errors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
+                            "warn");
                     }
                     else {
                         param.variableName = paramTokens[0].trim();
@@ -377,8 +373,8 @@ export class ParseBash {
                             param.requiresInputString = true;
                         }
                         else {
-                            this.addParseError(parseState.ParseErrors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
-                                "warning");
+                            this.addParseError(parseState.Errors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
+                                "warn");
                         }
                     }
                     index += 2;
@@ -388,7 +384,7 @@ export class ParseBash {
         // the last bit of info to figure out is the default value -- find these with a comment
         bashFragment = this.getStringBetween(bashWizardCode, "# input variables", "parseInput");
         if (bashFragment === null) {
-            this.addParseError(parseState.ParseErrors, noParseInput);
+            this.addParseError(parseState.Errors, noParseInput);
         }
         else {
             // throw away the "declare "
@@ -405,17 +401,17 @@ export class ParseBash {
 
                 const varTokens: string[] = line.split("=");
                 if (varTokens.length === 0 || varTokens.length > 2) {
-                    this.addParseError(parseState.ParseErrors,
+                    this.addParseError(parseState.Errors,
                         `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line \"${line}\" was encountered that didn't parse.  it should be in the form of varName=Default`,
-                        "warning");
+                        "warn");
 
                 }
                 const varName: string = varTokens[0].trim();
-                const param: ParameterModel | undefined = this.findParameterByVarName(parseState.Parameters, varName);
+                const param: ParameterModel | undefined = this.findParameterByVarName(parseState.parameters, varName);
                 if (param === undefined) {
-                    this.addParseError(parseState.ParseErrors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
-                        "warning");
-                    this.addParseError(parseState.ParseErrors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
+                    this.addParseError(parseState.Errors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
+                        "warn");
+                    this.addParseError(parseState.Errors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
 
                 }
                 else {
@@ -425,30 +421,30 @@ export class ParseBash {
             }
         }
 
-        parseState.builtInParameters.LoggingSupport = this.logDirectorySupported(sections[2], parseState.Parameters);
-        if (parseState.builtInParameters.LoggingSupport !== undefined) {
-            parseState.builtInParameters.LoggingSupport.type = ParameterTypes.LoggingSupport;
+        parseState.BuiltInParameters.LoggingSupport = this.logDirectorySupported(sections[2], parseState.parameters);
+        if (parseState.BuiltInParameters.LoggingSupport !== undefined) {
+            parseState.BuiltInParameters.LoggingSupport.type = ParameterType.LoggingSupport;
         }
-        parseState.builtInParameters.InputFileSupport = this.inputFileSupported(sections[0], parseState.Parameters);
-        if (parseState.builtInParameters.InputFileSupport !== undefined) {
-            parseState.builtInParameters.InputFileSupport.type = ParameterTypes.InputFileSupport;
+        parseState.BuiltInParameters.InputFileSupport = this.inputFileSupported(sections[0], parseState.parameters);
+        if (parseState.BuiltInParameters.InputFileSupport !== undefined) {
+            parseState.BuiltInParameters.InputFileSupport.type = ParameterType.InputFileSupport;
         }
-        parseState.builtInParameters.VerboseSupport = this.verboseSupported(sections[0], parseState.Parameters);
-        if (parseState.builtInParameters.VerboseSupport !== undefined) {
-            parseState.builtInParameters.VerboseSupport.type = ParameterTypes.VerboseSupport;
+        parseState.BuiltInParameters.VerboseSupport = this.verboseSupported(sections[0], parseState.parameters);
+        if (parseState.BuiltInParameters.VerboseSupport !== undefined) {
+            parseState.BuiltInParameters.VerboseSupport.type = ParameterType.VerboseSupport;
         }
-        parseState.builtInParameters.Create = this.findCVD(parseState.UserCode, parseState.Parameters, "function onCreate()", "if [[ $create == \"true\" ]]", "create");
-        if (parseState.builtInParameters.Create !== undefined) {
-            parseState.builtInParameters.Create.type = ParameterTypes.Create;
+        parseState.BuiltInParameters.Create = this.findCVD(parseState.UserCode, parseState.parameters, "function onCreate()", "if [[ $create == \"true\" ]]", "create");
+        if (parseState.BuiltInParameters.Create !== undefined) {
+            parseState.BuiltInParameters.Create.type = ParameterType.Create;
         }
 
-        parseState.builtInParameters.Verify = this.findCVD(parseState.UserCode, parseState.Parameters, "function onVerify()", "if [[ $verify == \"true\" ]]", "verify");
-        if (parseState.builtInParameters.Verify !== undefined) {
-            parseState.builtInParameters.Verify.type = ParameterTypes.Verify;
+        parseState.BuiltInParameters.Verify = this.findCVD(parseState.UserCode, parseState.parameters, "function onVerify()", "if [[ $verify == \"true\" ]]", "verify");
+        if (parseState.BuiltInParameters.Verify !== undefined) {
+            parseState.BuiltInParameters.Verify.type = ParameterType.Verify;
         }
-        parseState.builtInParameters.Delete = this.findCVD(parseState.UserCode, parseState.Parameters, "function onDelete()", "if [[ $delete == \"true\" ]]", "delete");
-        if (parseState.builtInParameters.Delete !== undefined) {
-            parseState.builtInParameters.Delete.type = ParameterTypes.Delete;
+        parseState.BuiltInParameters.Delete = this.findCVD(parseState.UserCode, parseState.parameters, "function onDelete()", "if [[ $delete == \"true\" ]]", "delete");
+        if (parseState.BuiltInParameters.Delete !== undefined) {
+            parseState.BuiltInParameters.Delete.type = ParameterType.Delete;
         }
 
         return parseState;
