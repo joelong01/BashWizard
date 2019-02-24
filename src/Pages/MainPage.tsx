@@ -43,7 +43,7 @@ interface IMainPageState {
     debugConfig: string;
 
     // this data is for UI only and doesn't impact the model
-    SelectedParameter?: ParameterModel;
+    selectedParameter?: ParameterModel;
     mode: string; // one of "light" or "dark"
     autoSave: boolean;
     showYesNoDialog: boolean;
@@ -106,6 +106,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 dialogMessage: "",
 
                 selectedError: undefined,
+                selectedParameter: undefined,
                 activeTabIndex: 0,
                 FileName: "",
                 Loaded: false,
@@ -419,9 +420,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private onDeleteParameter = async (): Promise<void> => {
 
-        if (this.state.SelectedParameter !== undefined) {
-            const toDelete: ParameterModel = this.state.SelectedParameter;
-            let index: number = this.state.parametersCache.indexOf(this.state.SelectedParameter)
+        if (this.state.selectedParameter !== undefined) {
+            const toDelete: ParameterModel = this.state.selectedParameter;
+            let index: number = this.state.parametersCache.indexOf(this.state.selectedParameter)
             if (index !== -1) {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
@@ -512,16 +513,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
 
-        if (this.state.SelectedParameter === toSelect) {
+        if (this.state.selectedParameter === toSelect) {
             return;
         }
-        if (this.state.SelectedParameter !== undefined) {
-            this.state.SelectedParameter.selected = false; // old selected no longer selected
+        if (this.state.selectedParameter !== undefined) {
+            this.state.selectedParameter.selected = false; // old selected no longer selected
         }
         if (toSelect !== undefined) {
             toSelect.selected = true;
         }
-        await this.setStateAsync({ SelectedParameter: toSelect })
+        this.setStateAsync({ selectedParameter: toSelect })
     }
 
     //
@@ -560,11 +561,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
 
-    private addParameter = async (model: ParameterModel, select: boolean) => {
-        await this.setStateAsync({ Parameters: this.scriptModel.addParameter(ParameterType.Custom, this.onPropertyChanged) });
+    private addParameter = async (type: ParameterType, select: boolean) => {
+
+
+        await this.setStateAsync({ parametersCache: this.scriptModel.addParameter(ParameterType.Custom, this.onPropertyChanged) });
         await this.updateAllText();
         if (select) {
-            await this.selectParameter(model);
+            await this.selectParameter(this.state.parametersCache[this.state.parametersCache.length - 1]);
         }
     }
 
@@ -673,7 +676,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         ""
                                     }
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(ParameterType.Custom, true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Expand All" icon="pi pi-eye"
                                         onClick={() => {
