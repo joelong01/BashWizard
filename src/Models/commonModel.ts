@@ -7,7 +7,6 @@ export interface IErrorMessage {
     severity: "warn" | "error" | "info";
     message: string;
     key: string;
-    selected?: boolean;
     Parameter?: ParameterModel
 }
 export interface IBuiltInParameterName {

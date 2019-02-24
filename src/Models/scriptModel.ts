@@ -45,9 +45,17 @@ export class ScriptModel {
 
 
 
-    public addError = (error: IErrorMessage): void => {
-        this._errors = [...this._errors, error];
-        this.NotifyPropertyChanged("Errors");
+    public addError = (error: IErrorMessage): IErrorMessage[] => {
+        return this._errors = [...this._errors, error];
+    }
+
+    public addErrorMessage = (sev: "warn" | "error" | "info", message: string, parameter?: ParameterModel): IErrorMessage[] => {
+        let newMsg = {} as IErrorMessage;
+        newMsg.severity = sev;
+        newMsg.message = message;
+        newMsg.Parameter = parameter;
+        newMsg.key = uniqueId("error:");
+        return this.addError(newMsg);
     }
 
     //
@@ -329,7 +337,6 @@ export class ScriptModel {
                 p.registerNotify(model.onPropertyChanged);
                 p.registerNotify(notify);
                 p.FireChangeNotifications = true;
-                p.selected = false;
                 p.collapsed = (p.type !== ParameterType.Custom)
             }
         }
@@ -675,6 +682,7 @@ export class ScriptModel {
             parameterModel.registerNotify(notify);
             parameterModel.registerNotify(this.onPropertyChanged);
             this.NotifyPropertyChanged("Parameters");
+            this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
         }
 
         return this.parameters;
@@ -777,7 +785,6 @@ export class ScriptModel {
                 model.longParameter = p.LongParameter;
                 model.valueIfSet = p.ValueIfSet;
                 model.oldValueIfSet = "";
-                model.selected = false;
                 model.requiredParameter = p.RequiredParameter;
                 model.shortParameter = p.ShortParameter;
                 model.variableName = p.VariableName;

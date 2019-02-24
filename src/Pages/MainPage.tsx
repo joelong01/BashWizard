@@ -1,10 +1,9 @@
 
-import React from 'react';
+import React, { ReactElement } from 'react';
 import svgFiles from "../Images/images"
 import { ParameterView } from '../Components/ParameterView';
 import { ParameterModel } from '../Models/ParameterModel';
 import SplitPane from 'react-split-pane';
-import { uniqueId } from 'lodash-es';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
@@ -23,6 +22,8 @@ import { LocalFileSystemProxy } from "../localFileSystemProxy"
 import { IpcRenderer } from "electron";
 import { IErrorMessage, ParameterType, IAsyncMessage } from "../Models/commonModel";
 import { ScriptModel } from "../Models/scriptModel";
+import { ListBox } from "primereact/listbox"
+import { BWError } from "../Components/bwError"
 
 //
 //  represents the properties that will impact the UI
@@ -187,16 +188,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private getIpcRenderer(): IpcRenderer | undefined {
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.indexOf(' electron/') === -1) {
-            console.log ("not running electron!")
+            console.log("not running electron!")
             return undefined;
         }
         if (typeof window["require"] !== "undefined") {
-            console.log ("running electron!")
+            console.log("running electron!")
             // tslint:disable-next-line:no-string-literal
             return window["require"]("electron").ipcRenderer;
 
         }
-        console.log ("not running electron - but user agent string says you should be")
+        console.log("not running electron - but user agent string says you should be")
         return undefined;
     }
     private setupCallbacks = () => {
@@ -500,29 +501,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private addErrorMessage = (sev: "warn" | "error" | "info", message: string, parameter?: ParameterModel) => {
-        let newMsg = {} as IErrorMessage;
-        newMsg.severity = sev;
-        newMsg.message = message;
-        newMsg.selected = false;
-        newMsg.Parameter = parameter;
-        newMsg.key = uniqueId("error:");
+
         this.growl.current!.show({ severity: sev, summary: "Error Message", detail: message + "\n\rSee \"Message\" tab." });
-        this.setState({ errorsCache: [...this.state.errorsCache, newMsg] });
+        this.setState({ errorsCache: this.scriptModel.addErrorMessage(sev, message, parameter) });
     }
 
 
     private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
-
-        if (this.state.selectedParameter === toSelect) {
-            return;
-        }
-        if (this.state.selectedParameter !== undefined) {
-            this.state.selectedParameter.selected = false; // old selected no longer selected
-        }
-        if (toSelect !== undefined) {
-            toSelect.selected = true;
-        }
-        this.setStateAsync({ selectedParameter: toSelect })
+        await this.setStateAsync({ selectedParameter: toSelect })
     }
 
     //
@@ -535,29 +521,12 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (this._settingState === true) {
             return;
         }
-
-        if (name === "focus") {
-            return;
-        }
-
-
-        try {
-
-            this._settingState = true;
-            if (name === "selected") {
-                await this.selectParameter(parameter);
-                return;
-            }
-
+        this._settingState = true;
+        if (name !== "BashScript" && name !== "JSON") {
+            await this.updateAllText();
 
         }
-        finally {
-            this._settingState = false;
-            if (name !== "selected" && name !== "focus" && name !== "BashScript" && name !== "JSON") {
-                await this.updateAllText();
-            }
-        }
-
+        this._settingState = false;
     }
 
 
@@ -574,13 +543,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private setStateAsync = (newState: object): Promise<void> => {
 
-        console.log ("oldState: %o", this.state);
-        console.log ("newState: %o", newState);
+        console.log("oldState: %o", this.state);
+        console.log("newState: %o", newState);
         Object.keys(newState).map((key) => {
             if (!(key in this.state)) {
                 throw new Error(`setStateAsync called with bad property: ${key}`);
             }
-            if (newState[key] !== this.state[key]){
+            if (newState[key] !== this.state[key]) {
                 console.log(`updating state for ${key}`);
             }
         })
@@ -624,13 +593,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private onErrorClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
-        if (this.state.selectedError !== undefined) {
-            this.state.selectedError.selected = false;
-        }
-        item.selected = true;
+
         this.setState({ selectedError: item });
         if (item.Parameter !== undefined) {
-            item.Parameter.focus();
+            this.selectParameter(item.Parameter);
         }
 
     }
@@ -647,7 +613,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-        let electronEnabled: boolean = (this.getIpcRenderer !== undefined);
+        let electronEnabled: boolean = (this.getIpcRenderer() !== undefined);
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
         return (
 
@@ -714,7 +680,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             <InputText id="scriptName" className="param-input" spellCheck={false}
                                                 value={this.state.scriptNameCache}
                                                 onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value});
+                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value });
                                                 }}
                                                 onBlur={this.onBlurScriptName} />
                                             <label htmlFor="scriptName" className="param-label">Script Name</label>
@@ -724,9 +690,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         <span className="p-float-label">
                                             <InputText className="param-input" id="description_input" spellCheck={false}
                                                 value={this.state.descriptionCache}
-                                                onChange={ async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value});
-                                            }}
+                                                onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value });
+                                                }}
                                                 onBlur={this.onBlurDescription} />
                                             <label className="param-label" htmlFor="description_input" >Description</label>
                                         </span>
@@ -734,14 +700,20 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 </div>
                             </div>
                             {/* this is the section for parameter list */}
-                            <div className="Parameter_List" style={{ height: this.state.parameterListHeight }}>
 
-                                {this.state.parametersCache.map(parameter => (
-                                    <div className={parameter.uniqueName} key={parameter.uniqueName} ref={parameter.uniqueName}>
-                                        <ParameterView Model={parameter} Name={parameter.uniqueName} GrowlCallback={this.growlCallback} />
-                                    </div>
-                                ))}
-                            </div>
+                            <ListBox className="Parameter_List" style={{ height: this.state.parameterListHeight, width: "100%" }} options={this.state.parametersCache}
+                                value={this.state.selectedParameter}
+                                onChange={(e: { originalEvent: Event, value: any }) => this.setState({ selectedParameter: e.value })}
+                                filter={false}
+                                optionLabel={"uniqueName"}
+                                itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
+                                    console.log("creating parameter %o with uniqueName %s", parameter, parameter.uniqueName);
+                                    return (
+                                        <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
+                                    );
+                                }}
+
+                            />
                         </div>
                         {/* this is the section for the area below the splitter */}
                         <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
@@ -794,28 +766,31 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 </div>
                             </TabPanel >
                             <TabPanel header={`Messages (${this.state.errorsCache.length})`}>
-                                <div className="bw-error-list" >
+                                <div className="error-message-tab-panel">
                                     <div className="bw-error-header">
-                                        <span className="bw-error-span error-col1">Severity</span>
-                                        <span className="bw-error-span error-col2">Message</span>
+                                        <span className="bw-header-span bw-header-col1">Severity</span>
+                                        <span className="bw-header-span bw-header-col2">Message</span>
                                     </div>
-                                    {
-                                        this.state.errorsCache.map((item: IErrorMessage) => {
-                                            let className: string = "bw-error-item";
-                                            if (this.state.selectedError === item) {
-                                                className += " bw-error-item-selected";
+
+                                    <ListBox className="bw-error-listbox" options={this.state.errorsCache}
+                                        value={this.state.selectedError}
+                                        onChange={(e: { originalEvent: Event, value: any }) => {
+                                            if (e !== undefined && e.value !== null && e.value !== undefined) {
+                                                const error: BWError = e.value;
+                                                this.setState({ selectedError: e.value, selectedParameter: error.Parameter })
                                             }
+                                          
+                                        }}
 
-
+                                        filter={false}
+                                        optionLabel={"key"}
+                                        itemTemplate={(errorMessage: IErrorMessage): JSX.Element | undefined => {
                                             return (
-                                                <div className={className} key={item.key}
-                                                    onClick={(e: React.MouseEvent<HTMLDivElement>) => { this.onErrorClicked(e, item) }}>
-                                                    <span className="bw-error-span error-col1" key={item.key + ".col1"} >{item.severity}</span>
-                                                    <span className="bw-error-span error-col2" key={item.key + ".col2"} >{item.message}</span>
-                                                </div>
+                                                <BWError ErrorMessage={errorMessage} clicked = { (error: BWError) => this.setState({selectedParameter: error.Parameter})}/>
                                             )
-                                        })
-                                    }
+                                        }}
+
+                                    />
                                 </div>
                             </TabPanel >
                         </TabView>

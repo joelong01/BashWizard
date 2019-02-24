@@ -12,7 +12,8 @@ import { uniqueId } from 'lodash-es';
 
 export interface IParameterProperties {
     Model: ParameterModel;
-    Name: string;
+    key: string;
+    label: string;
     GrowlCallback: IGrowlCallback;
 }
 
@@ -28,11 +29,11 @@ interface IParameterState {
     variableName: string;
     valueIfSet: string;
     Model: ParameterModel;
-    selected: boolean;
     GrowlCallback: IGrowlCallback;
     type: ParameterType;
     collapsed: boolean;
-    uniqueId: string;
+    key: string;
+    label: string;
 }
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
@@ -44,7 +45,8 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         const id: string = uniqueId("ParameterView");
         //  console.log("creating ParameterView: " + id);
         this.state = {
-            uniqueId: id,
+            key: id,
+            label: id,
             default: this.props.Model.default,
             description: this.props.Model.description,
             longParameter: this.props.Model.longParameter,
@@ -53,7 +55,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             shortParameter: this.props.Model.shortParameter,
             variableName: this.props.Model.variableName,
             valueIfSet: this.props.Model.valueIfSet,
-            selected: false,
             Model: this.props.Model,
             GrowlCallback: this.props.GrowlCallback,
             type: this.props.Model.type,
@@ -89,73 +90,28 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         });
     }
 
-    public focus = () => {
-
-        /* const longParamInputClassName: string = "param-input " + this.state.uniqueId;
-        console.log("setting focus to " + longParamInputClassName)
-        const input:any = window.document.getElementsByClassName(longParamInputClassName)[0];
-        input.focus(); */
-
-        this.setState({ collapsed: false }, () => {
-            if (this.refLongName.current !== null) {
-                console.log("setting focus to " + this.state.uniqueId);
-                const reactTypeScriptWorkAround: any = this.refLongName.current;
-
-                reactTypeScriptWorkAround.element.focus();
-
-            }
-        });
-    }
-
-    private setFocus = () => {
-        if (this.refLongName.current !== null) {
-            //   console.log("setting focus to " + this.state.uniqueId);
-            const reactTypeScriptWorkAround: any = this.refLongName.current;
-            reactTypeScriptWorkAround.element.focus();
-        }
-    }
-
     //
     //  this is the callback from the model...if the App changes the data
-    //  (e.g. picks a short name), then the model calls here.  You might think
-    //  that you should protect callbacks -- e.g. since focus() is called in this fuction, it modifies
-    //  the .selected property on the model, which notifies this function == stack fault.
-    //  this is *wrong* because the Model doesn't notify when the property's value doesn't change *and*
-    //  the App has to modify the parameters -- e.g. this flow has to work:
+    //  (e.g. picks a short name), then the model calls here.
+    //   e.g. this flow has to work:
     //  1. user types in long-paramter and hits TAB => onBlur is called
     //  2. this updates the model (model.longParameter) => change notifications sent out
     //  3. the app tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
     public onPropertyChanged = async (model: ParameterModel, name: string) => {
 
-        console.log(`ParameterView.onPropertyChanged: [name=${name}] [${name}=${model[name]}.  Item:${model.longParameter} updating:${this._updatingModel}]`)
-
-        if (name === "focus" && this.refLongName.current !== null) {
-            this.focus();
-            return;
-        }
 
         if (!(name in this.state)) {
             console.log(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
             throw new Error(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
         }
 
-        /*  commenting out because Type is now read only
-             if (key === "type") {
-             this.changeType(model);
-             this.setState({ type: model.type });
-         } */
         const obj: object = {}
         obj[name] = model[name];
         await this.setStateAsync(obj);
 
         if (name === "collapsed") {
             console.log(`setting collapsed=${model[name]} for ${model.longParameter}`)
-        }
-
-        if (name === "selected" && model.selected === true && this.refParameterForm.current !== null) {
-            //  console.log(`${this.Model.uniqueName} is getting focus`);
-            this.refParameterForm.current.focus();
         }
 
 
@@ -172,7 +128,6 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
 
             this._updatingModel = true;
             const key = e.currentTarget.id;
-            // console.log(`onBlur [${key}=${e.currentTarget.value}]`)
             if (key !== undefined) {
                 this.state.Model[key] = e.currentTarget.value;
             }
@@ -284,44 +239,24 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     }
 
 
-    //
-    //  The state management might look a bit different here than normal at first glance.
-    //  instead of setting the state directly (e.g. onFocus={() => this.setState(selected: true)}), we updat this.state.Model.selected = true
-    //  we are not violating the "state is ummutable" rule in react because the model will callback to the parameterItem in this.onPropertyChanged
-    //  which will then call this.setState()
-    //
     public render = () => {
         let fieldSetName: string = this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset";
-        if (this.state.Model.selected) {
-            fieldSetName += " parameter-fieldset-selected";
-        }
-        //   console.log (`${this.state.Model.uniqueName}=${fieldSetName}`);
+
         return (
-            <div className="parameter-layout-root" key={this.state.uniqueId}
-                onClick={() => { this.state.Model.selected = true; }}
-                /*  onFocus={() => { this.state.Model.selected = true; this.focus(); }} */
-
-                onBlur={() => this.state.Model.selected = false}
-
-            >
+            <div className="parameter-layout-root" key={this.state.key}>
 
                 <Button className="collapse-button p-button-secondary"
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
-                    onClick={() => { this.setState({ collapsed: !this.state.collapsed }); this.state.Model.selected = true; }} />
-                <fieldset className={fieldSetName}
-
-                    /* onFocus={() => { this.state.Model.selected = true; this.focus(); }}*/
-                    onClick={() => { this.state.Model.selected = true; }}
-                >
+                    onClick={() => { this.setState({ collapsed: !this.state.collapsed })}} />
+                <fieldset className={fieldSetName}>
                     <legend>{this.state.type === ParameterType.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
                     <div className="TheWholeThing">
                         <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}
-                        /* onClick={() => { this.state.Model.selected = true; this.focus(); }} */
                         >
                             <div className="p-col-fixed param-column">
                                 <span className="p-float-label" >
                                     <InputText autoFocus={true} ref={this.refLongName as any} id="longParameter" spellCheck={false} value={this.state.longParameter}
-                                        className={"param-input " + this.state.uniqueId} onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                        className={"param-input " + this.state.key} onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
                                     <label htmlFor="longParameter" className="param-label">Long Name</label>
                                 </span>
                             </div>

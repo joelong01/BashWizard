@@ -4,6 +4,7 @@ import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css'
 import "./index.css"
 import "./Components/ParameterView.css"
+import "./Components/bwError.css"
 import "./Pages/MainPage.css"
 
 import * as React from 'react';

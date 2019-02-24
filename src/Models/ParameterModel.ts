@@ -84,7 +84,7 @@ export class ParameterModel {
     }
 
     public focus = () => {
-        this.NotifyPropertyChanged("focus");
+       // this.NotifyPropertyChanged("focus");
     }
 
 
@@ -155,18 +155,6 @@ export class ParameterModel {
             this._uniqueName = value;
             // uniqueName does not need to be propagated
             // this.NotifyPropertyChanged("uniqueName")
-        }
-    }
-
-    get selected(): boolean {
-        return this._selected;
-    }
-
-    set selected(value: boolean) {
-        if (value !== this._selected) {
-            console.log(`${this._uniqueName}.selected=${value} notify count = ${this.propertyChangedNotify.length}`);
-            this._selected = value;
-            this.NotifyPropertyChanged("selected")
         }
     }
 

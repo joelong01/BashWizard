@@ -9,7 +9,8 @@ import {
     MenuItem,
     MenuItemConstructorOptions,
     dialog,
-    ipcRenderer
+    ipcRenderer,
+    Accelerator
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import LocalFileSystem from "./localFileSystem";
@@ -27,8 +28,17 @@ let ipcMainProxy: IpcMainProxy;
 //
 //  this receives messages from the renderer to update the settings in the main app
 ipcMain.on('synchronous-message', (event: any, arg: any): any => {
-    createMainMenu(mainWindow, Boolean(arg.autoSave));
-    event.returnValue = true;
+    const menu:Menu|null = Menu.getApplicationMenu();
+    if (menu !== null){
+        console.log("changing autosave menu to " + Boolean(arg.autoSave));
+        menu.getMenuItemById("auto-save").checked = Boolean(arg.autoSave);
+        event.returnValue = true;
+        return;
+    }
+
+    event.returnValue = false;
+
+
 })
 
 let lastFileNotificationTime: number = new Date().getTime();
@@ -173,12 +183,11 @@ function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, eve
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
-    console.log(`createMainMenu autoSave=${autoSave}`)
-
+   
     let template: MenuItemConstructorOptions[];
     template = [
         {
-            label: "File",
+            label: "File", accelerator: "Alt+F",
             submenu: [
                 { label: "New...", accelerator: "CommandOrControl+N", click: onNew },
                 { label: "Open...", accelerator: "CommandOrControl+O", click: onOpen },
@@ -193,7 +202,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             ]
         },
         {
-            label: "Edit",
+            label: "Edit", accelerator: "Alt+E",
             submenu: [
                 { role: "undo" },
                 { role: "redo" },
@@ -207,7 +216,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             ]
         },
         {
-            label: "View",
+            label: "View", accelerator: "Alt+v",
             submenu: [
                 { role: "reload" },
                 { role: "forcereload" },
@@ -221,11 +230,11 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             ]
         },
         {
-            role: "window",
+            role: "window", accelerator: "Alt+w",
             submenu: [{ role: "minimize" }, { role: "close" }]
         },
         {
-            role: "help",
+            role: "help", accelerator: "Alt+a",
             submenu: [
                 {
                     label: "Learn More",
@@ -268,7 +277,6 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
 
     const menu = Menu.buildFromTemplate(template);
 
-    Menu.setApplicationMenu(null);
     Menu.setApplicationMenu(menu);
 
 
