@@ -135,7 +135,7 @@ export class ParseBash {
         const missingVersionInfo: string = "couldn't find script version information";
         const noUsage: string = "There is no usage() function in this bash script";
         const noParseInput: string = "Could not locate the parseInput() function in the bashScript";
-        const parseState:ScriptModel = new ScriptModel();
+        const scriptModel:ScriptModel = new ScriptModel();
 
 
         //
@@ -163,8 +163,8 @@ export class ParseBash {
         //
         // make sure the file doesn't have GIT merge conflicts
         if (input.indexOf("<<<<<<< HEAD") !== -1) {
-            this.addParseError(parseState.Errors, unMergedGitFile);
-            return parseState;
+            this.addParseError(scriptModel.Errors, unMergedGitFile);
+            return scriptModel;
         }
 
         /*
@@ -190,23 +190,23 @@ export class ParseBash {
 
                 //
                 //  this means we couldn't find any of the comments -- treat this as a non-BW file
-                parseState.UserCode = input.trim(); // make it all user code
-                this.addParseError(parseState.Errors, missingComments);
-                this.addParseError(parseState.Errors, addingComments);
-                return parseState;
+                scriptModel.UserCode = input.trim(); // make it all user code
+                this.addParseError(scriptModel.Errors, missingComments);
+                this.addParseError(scriptModel.Errors, addingComments);
+                return scriptModel;
             case 1:
-                this.addParseError(parseState.Errors, missingOneUserComment);
-                this.addParseError(parseState.Errors, pleaseFix);
-                return parseState;
+                this.addParseError(scriptModel.Errors, missingOneUserComment);
+                this.addParseError(scriptModel.Errors, pleaseFix);
+                return scriptModel;
             case 2:
             case 3:
                 bashWizardCode = sections[0];
-                parseState.UserCode = sections[1].trim();
+                scriptModel.UserCode = sections[1].trim();
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
-                this.addParseError(parseState.Errors, tooManyUserComments);
-                return parseState;
+                this.addParseError(scriptModel.Errors, tooManyUserComments);
+                return scriptModel;
         }
 
         //
@@ -223,7 +223,7 @@ export class ParseBash {
             if (Number.isNaN(userBashVersion)) {
                 userBashVersion = parseFloat(bashWizardCode.substring(startPos, startPos + 3)); // 0.9 is a version i have out there...
                 if (Number.isNaN(userBashVersion)) {
-                    this.addParseError(parseState.Errors, missingVersionInfo);
+                    this.addParseError(scriptModel.Errors, missingVersionInfo);
                 }
             }
         }
@@ -233,7 +233,7 @@ export class ParseBash {
         //  find the usage() function and parse it out - this gives us the 4 properties in the ParameterModel below
         let bashFragment: string | null = this.getStringBetween(bashWizardCode, "usage() {", "}");
         if (bashFragment === null) {
-            this.addParseError(parseState.Errors, noUsage);
+            this.addParseError(scriptModel.Errors, noUsage);
         }
         else {
             bashFragment = bashFragment.replace(/echoWarning/g, "echo");
@@ -272,7 +272,7 @@ export class ParseBash {
                     //  so always set the flag saying we found it.
 
                     if (!line.startsWith("Usage: $0")) {
-                        parseState.description = line.trimRight();
+                        scriptModel.description = line.trimRight();
                     }
 
                     foundDescription = true;
@@ -294,7 +294,7 @@ export class ParseBash {
                     parameterItem.longParameter = paramTokens[1].trim();
                     parameterItem.requiredParameter = (paramTokens[2].trim() === "Required") ? true : false;
                     parameterItem.description = description;
-                    parseState.parameters.push(parameterItem);
+                    scriptModel.parameters.push(parameterItem);
                 }
             }
 
@@ -315,7 +315,7 @@ export class ParseBash {
                 //  the line is in the form of: "echo "<scriptName>:"
                 const name: string | null = this.getStringBetween(line, "echo \"", ":");
                 if (name !== null) {
-                    parseState.scriptName = name;
+                    scriptModel.scriptName = name;
                 }
                 break;
             };
@@ -327,7 +327,7 @@ export class ParseBash {
 
         bashFragment = this.getStringBetween(bashWizardCode, "eval set -- \"$PARSED\"", "--)");
         if (bashFragment === null) {
-            this.addParseError(parseState.Errors, noParseInput);
+            this.addParseError(scriptModel.Errors, noParseInput);
         }
         else {
             lines = bashFragment.split("\n");
@@ -344,13 +344,13 @@ export class ParseBash {
                 {
                     const paramTokens: string[] = lines[index + 1].trim().split("=");
                     if (paramTokens.length !== 2) {
-                        this.addParseError(parseState.Errors,
+                        this.addParseError(scriptModel.Errors,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index + 1].trim()} which doesn't parse.  It should look like varName=$2 or the like.`);
                     }
                     const nameTokens: string[] = line.split("|");
                     if (nameTokens.length !== 2) // the first is the short param, second long param, and third is empty
                     {
-                        this.addParseError(parseState.Errors,
+                        this.addParseError(scriptModel.Errors,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index].trim()} which doesn't parse.  It should look like \"-l | --long-name)\" or the like.`,
                             "warn");
                     }
@@ -358,9 +358,9 @@ export class ParseBash {
 
                     let longParam: string = nameTokens[1].substring(3, nameTokens[1].length - 1);
 
-                    const param: ParameterModel | undefined = this.findParameterByLongName(parseState.parameters, longParam);
+                    const param: ParameterModel | undefined = this.findParameterByLongName(scriptModel.parameters, longParam);
                     if (param === undefined) {
-                        this.addParseError(parseState.Errors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
+                        this.addParseError(scriptModel.Errors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
                             "warn");
                     }
                     else {
@@ -373,7 +373,7 @@ export class ParseBash {
                             param.requiresInputString = true;
                         }
                         else {
-                            this.addParseError(parseState.Errors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
+                            this.addParseError(scriptModel.Errors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
                                 "warn");
                         }
                     }
@@ -384,7 +384,7 @@ export class ParseBash {
         // the last bit of info to figure out is the default value -- find these with a comment
         bashFragment = this.getStringBetween(bashWizardCode, "# input variables", "parseInput");
         if (bashFragment === null) {
-            this.addParseError(parseState.Errors, noParseInput);
+            this.addParseError(scriptModel.Errors, noParseInput);
         }
         else {
             // throw away the "declare "
@@ -401,17 +401,17 @@ export class ParseBash {
 
                 const varTokens: string[] = line.split("=");
                 if (varTokens.length === 0 || varTokens.length > 2) {
-                    this.addParseError(parseState.Errors,
+                    this.addParseError(scriptModel.Errors,
                         `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line \"${line}\" was encountered that didn't parse.  it should be in the form of varName=Default`,
                         "warn");
 
                 }
                 const varName: string = varTokens[0].trim();
-                const param: ParameterModel | undefined = this.findParameterByVarName(parseState.parameters, varName);
+                const param: ParameterModel | undefined = this.findParameterByVarName(scriptModel.parameters, varName);
                 if (param === undefined) {
-                    this.addParseError(parseState.Errors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
+                    this.addParseError(scriptModel.Errors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
                         "warn");
-                    this.addParseError(parseState.Errors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
+                    this.addParseError(scriptModel.Errors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
 
                 }
                 else {
@@ -421,33 +421,33 @@ export class ParseBash {
             }
         }
 
-        parseState.BuiltInParameters.LoggingSupport = this.logDirectorySupported(sections[2], parseState.parameters);
-        if (parseState.BuiltInParameters.LoggingSupport !== undefined) {
-            parseState.BuiltInParameters.LoggingSupport.type = ParameterType.LoggingSupport;
+        scriptModel.BuiltInParameters.LoggingSupport = this.logDirectorySupported(sections[2], scriptModel.parameters);
+        if (scriptModel.BuiltInParameters.LoggingSupport !== undefined) {
+            scriptModel.BuiltInParameters.LoggingSupport.type = ParameterType.LoggingSupport;
         }
-        parseState.BuiltInParameters.InputFileSupport = this.inputFileSupported(sections[0], parseState.parameters);
-        if (parseState.BuiltInParameters.InputFileSupport !== undefined) {
-            parseState.BuiltInParameters.InputFileSupport.type = ParameterType.InputFileSupport;
+        scriptModel.BuiltInParameters.InputFileSupport = this.inputFileSupported(sections[0], scriptModel.parameters);
+        if (scriptModel.BuiltInParameters.InputFileSupport !== undefined) {
+            scriptModel.BuiltInParameters.InputFileSupport.type = ParameterType.InputFileSupport;
         }
-        parseState.BuiltInParameters.VerboseSupport = this.verboseSupported(sections[0], parseState.parameters);
-        if (parseState.BuiltInParameters.VerboseSupport !== undefined) {
-            parseState.BuiltInParameters.VerboseSupport.type = ParameterType.VerboseSupport;
+        scriptModel.BuiltInParameters.VerboseSupport = this.verboseSupported(sections[0], scriptModel.parameters);
+        if (scriptModel.BuiltInParameters.VerboseSupport !== undefined) {
+            scriptModel.BuiltInParameters.VerboseSupport.type = ParameterType.VerboseSupport;
         }
-        parseState.BuiltInParameters.Create = this.findCVD(parseState.UserCode, parseState.parameters, "function onCreate()", "if [[ $create == \"true\" ]]", "create");
-        if (parseState.BuiltInParameters.Create !== undefined) {
-            parseState.BuiltInParameters.Create.type = ParameterType.Create;
-        }
-
-        parseState.BuiltInParameters.Verify = this.findCVD(parseState.UserCode, parseState.parameters, "function onVerify()", "if [[ $verify == \"true\" ]]", "verify");
-        if (parseState.BuiltInParameters.Verify !== undefined) {
-            parseState.BuiltInParameters.Verify.type = ParameterType.Verify;
-        }
-        parseState.BuiltInParameters.Delete = this.findCVD(parseState.UserCode, parseState.parameters, "function onDelete()", "if [[ $delete == \"true\" ]]", "delete");
-        if (parseState.BuiltInParameters.Delete !== undefined) {
-            parseState.BuiltInParameters.Delete.type = ParameterType.Delete;
+        scriptModel.BuiltInParameters.Create = this.findCVD(scriptModel.UserCode, scriptModel.parameters, "function onCreate()", "if [[ $create == \"true\" ]]", "create");
+        if (scriptModel.BuiltInParameters.Create !== undefined) {
+            scriptModel.BuiltInParameters.Create.type = ParameterType.Create;
         }
 
-        return parseState;
+        scriptModel.BuiltInParameters.Verify = this.findCVD(scriptModel.UserCode, scriptModel.parameters, "function onVerify()", "if [[ $verify == \"true\" ]]", "verify");
+        if (scriptModel.BuiltInParameters.Verify !== undefined) {
+            scriptModel.BuiltInParameters.Verify.type = ParameterType.Verify;
+        }
+        scriptModel.BuiltInParameters.Delete = this.findCVD(scriptModel.UserCode, scriptModel.parameters, "function onDelete()", "if [[ $delete == \"true\" ]]", "delete");
+        if (scriptModel.BuiltInParameters.Delete !== undefined) {
+            scriptModel.BuiltInParameters.Delete.type = ParameterType.Delete;
+        }
+
+        return scriptModel;
 
 
 
