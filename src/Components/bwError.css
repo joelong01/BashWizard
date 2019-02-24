@@ -1,0 +1,53 @@
+/* error list support */
+.error-message-tab-panel
+{
+    position: absolute;
+    width: calc(100% - 2em);
+    height: calc(100% - 4em);
+    margin: 0px 1em;
+    left: 0em;
+    padding: 0em;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 400;
+}
+.bw-error-listbox{
+    position: relative;
+    border: none;
+    overflow: auto;
+    height: calc(100% - 3em);
+    width: 100%;
+
+}
+
+.bw-error-header {
+    width: 100%;
+}
+
+.bw-header-col1{
+    display: inline-block;
+    width: 4em;
+    font-size: 1.5em;
+}
+.bw-header-col2{
+    display: inline-block;
+    margin-left: 1.5em;
+    font-size: 1.5em;
+}
+
+.bw-error-item {
+    height: 2em;
+    overflow: hidden;
+
+    width: 100%;
+}
+.bw-error-span {
+    margin-right: 2em;
+    margin-top: 0em;
+    font-size: 1.25em;
+}
+
+.error-col1 {
+    display: inline-block;
+    width: 4em;
+}
+

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { resolve } from 'q';
-import { isAbsolute } from 'path';
 
 export type YesNoResponse = (response: "yes" | "no") => void;
 

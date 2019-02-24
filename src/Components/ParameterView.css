@@ -35,10 +35,6 @@
     border: 0em;
 }
 
-.parameter-fieldset:focus-within {
-    border: 3px solid blue;
-    border-radius: .25em;
-}
 
 .parameter-fieldset-selected {
     border: 3px solid blue;
@@ -46,7 +42,7 @@
 }
 
 .param-label {
-    margin: 10px;
+    margin-bottom: .5em !important;
 }
 
 .param-input {
@@ -75,3 +71,6 @@
     position: absolute;;
     border: 1px solid blue !important;
 }
+.TheWholeThing {
+     margin: 0.5em;
+ }

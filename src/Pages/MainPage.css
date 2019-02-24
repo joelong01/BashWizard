@@ -81,8 +81,6 @@
 .Parameter_List {
     overflow: auto;
     position: relative;
-    border: 1px solid blue;
-    border-radius: 3px;
     margin: 0em;
     /* height: calc(100% - 115px); Height calculated in this.handleResize() and set as style in code*/
 }
@@ -115,44 +113,6 @@
     height: 2.5em;
     margin-right: 0.25em;
 }
-
-/* error list support */
-.bw-error-list {
-    width: calc(100% - 17px) !important;
-    height: calc(100% - 63px);
-    position: absolute;
-    left: 0.75em;
-    border-radius: 3px;
-    overflow: auto;
-}
-.bw-error-item {
-    height: 2em;
-    overflow: hidden;
-    transition: background-color 0.2s, box-shadow 0.2s;
-    font-weight: 400;
-    width: 100%;
-}
-.bw-error-item-selected {
-    border: 2px lightblue solid;
-    border-radius: 0.25em;
-}
-.bw-error-item:hover {
-    background-color: #c8c8c8;
-    color: #333333;
-    border-color: #c8c8c8;
-    border-radius: 0.25em;
-}
-.bw-error-span {
-    margin-right: 2em;
-    margin-top: 0em;
-    font-size: 1.25em;
-}
-
-.error-col1 {
-    display: inline-block;
-    width: 9em;
-}
-
 /* toolbar button */
 .bw-button:hover {
     background-color: #c8c8c8;
