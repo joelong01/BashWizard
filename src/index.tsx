@@ -4,16 +4,16 @@ import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css'
 import "./index.css"
 import "./Components/ParameterView.css"
-import "./Components/App.css"
+import "./Pages/MainPage.css"
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import registerServiceWorker from './registerServiceWorker';
-import App from "./Components/App"
+import MainPage from "./Pages/MainPage"
 
 ReactDOM.render(
-  <App/>,
-  document.getElementById('root') as HTMLElement
+    <MainPage />,
+    document.getElementById('root') as HTMLElement
 );
 
 registerServiceWorker();

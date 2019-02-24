@@ -752,18 +752,26 @@ export class ScriptModel {
 
     public static parseJSON(json: string, notify: INotifyPropertyChanged): ScriptModel {
         const scriptModel = new ScriptModel(notify);
+        scriptModel.FireChangeNotifications = false;
         try {
             //
             //  do it in this order in case the json parse throws, we don't wipe any UI
             const objs = JSON.parse(json);
-
+            scriptModel.JSON = json;
             scriptModel.generateBashScript = false;
+            // older version of Bash Wizard don't have a description field
+            // react doesn't like it when the state moves from "undefined" to a regular value
+            scriptModel.Description = (objs.Description === undefined) ? "" : objs.Description;
+            scriptModel.ScriptName = (objs.ScriptName === undefined) ? "" : objs.ScriptName;
+            scriptModel.Version = (objs.Version === undefined) ? "" : objs.Version;
+
 
             //
             //  these unserialized things are only partially ParameterModels -- create the real ones
 
             for (let p of objs.Parameters) {
                 let model: ParameterModel = new ParameterModel();
+                model.FireChangeNotifications = false;
                 model.default = p.Default;
                 model.description = p.Description;
                 model.longParameter = p.LongParameter;
@@ -776,8 +784,8 @@ export class ScriptModel {
                 model.collapsed = p.collapsed;
                 model.requiresInputString = p.RequiresInputString;
                 model.uniqueName = uniqueId("JSON_PARAMETER");
-                model.FireChangeNotifications = true;
                 scriptModel.Parameters.push(model);
+                model.FireChangeNotifications = true;
                 model.registerNotify(scriptModel.onPropertyChanged);
                 model.registerNotify(notify);
             }

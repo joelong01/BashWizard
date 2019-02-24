@@ -13,7 +13,7 @@ function echoWarning() {
     NORMAL=$(tput sgr0)
     echo "${YELLOW}${1}${NORMAL}"
 }
-function echoInfo() {
+function echoInfo {
     GREEN=$(tput setaf 2)
     NORMAL=$(tput sgr0)
     echo "${GREEN}${1}${NORMAL}"
@@ -24,19 +24,19 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     echoError "'getopt --test' failed in this environment. please install getopt."
     read -r -p "install getopt using brew? [y,n]" response
     if [[ $response == 'y' ]] || [[ $response == 'Y' ]]; then
-        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" </dev/null 2>/dev/null
+        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
         brew install gnu-getopt
         #shellcheck disable=SC2016
-        echo 'export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"' >>~/.bash_profile
+        echo 'export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"' >> ~/.bash_profile
         echoWarning "you'll need to restart the shell instance to load the new path"
     fi
-    exit 1
+   exit 1
 fi
 # we have a dependency on jq
-if [[ ! -x "$(command -v jq)" ]]; then
-    echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
-    exit 1
-fi
+    if [[ ! -x "$(command -v jq)" ]]; then
+        echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
+        exit 1
+    fi
 function usage() {
     echoWarning "Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file."
     echo "creates an Azure Key Vault"
@@ -256,6 +256,7 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
         echo "Key Vault name: $(echo "$kvInfo" | jq .name)"
         echo ""
     fi
+    # sorry, ain't gonna happen!
     # --- END USER CODE ---
 
     time=$(date +"%m/%d/%y @ %r")

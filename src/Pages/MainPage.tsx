@@ -1,7 +1,7 @@
 
 import React from 'react';
 import svgFiles from "../Images/images"
-import { ParameterView } from './ParameterView';
+import { ParameterView } from '../Components/ParameterView';
 import { ParameterModel } from '../Models/ParameterModel';
 import SplitPane from 'react-split-pane';
 import { uniqueId } from 'lodash-es';
@@ -13,7 +13,7 @@ import { InputText } from "primereact/inputtext"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
-import { YesNoDialog } from "./askUserYesNoDlg";
+import { YesNoDialog } from "../Components/askUserYesNoDlg";
 import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
@@ -21,17 +21,14 @@ import "brace/theme/xcode"
 import "brace/theme/cobalt"
 import { LocalFileSystemProxy } from "../localFileSystemProxy"
 import { IpcRenderer } from "electron";
-import { IErrorMessage, IBuiltInParameterName, ParameterType, ValidationOptions, IScriptModelProps, IAsyncMessage } from "../Models/commonModel";
+import { IErrorMessage, ParameterType, IAsyncMessage } from "../Models/commonModel";
 import { ScriptModel } from "../Models/scriptModel";
-
 
 //
 //  represents the properties that will impact the UI
 //
-interface IAppUiState {
-    //
-    //  the "real" data that represent a bash script
-    scriptModel: ScriptModel;
+interface IMainPageState {
+
     //
     //  if it has "cache" in the name, it means we store the UI state in this variable and then set the model in the onBlur method
     jsonCache: string;
@@ -46,7 +43,7 @@ interface IAppUiState {
     debugConfig: string;
 
     // this data is for UI only and doesn't impact the model
-    SelectedParameter?: ParameterModel;
+    selectedParameter?: ParameterModel;
     mode: string; // one of "light" or "dark"
     autoSave: boolean;
     showYesNoDialog: boolean;
@@ -60,7 +57,7 @@ interface IAppUiState {
 
 }
 
-class App extends React.Component<{}, IAppUiState> {
+class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
     private _settingState: boolean = false;
@@ -68,7 +65,7 @@ class App extends React.Component<{}, IAppUiState> {
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
     private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
-
+    private scriptModel: ScriptModel = new ScriptModel();
 
     constructor(props: {}) {
         super(props);
@@ -88,12 +85,9 @@ class App extends React.Component<{}, IAppUiState> {
             savedMode = "light";
         }
 
-        console.log(`mode=${savedMode} autoSave=${autoSaveSetting}`);
         const params: ParameterModel[] = []
         this.state =
             {
-
-                scriptModel: new ScriptModel(this.onPropertyChanged),
                 //
                 //  these get replaced in this.stringify
                 jsonCache: "",
@@ -112,6 +106,7 @@ class App extends React.Component<{}, IAppUiState> {
                 dialogMessage: "",
 
                 selectedError: undefined,
+                selectedParameter: undefined,
                 activeTabIndex: 0,
                 FileName: "",
                 Loaded: false,
@@ -122,14 +117,14 @@ class App extends React.Component<{}, IAppUiState> {
                         label: 'Add All',
                         icon: "pi pi-globe",
                         command: async () => {
-                            this.state.scriptModel.generateBashScript = false;
-                            this.state.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                            this.state.scriptModel.generateBashScript = true;
+                            this.scriptModel.generateBashScript = false;
+                            this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
+                            this.scriptModel.generateBashScript = true;
                             await this.updateAllText();
                         }
                     },
@@ -141,9 +136,9 @@ class App extends React.Component<{}, IAppUiState> {
                         label: 'Add Verbose Support',
                         icon: "pi pi-camera",
                         command: async () => {
-                            this.state.scriptModel.generateBashScript = false;
-                            this.state.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                            this.state.scriptModel.generateBashScript = true;
+                            this.scriptModel.generateBashScript = false;
+                            this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
+                            this.scriptModel.generateBashScript = true;
                             await this.updateAllText();
                         }
                     },
@@ -151,9 +146,9 @@ class App extends React.Component<{}, IAppUiState> {
                         label: 'Add Logging Support',
                         icon: "pi pi-pencil",
                         command: async () => {
-                            this.state.scriptModel.generateBashScript = false;
-                            this.state.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                            this.state.scriptModel.generateBashScript = true;
+                            this.scriptModel.generateBashScript = false;
+                            this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
+                            this.scriptModel.generateBashScript = true;
                             await this.updateAllText();
                         }
                     },
@@ -161,9 +156,9 @@ class App extends React.Component<{}, IAppUiState> {
                         label: 'Add Input File Support',
                         icon: "pi pi-list",
                         command: async () => {
-                            this.state.scriptModel.generateBashScript = false;
-                            this.state.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                            this.state.scriptModel.generateBashScript = true;
+                            this.scriptModel.generateBashScript = false;
+                            this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
+                            this.scriptModel.generateBashScript = true;
                             await this.updateAllText();
                         }
                     },
@@ -171,11 +166,11 @@ class App extends React.Component<{}, IAppUiState> {
                         label: 'Add Create, Validate, Delete',
                         icon: "pi pi-table",
                         command: async () => {
-                            this.state.scriptModel.generateBashScript = false;
-                            this.state.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                            this.state.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                            this.state.scriptModel.generateBashScript = true;
+                            this.scriptModel.generateBashScript = false;
+                            this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
+                            this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
+                            this.scriptModel.generateBashScript = true;
                             await this.updateAllText();
                         }
                     }
@@ -187,12 +182,21 @@ class App extends React.Component<{}, IAppUiState> {
             }
     }
 
+
+
     private getIpcRenderer(): IpcRenderer | undefined {
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (userAgent.indexOf(' electron/') === -1) {
+            console.log ("not running electron!")
+            return undefined;
+        }
         if (typeof window["require"] !== "undefined") {
+            console.log ("running electron!")
             // tslint:disable-next-line:no-string-literal
             return window["require"]("electron").ipcRenderer;
 
         }
+        console.log ("not running electron - but user agent string says you should be")
         return undefined;
     }
     private setupCallbacks = () => {
@@ -215,20 +219,17 @@ class App extends React.Component<{}, IAppUiState> {
             });
 
             ipcRenderer.on("on-auto-save-checked", async (event: any, message: any[]) => {
-                console.log(`ipcRenderer: ${JSON.stringify(message)}`)
                 await this.setStateAsync({ autoSave: message[0] });
                 this.saveSettings();
             });
 
             ipcRenderer.on('asynchronous-reply', (event: string, msg: string) => {
                 const msgObj: IAsyncMessage = JSON.parse(msg);
-                console.log(`async reply: ${msg}`);
                 if (msgObj.event === "file-changed") {
                     if (this.state.FileName.endsWith(msgObj.fileName)) {
-                        console.log(`calling onFileChanged for ${this.state.FileName} instead of ${msgObj.fileName}`)
                         this.onFileChanged(this.state.FileName);
-                    }else{
-                        console.log (`rejecting file change nofification for ${msgObj.fileName}`);
+                    } else {
+                        console.log(`rejecting file change nofification for ${msgObj.fileName}`);
                     }
 
                 }
@@ -251,7 +252,8 @@ class App extends React.Component<{}, IAppUiState> {
                 }
                 this.watchFile(fn);
             }
-            await this.mainFileSystemProxy.writeText(this.state.FileName, this.state.scriptModel.toBash());
+            await await this.parseBashUpdateUi();
+            await this.mainFileSystemProxy.writeText(this.state.FileName, this.scriptModel.BashScript);
         }
         catch (error) {
             this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error saving the file.  Details: \n" + error });
@@ -292,17 +294,16 @@ class App extends React.Component<{}, IAppUiState> {
         if (contents !== "") {
             this.watchFile(filename);
             await this.setStateAsync({ bashCache: contents, FileName: filename });
-            const model: ScriptModel = ScriptModel.parseBash(contents, this.onPropertyChanged);
-            await this.updateStateWithModelData(model);
+            await this.parseBashUpdateUi();
             return true;
         }
         return false;
     }
 
     private updateStateWithModelData = async (model: ScriptModel): Promise<void> => {
-
+        console.log("this.state: %o", this.state);
+        this.scriptModel = model;
         await this.setStateAsync({
-            scriptModel: model,
             jsonCache: model.stringify(),
             bashCache: model.toBash(),
             scriptNameCache: model.scriptName,
@@ -326,7 +327,6 @@ class App extends React.Component<{}, IAppUiState> {
         }
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
-            console.log(`watching ${fn} unwatching ${this.state.FileName}`);
             ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
             await this.setStateAsync({ FileName: fn }); // need read after write
             ipcRenderer.send("asynchronous-message", { eventType: "watch", filename: fn });
@@ -360,6 +360,7 @@ class App extends React.Component<{}, IAppUiState> {
 
 
     public componentDidMount = () => {
+
         window.addEventListener<"resize">('resize', this.handleResize);
         this.setupCallbacks();
         //
@@ -391,14 +392,10 @@ class App extends React.Component<{}, IAppUiState> {
             let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
             const htStyle: string = `calc(100% - ${height}px)`
             this.setState({ parameterListHeight: htStyle });
-        } else {
-            console.log("handleResize() => toolbar || geDiv is null")
         }
-
 
     };
     private saveSettings = (): void => {
-        console.log(`mode=${this.state.mode} autoSave=${this.state.autoSave}`);
         this.cookie.set("mode", this.state.mode);
         this.cookie.set("autosave", this.state.autoSave);
 
@@ -407,18 +404,12 @@ class App extends React.Component<{}, IAppUiState> {
 
 
     private onRefresh = async (): Promise<void> => {
-        let model: ScriptModel;
-        console.log(`active tab: ${this.state.activeTabIndex}`);
         switch (this.state.activeTabIndex) {
             case 0:
-                console.log("parsing bash");
-                model = ScriptModel.parseBash(this.state.bashCache, this.onPropertyChanged);
-                await this.updateStateWithModelData(model);
+                await this.parseBashUpdateUi();
                 break;
             case 1:
-                console.log("parsing json");
-                model = ScriptModel.parseJSON(this.state.jsonCache, this.onPropertyChanged);
-                await this.updateStateWithModelData(model);
+                this.parseJSONUpdateUi();
                 break;
             default:
                 break;
@@ -429,9 +420,9 @@ class App extends React.Component<{}, IAppUiState> {
 
     private onDeleteParameter = async (): Promise<void> => {
 
-        if (this.state.SelectedParameter !== undefined) {
-            const toDelete: ParameterModel = this.state.SelectedParameter;
-            let index: number = this.state.parametersCache.indexOf(this.state.SelectedParameter)
+        if (this.state.selectedParameter !== undefined) {
+            const toDelete: ParameterModel = this.state.selectedParameter;
+            let index: number = this.state.parametersCache.indexOf(this.state.selectedParameter)
             if (index !== -1) {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
@@ -441,7 +432,7 @@ class App extends React.Component<{}, IAppUiState> {
                 await this.deleteParameter(toDelete) // delte the one we want
             }
             else {
-                console.log("index of selected item is -1!")
+                throw new Error("index of selected item is -1!");
             }
         }
 
@@ -454,8 +445,8 @@ class App extends React.Component<{}, IAppUiState> {
         }
         );
 
+        this.scriptModel = new ScriptModel(this.onPropertyChanged);
         this.setState({
-            scriptModel: new ScriptModel(this.onPropertyChanged),
             jsonCache: "",
             bashCache: "",
 
@@ -473,23 +464,15 @@ class App extends React.Component<{}, IAppUiState> {
 
     private updateAllText = async () => {
 
-        await this.updateStateWithModelData(this.state.scriptModel);
+        await this.updateStateWithModelData(this.scriptModel);
         if (this.state.autoSave) {
             await this.onSave(false);
         }
 
     }
 
-    private changedScriptName = async (e: React.FormEvent<HTMLInputElement>) => {
-        this.setState({ scriptNameCache: e.currentTarget.value })
-
-    }
-
-    private changedDescription = async (e: React.FormEvent<HTMLInputElement>) => {
-        this.setState({ descriptionCache: e.currentTarget.value })
-    }
     private onBlurDescription = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        this.state.scriptModel.description = this.state.descriptionCache;
+        this.scriptModel.description = this.state.descriptionCache;
         await this.updateAllText();
     }
     private onBlurScriptName = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
@@ -501,13 +484,13 @@ class App extends React.Component<{}, IAppUiState> {
             await this.setState({ scriptNameCache: name });
             await this.updateAllText();
         }
-        this.state.scriptModel.scriptName = name;
+        this.scriptModel.scriptName = name;
         await this.updateAllText();
     }
 
     private deleteParameter = async (parameter: ParameterModel) => {
         try {
-            await this.setStateAsync({ parametersCache: this.state.scriptModel.deleteParameter(parameter, this.onPropertyChanged) });
+            await this.setStateAsync({ parametersCache: this.scriptModel.deleteParameter(parameter, this.onPropertyChanged) });
             await this.updateAllText();
         }
         catch (error) {
@@ -530,22 +513,22 @@ class App extends React.Component<{}, IAppUiState> {
 
     private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
 
-        if (this.state.SelectedParameter === toSelect) {
+        if (this.state.selectedParameter === toSelect) {
             return;
         }
-        if (this.state.SelectedParameter !== undefined) {
-            this.state.SelectedParameter.selected = false; // old selected no longer selected
+        if (this.state.selectedParameter !== undefined) {
+            this.state.selectedParameter.selected = false; // old selected no longer selected
         }
         if (toSelect !== undefined) {
             toSelect.selected = true;
         }
-        await this.setStateAsync({ SelectedParameter: toSelect })
+        this.setStateAsync({ selectedParameter: toSelect })
     }
 
     //
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
-        console.log(`App::onPropertyChanged [name=${name}] [loading=${this._loading}] [settingState=${this._settingState}]`)
+
         if (this._loading === true) {
             return;
         }
@@ -570,7 +553,7 @@ class App extends React.Component<{}, IAppUiState> {
         }
         finally {
             this._settingState = false;
-            if (name !== "selected" && name !== "focus") {
+            if (name !== "selected" && name !== "focus" && name !== "BashScript" && name !== "JSON") {
                 await this.updateAllText();
             }
         }
@@ -578,17 +561,30 @@ class App extends React.Component<{}, IAppUiState> {
     }
 
 
-    private addParameter = async (model: ParameterModel, select: boolean) => {
-        await this.setStateAsync({ Parameters: this.state.scriptModel.addParameter(ParameterType.Custom, this.onPropertyChanged) });
+    private addParameter = async (type: ParameterType, select: boolean) => {
+
+
+        await this.setStateAsync({ parametersCache: this.scriptModel.addParameter(ParameterType.Custom, this.onPropertyChanged) });
         await this.updateAllText();
         if (select) {
-            await this.selectParameter(model);
+            await this.selectParameter(this.state.parametersCache[this.state.parametersCache.length - 1]);
         }
     }
 
 
-
     private setStateAsync = (newState: object): Promise<void> => {
+
+        console.log ("oldState: %o", this.state);
+        console.log ("newState: %o", newState);
+        Object.keys(newState).map((key) => {
+            if (!(key in this.state)) {
+                throw new Error(`setStateAsync called with bad property: ${key}`);
+            }
+            if (newState[key] !== this.state[key]){
+                console.log(`updating state for ${key}`);
+            }
+        })
+
         return new Promise((resolve, reject) => {
             this.setState(newState, () => {
                 resolve();
@@ -605,7 +601,6 @@ class App extends React.Component<{}, IAppUiState> {
     //  note that we have some async stuff going on.  we'll resturn from this function
     //  and the answer to the dialog comes back to this.yesNoReset
     private onNew = async () => {
-        console.log("onNew");
         if (this.state.parametersCache.length > 0) {
             const response = await this.askUserQuestion("Create a new bash file?");
             if (response === "yes") {
@@ -640,6 +635,17 @@ class App extends React.Component<{}, IAppUiState> {
 
     }
 
+    private parseBashUpdateUi = async () => {
+        const model: ScriptModel = ScriptModel.parseBash(this.state.bashCache, this.onPropertyChanged);
+        await this.updateStateWithModelData(model);
+    }
+
+    private async parseJSONUpdateUi(): Promise<void> {
+        const model: ScriptModel = ScriptModel.parseJSON(this.state.jsonCache, this.onPropertyChanged);
+        await this.updateStateWithModelData(model);
+
+    }
+
     public render = () => {
         let electronEnabled: boolean = (this.getIpcRenderer !== undefined);
         const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
@@ -670,20 +676,20 @@ class App extends React.Component<{}, IAppUiState> {
                                         ""
                                     }
                                     <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(new ParameterModel(), true)} style={{ marginRight: '.25em' }} />
+                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(ParameterType.Custom, true)} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Expand All" icon="pi pi-eye"
                                         onClick={() => {
-                                            this.state.scriptModel.generateBashScript = false;
+                                            this.scriptModel.generateBashScript = false;
                                             this.state.parametersCache.map((p) => p.collapsed = false);
-                                            this.state.scriptModel.generateBashScript = true;
+                                            this.scriptModel.generateBashScript = true;
                                         }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Collapse All" icon="pi pi-eye-slash"
                                         onClick={() => {
-                                            this.state.scriptModel.generateBashScript = false;
+                                            this.scriptModel.generateBashScript = false;
                                             this.state.parametersCache.map((p) => p.collapsed = true);
-                                            this.state.scriptModel.generateBashScript = true;
+                                            this.scriptModel.generateBashScript = true;
                                         }}
                                         style={{ marginRight: '.25em' }} />
 
@@ -705,13 +711,23 @@ class App extends React.Component<{}, IAppUiState> {
                                 <div className="p-grid grid-global-entry">
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
-                                            <InputText id="scriptName" className="param-input" spellCheck={false} value={this.state.scriptNameCache} onChange={this.changedScriptName} onBlur={this.onBlurScriptName} />
+                                            <InputText id="scriptName" className="param-input" spellCheck={false}
+                                                value={this.state.scriptNameCache}
+                                                onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value});
+                                                }}
+                                                onBlur={this.onBlurScriptName} />
                                             <label htmlFor="scriptName" className="param-label">Script Name</label>
                                         </span>
                                     </div>
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
-                                            <InputText className="param-input" id="description_input" spellCheck={false} value={this.state.descriptionCache} onChange={this.changedDescription} onBlur={this.onBlurDescription} />
+                                            <InputText className="param-input" id="description_input" spellCheck={false}
+                                                value={this.state.descriptionCache}
+                                                onChange={ async (e: React.FormEvent<HTMLInputElement>) => {
+                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value});
+                                            }}
+                                                onBlur={this.onBlurDescription} />
                                             <label className="param-label" htmlFor="description_input" >Description</label>
                                         </span>
                                     </div>
@@ -719,6 +735,7 @@ class App extends React.Component<{}, IAppUiState> {
                             </div>
                             {/* this is the section for parameter list */}
                             <div className="Parameter_List" style={{ height: this.state.parameterListHeight }}>
+
                                 {this.state.parametersCache.map(parameter => (
                                     <div className={parameter.uniqueName} key={parameter.uniqueName} ref={parameter.uniqueName}>
                                         <ParameterView Model={parameter} Name={parameter.uniqueName} GrowlCallback={this.growlCallback} />
@@ -736,6 +753,10 @@ class App extends React.Component<{}, IAppUiState> {
                                         onChange={(newVal: string) => {
                                             this.setState({ bashCache: newVal });
                                         }}
+                                        onBlur={async () => {
+                                            {/* on Blur we parse the bash script and update the model with the results*/ }
+                                            await this.parseBashUpdateUi();
+                                        }}
                                     />
                                 </div>
                             </TabPanel >
@@ -746,6 +767,10 @@ class App extends React.Component<{}, IAppUiState> {
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
                                         onChange={(newVal: string) => {
                                             this.setState({ jsonCache: newVal });
+                                        }}
+                                        onBlur={async () => {
+                                            {/* on Blur we parse the bash script and update the model with the results*/ }
+                                            await this.parseJSONUpdateUi();
                                         }}
                                     />
                                 </div>
@@ -800,6 +825,8 @@ class App extends React.Component<{}, IAppUiState> {
         );
     }
 
+
+
 }
 
-export default App;
+export default MainPage;

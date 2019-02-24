@@ -20,7 +20,6 @@
         "react": "^16.8.2",
         "react-ace": "^6.4.0",
         "react-dom": "^16.8.2",
-        "react-scripts-ts": "^4.0.8",
         "react-split-pane": "^0.1.85",
         "react-splitter-layout": "^3.0.1",
         "react-transition-group": "^2.5.3",
