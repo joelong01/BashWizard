@@ -1,7 +1,7 @@
 
 import React from 'react';
 import svgFiles from "../Images/images"
-import { ParameterView } from './ParameterView';
+import { ParameterView } from '../Components/ParameterView';
 import { ParameterModel } from '../Models/ParameterModel';
 import SplitPane from 'react-split-pane';
 import { uniqueId } from 'lodash-es';
@@ -13,7 +13,7 @@ import { InputText } from "primereact/inputtext"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
-import { YesNoDialog } from "./askUserYesNoDlg";
+import { YesNoDialog } from "../Components/askUserYesNoDlg";
 import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
@@ -27,7 +27,7 @@ import { ScriptModel } from "../Models/scriptModel";
 //
 //  represents the properties that will impact the UI
 //
-interface IAppUiState {
+interface IMainPageState {
 
     //
     //  if it has "cache" in the name, it means we store the UI state in this variable and then set the model in the onBlur method
@@ -57,7 +57,7 @@ interface IAppUiState {
 
 }
 
-class App extends React.Component<{}, IAppUiState> {
+class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
     private _settingState: boolean = false;
@@ -732,6 +732,7 @@ class App extends React.Component<{}, IAppUiState> {
                             </div>
                             {/* this is the section for parameter list */}
                             <div className="Parameter_List" style={{ height: this.state.parameterListHeight }}>
+
                                 {this.state.parametersCache.map(parameter => (
                                     <div className={parameter.uniqueName} key={parameter.uniqueName} ref={parameter.uniqueName}>
                                         <ParameterView Model={parameter} Name={parameter.uniqueName} GrowlCallback={this.growlCallback} />
@@ -825,4 +826,4 @@ class App extends React.Component<{}, IAppUiState> {
 
 }
 
-export default App;
+export default MainPage;
