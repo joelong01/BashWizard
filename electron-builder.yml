@@ -13,6 +13,7 @@ mac:
   icon: app-icons/icon.icns
   target: dmg
   identity: null  # don't sign the app
+  darkModeSupport: true
 win:
   icon: app-icons/icon.ico
 linux:

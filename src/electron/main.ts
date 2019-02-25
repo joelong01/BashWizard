@@ -22,7 +22,7 @@ const cookie: Cookie = new Cookies();
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let mainWindow: BrowserWindow;
+export let mainWindow: BrowserWindow;
 let ipcMainProxy: IpcMainProxy;
 
 //
@@ -33,6 +33,8 @@ ipcMain.on('synchronous-message', (event: any, arg: any): any => {
         console.log("changing autosave menu to " + Boolean(arg.autoSave));
         menu.getMenuItemById("auto-save").checked = Boolean(arg.autoSave);
         event.returnValue = true;
+
+        
         return;
     }
 
@@ -183,7 +185,7 @@ function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, eve
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
-   
+
     let template: MenuItemConstructorOptions[];
     template = [
         {

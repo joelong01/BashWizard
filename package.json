@@ -9,6 +9,7 @@
         "@types/lodash-es": "^4.17.2",
         "@types/shortid": "0.0.29",
         "classnames": "^2.2.6",
+        "electron-titlebar-windows": "^3.0.0",
         "fs": "0.0.1-security",
         "jquery": "^3.3.1",
         "lodash-es": "^4.17.11",

@@ -39,40 +39,55 @@ fi
     fi
 function usage() {
     echoWarning "Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file."
+    echo "creates an Azure Key Vault"
     echo ""
+    echo "Usage: $0  -u|--sku -e|--enabled-for-disk-encryption -p|--enable-for-deployment -k|--keyvault-name -l|--datacenter-location -r|--resource-group -v|--verify-script -c|--create -d|--delete -i|--input-file -o|--log-directory " 1>&2
     echo ""
-    echo "Usage: $0  -l|--long-name -l|--log-directory -i|--input-file -c|--create -v|--verify -d|--delete " 1>&2
-    echo ""
-    echo " -l | --long-name         Required     test"
-    echo " -l | --log-directory     Optional     Directory for the log file. The log file name will be based on the script name."
-    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
-    echo " -c | --create            Optional     calls the onCreate function in the script"
-    echo " -v | --verify            Optional     calls the onVerify function in the script"
-    echo " -d | --delete            Optional     calls the onDelete function in the script"
+    echo " -u | --sku                             Optional     SKU details. ccepted values: premium, standard"
+    echo " -e | --enabled-for-disk-encryption     Optional     Allow Disk Encryption to retrieve secrets from the vault and unwrap keys."
+    echo " -p | --enable-for-deployment           Optional     Allow Virtual Machines to retrieve certificates stored as secrets from the vault."
+    echo " -k | --keyvault-name                   Optional     the name of the keyvault"
+    echo " -l | --datacenter-location             Required     the location of the VMs"
+    echo " -r | --resource-group                  Required     Azure Resource Group"
+    echo " -v | --verify-script                   Optional     "
+    echo " -c | --create                          Optional     create the key vault. idempotent."
+    echo " -d | --delete                          Optional     delete key Vault if it already exists"
+    echo " -i | --input-file                      Optional     filename that contains the JSON values to drive the script. command line overrides file"
+    echo " -o | --log-directory                   Optional     directory for the log file. the log file name will be based on the script name"
     echo ""
     exit 1
 }
 function echoInput() {
-    echo ":"
-    echo -n "    long-name........ "
-    echoInfo "$longName"
-    echo -n "    log-directory.... "
-    echoInfo "$logDirectory"
-    echo -n "    input-file....... "
+    echo "createKeyVault.sh:"
+    echo -n "    sku............................ "
+    echoInfo "$sku"
+    echo -n "    enabled-for-disk-encryption.... "
+    echoInfo "$enableForDiskEncryption"
+    echo -n "    enable-for-deployment.......... "
+    echoInfo "$enableForDeployment"
+    echo -n "    keyvault-name.................. "
+    echoInfo "$keyvaultName"
+    echo -n "    datacenter-location............ "
+    echoInfo "$datacenterLocation"
+    echo -n "    resource-group................. "
+    echoInfo "$resourceGroup"
+    echo -n "    verify-script.................. "
+    echoInfo "$verifyScript"
+    echo -n "    create......................... "
+    echoInfo "$createKeyVault"
+    echo -n "    delete......................... "
+    echoInfo "$deleteKeyVault"
+    echo -n "    input-file..................... "
     echoInfo "$inputFile"
-    echo -n "    create........... "
-    echoInfo "$create"
-    echo -n "    verify........... "
-    echoInfo "$verify"
-    echo -n "    delete........... "
-    echoInfo "$delete"
+    echo -n "    log-directory.................. "
+    echoInfo "$logDirectory"
 
 }
 
 function parseInput() {
     
-    local OPTIONS=l:l:i:cvd
-    local LONGOPTS=long-name:,log-directory:,input-file:,create,verify,delete
+    local OPTIONS=u:e:p:k:l:r:vcdi:o:
+    local LONGOPTS=sku:,enabled-for-disk-encryption:,enable-for-deployment:,keyvault-name:,datacenter-location:,resource-group:,verify-script,create,delete,input-file:,log-directory:
 
     # -use ! and PIPESTATUS to get exit code with errexit set
     # -temporarily store output to be able to check for errors
@@ -89,29 +104,49 @@ function parseInput() {
     eval set -- "$PARSED"
     while true; do
         case "$1" in
-        -l | --long-name)
-            longName=$2
+        -u | --sku)
+            sku=$2
             shift 2
             ;;
-        -l | --log-directory)
-            logDirectory=$2
+        -e | --enabled-for-disk-encryption)
+            enableForDiskEncryption=$2
             shift 2
+            ;;
+        -p | --enable-for-deployment)
+            enableForDeployment=$2
+            shift 2
+            ;;
+        -k | --keyvault-name)
+            keyvaultName=$2
+            shift 2
+            ;;
+        -l | --datacenter-location)
+            datacenterLocation=$2
+            shift 2
+            ;;
+        -r | --resource-group)
+            resourceGroup=$2
+            shift 2
+            ;;
+        -v | --verify-script)
+            verifyScript=true
+            shift 1
+            ;;
+        -c | --create)
+            createKeyVault=true
+            shift 1
+            ;;
+        -d | --delete)
+            deleteKeyVault=true
+            shift 1
             ;;
         -i | --input-file)
             inputFile=$2
             shift 2
             ;;
-        -c | --create)
-            create=true
-            shift 1
-            ;;
-        -v | --verify)
-            verify=true
-            shift 1
-            ;;
-        -d | --delete)
-            delete=true
-            shift 1
+        -o | --log-directory)
+            logDirectory=$2
+            shift 2
             ;;
         --)
             shift
@@ -125,34 +160,44 @@ function parseInput() {
     done
 }
 # input variables 
-declare longName=
-declare logDirectory="./"
-declare inputFile=
-declare create=false
-declare verify=false
-declare delete=false
+declare sku="standard"
+declare enableForDiskEncryption=true
+declare enableForDeployment=true
+declare keyvaultName=""
+declare datacenterLocation=
+declare resourceGroup=
+declare verifyScript=false
+declare createKeyVault=false
+declare deleteKeyVault=false
+declare inputFile="../Data/cseAzureAutomationConfig.json"
+declare logDirectory=./logs/
 
 parseInput "$@"
 
 # if command line tells us to parse an input file
 if [ "${inputFile}" != "" ]; then
     # load parameters from the file
-    configSection=$(jq . <"${inputFile}" | jq '.""')
+    configSection=$(jq . <"${inputFile}" | jq '."createKeyVault.sh"')
     if [[ -z $configSection ]]; then
-        echoError "$inputFile or  section not found "
+        echoError "$inputFile or createKeyVault.sh section not found "
         exit 3
     fi
-    longName=$(echo "${configSection}" | jq '.["long-name"]' --raw-output)
+    sku=$(echo "${configSection}" | jq '.["sku"]' --raw-output)
+    enableForDiskEncryption=$(echo "${configSection}" | jq '.["enabled-for-disk-encryption"]' --raw-output)
+    enableForDeployment=$(echo "${configSection}" | jq '.["enable-for-deployment"]' --raw-output)
+    keyvaultName=$(echo "${configSection}" | jq '.["keyvault-name"]' --raw-output)
+    datacenterLocation=$(echo "${configSection}" | jq '.["datacenter-location"]' --raw-output)
+    resourceGroup=$(echo "${configSection}" | jq '.["resource-group"]' --raw-output)
+    verifyScript=$(echo "${configSection}" | jq '.["verify-script"]' --raw-output)
+    createKeyVault=$(echo "${configSection}" | jq '.["create"]' --raw-output)
+    deleteKeyVault=$(echo "${configSection}" | jq '.["delete"]' --raw-output)
     logDirectory=$(echo "${configSection}" | jq '.["log-directory"]' --raw-output)
-    create=$(echo "${configSection}" | jq '.["create"]' --raw-output)
-    verify=$(echo "${configSection}" | jq '.["verify"]' --raw-output)
-    delete=$(echo "${configSection}" | jq '.["delete"]' --raw-output)
 
     # we need to parse the again to see if there are any overrides to what is in the config file
     parseInput "$@"
 fi
 #verify required parameters are set
-if [ -z "${longName}" ]; then
+if [ -z "${datacenterLocation}" ] || [ -z "${resourceGroup}" ]; then
     echo ""
     echoError "Required parameter missing! "
     echoInput #make it easy to see what is missing
@@ -161,7 +206,7 @@ if [ -z "${longName}" ]; then
     exit 2
 fi
 #logging support
-declare LOG_FILE="${logDirectory}.log"
+declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
 {
     mkdir -p "${logDirectory}" 
     rm -f "${LOG_FILE}"
@@ -172,33 +217,46 @@ declare LOG_FILE="${logDirectory}.log"
     echo "started: $time"
 
     # --- BEGIN USER CODE ---
-       function onVerify() {
-        echo "onVerify"
+    function verifyKeyVault() {
+        kvInfo=$(az keyvault list -g "$resourceGroup" --output json --query "[].{Name:name, ID:id}[?Name=='${keyvaultName}']")
+        id=$(echo "$kvInfo" | jq '.[].ID' --raw-output)
+        if [[ "$id" == "" ]]; then
+            echo "false"
+        else
+            echo "true"
+        fi
     }
-    function onDelete() {
-        echo "onDelete"
-    }
-    function onCreate() {
-        echo "onCreate"
-    }
-
-    
-
-    #
-    #  this order makes it so that passing in /cvd will result in a verified resource being created
-    #
-
-    if [[ $delete == "true" ]]; then
-        onDelete
+    if [ "$verifyScript" == "true" ]; then
+        echo "verifying that a keyvault named ${keyvaultName} is in $resourceGroup "
+        exists=$(verifyKeyVault)
+        if [ "$exists" == true ]; then
+            echo "PASS"
+        else
+            echo "FAIL"
+        fi
+        #comment
+        exit
     fi
-
-    if [[ $create == "true" ]]; then
-        onCreate
+    if [ "$deleteKeyVault" == true ]; then #NOTE:  this will delete *and* purge!
+        exists=$(verifyKeyVault)
+        if [ "$exists" == true ]; then # don't delete if doesn't exist
+            echo "deleting $keyvaultName..."
+            az keyvault delete --name "$keyvaultName" --resource-group "$resourceGroup"
+            az keyvault purge --name "$keyvaultName" --location "$datacenterLocation"
+        else
+            echo "$keyvaultName does not exist -- not deleting it."
+        fi
     fi
-
-    if [[ $verify == "true" ]]; then
-        onVerify
+    if [ "$createKeyVault" == true ]; then
+        echo "registering the Key Vault Resource Provider"
+        az provider register -n Microsoft.KeyVault
+        echo "creating $keyvaultName..."
+        kvInfo=$(az keyvault create --name "$keyvaultName" --resource-group "$resourceGroup" --location "$datacenterLocation" --enable-soft-delete true --enabled-for-deployment "$enableForDeployment" --enabled-for-disk-encryption "$enableForDiskEncryption" --sku "$sku")
+        echo "Key Vault ID: $(echo "$kvInfo" | jq .id)"
+        echo "Key Vault name: $(echo "$kvInfo" | jq .name)"
+        echo ""
     fi
+    # sorry, ain't gonna happen!
     # --- END USER CODE ---
 
     time=$(date +"%m/%d/%y @ %r")
