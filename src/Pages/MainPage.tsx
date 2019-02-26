@@ -328,7 +328,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
-            ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
+            if (this.state.FileName !== "") {
+                ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
+            }
             await this.setStateAsync({ FileName: fn }); // need read after write
             ipcRenderer.send("asynchronous-message", { eventType: "watch", filename: fn });
         }
@@ -779,14 +781,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                                 const error: BWError = e.value;
                                                 this.setState({ selectedError: e.value, selectedParameter: error.Parameter })
                                             }
-                                          
+
                                         }}
 
                                         filter={false}
                                         optionLabel={"key"}
                                         itemTemplate={(errorMessage: IErrorMessage): JSX.Element | undefined => {
                                             return (
-                                                <BWError ErrorMessage={errorMessage} clicked = { (error: BWError) => this.setState({selectedParameter: error.Parameter})}/>
+                                                <BWError ErrorMessage={errorMessage} clicked={(error: BWError) => this.setState({ selectedParameter: error.Parameter })} />
                                             )
                                         }}
 
