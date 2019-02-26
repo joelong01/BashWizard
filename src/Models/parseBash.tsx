@@ -282,7 +282,6 @@ export class ParseBash {
                 if (line.substring(0, 1) === "-") // we have a parameter!
                 {
                     const paramTokens: string[] = this.splitByTwoStrings(line, " ", "|");
-                    console.log(line.indexOf("|"));
                     if (line.indexOf("|")<0) 
                     { 
                         paramTokens.unshift("-"); // there is no short parameter, so add token 

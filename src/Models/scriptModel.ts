@@ -399,8 +399,11 @@ export class ScriptModel {
 
                 //
                 //  OPTIONS, LONGOPTS
-                let colon: string = (param.shortParameter && param.requiresInputString) ? ":" : "";
-                shortOptions += `${param.shortParameter}${colon}`
+                let colon: string = (param.requiresInputString) ? ":" : "";
+                if (param.shortParameter) 
+                {
+                    shortOptions += `${param.shortParameter}${colon}`
+                }
                 longOptions += `${param.longParameter}${colon},`
 
                 // input Case
