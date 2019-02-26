@@ -2,11 +2,11 @@ import { BrowserWindow, dialog, FileFilter } from "electron";
 import fs from "fs";
 import path from "path";
 import { IStorageProvider } from "./storageProviderFactory";
-import {mainWindow} from "./main"
+import { mainWindow } from "./main"
 
 export class LocalFileSystem implements IStorageProvider {
-    constructor(private browserWindow: BrowserWindow) {}
-    public setWindowTitle(name: string){
+    constructor(private browserWindow: BrowserWindow) { }
+    public setWindowTitle(name: string) {
 
         mainWindow.setTitle("Bash Wizard: " + name);
     }
@@ -28,7 +28,7 @@ export class LocalFileSystem implements IStorageProvider {
 
     public getSaveFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
-            const fileName:string | undefined = dialog.showSaveDialog({
+            const fileName: string | undefined = dialog.showSaveDialog({
                 title: dlgTitle,
                 filters: exts
             });
@@ -36,7 +36,7 @@ export class LocalFileSystem implements IStorageProvider {
             if (fileName === undefined) {
                 return reject;
             }
-            console.log('getSaveFile: ${fileName}')
+            console.log(`getSaveFile: ${fileName}`)
             return resolve(fileName);
         });
     }

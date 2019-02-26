@@ -53,7 +53,8 @@ interface IMainPageState {
     parameterListHeight: string;
     activeTabIndex: number;
     ButtonModel: any[];
-    FileName: string;
+    SaveFileName: string;
+
     Loaded: boolean;
 
 }
@@ -67,6 +68,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private savingFile: boolean = false;
     private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
     private scriptModel: ScriptModel = new ScriptModel();
+    private currentWatchFile: string = "";
 
     constructor(props: {}) {
         super(props);
@@ -109,7 +111,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 selectedError: undefined,
                 selectedParameter: undefined,
                 activeTabIndex: 0,
-                FileName: "",
+                SaveFileName: "",
                 Loaded: false,
 
                 ButtonModel: [
@@ -188,16 +190,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private getIpcRenderer(): IpcRenderer | undefined {
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.indexOf(' electron/') === -1) {
-            console.log("not running electron!")
             return undefined;
         }
         if (typeof window["require"] !== "undefined") {
-            console.log("running electron!")
-            // tslint:disable-next-line:no-string-literal
+
             return window["require"]("electron").ipcRenderer;
 
         }
-        console.log("not running electron - but user agent string says you should be")
         return undefined;
     }
     private setupCallbacks = () => {
@@ -216,6 +215,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             });
 
             ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
+                console.log("onSaveAs. this.state=%o", this.state);
                 await this.onSave(true);
             });
 
@@ -227,8 +227,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
             ipcRenderer.on('asynchronous-reply', (event: string, msg: string) => {
                 const msgObj: IAsyncMessage = JSON.parse(msg);
                 if (msgObj.event === "file-changed") {
-                    if (this.state.FileName.endsWith(msgObj.fileName)) {
-                        this.onFileChanged(this.state.FileName);
+                    if (this.state.SaveFileName.endsWith(msgObj.fileName)) {
+                        this.onFileChanged(this.state.SaveFileName);
                     } else {
                         console.log(`rejecting file change nofification for ${msgObj.fileName}`);
                     }
@@ -246,15 +246,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
         try {
             this.savingFile = true; // we don't want notifications of changes that we started
-            if (this.state.FileName === "" || alwaysPrompt === true) {
-                const fn = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-                if (fn === "" || fn === undefined) {
+            if (this.state.SaveFileName === "" || alwaysPrompt === true) {
+                const newFileName = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+                if (newFileName === "" || newFileName === undefined) {
                     return;
                 }
-                this.watchFile(fn);
+                await this.setStateAsync({ SaveFileName: newFileName });
             }
             await await this.parseBashUpdateUi();
-            await this.mainFileSystemProxy.writeText(this.state.FileName, this.scriptModel.BashScript);
+            await this.mainFileSystemProxy.writeText(this.state.SaveFileName, this.scriptModel.BashScript);
+            this.watchFile(); // this has to be done after .writeText, otherwise the file might not exist
         }
         catch (error) {
             this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error saving the file.  Details: \n" + error });
@@ -271,13 +272,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private onLoadFile = async (): Promise<boolean> => {
 
         try {
-            const fn = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-            if (fn !== "" || fn !== undefined) {
-                const contents: string = await this.mainFileSystemProxy.readText(fn);
+            const newFileName = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            if (newFileName !== "" || newFileName !== undefined) {
+                const contents: string = await this.mainFileSystemProxy.readText(newFileName);
                 if (contents !== "") {
-                    const ret: boolean = await this.setBashScript(fn, contents);
+                    const ret: boolean = await this.setBashScript(newFileName, contents); // calls setState on the filenmae
                     if (ret) {
-                        this.watchFile(fn);
+                        this.watchFile();
                     }
                     return ret;
                 }
@@ -292,17 +293,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //
     //  called when the main process opens a file, reads the contents, and sends it back to the render process
     private setBashScript = async (filename: string, contents: string): Promise<boolean> => {
-        if (contents !== "") {
-            this.watchFile(filename);
-            await this.setStateAsync({ bashCache: contents, FileName: filename });
-            await this.parseBashUpdateUi();
-            return true;
-        }
-        return false;
+        await this.setStateAsync({ bashCache: contents, SaveFileName: filename });
+        this.watchFile();
+        await this.parseBashUpdateUi();
+        return true;
     }
 
     private updateStateWithModelData = async (model: ScriptModel): Promise<void> => {
-        console.log("this.state: %o", this.state);
+
         this.scriptModel = model;
         await this.setStateAsync({
             jsonCache: model.stringify(),
@@ -319,21 +317,28 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
 
     //
-    //  called when you open or save a file
+    //  called when you open or save a file.  this will watch the file in
     //
-    private watchFile = async (fn: string) => {
+    private watchFile = async () => {
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer === undefined) {
+            return;
+        }
 
-        if (this.state.FileName === fn) {
+        console.log("watchFile this.state=%o", this.state);
+        if (this.state.SaveFileName === this.currentWatchFile) {
+
+            console.log("already watching %s", this.state.SaveFileName);
             return; // we are already watching it.
         }
-        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
-        if (ipcRenderer !== undefined) {
-            if (this.state.FileName !== "") {
-                ipcRenderer.send("asynchronous-message", { eventType: "unwatch", filename: this.state.FileName });
-            }
-            await this.setStateAsync({ FileName: fn }); // need read after write
-            ipcRenderer.send("asynchronous-message", { eventType: "watch", filename: fn });
+        if (this.currentWatchFile !== "") {
+            console.log("unwatching file %s", this.currentWatchFile);
+            ipcRenderer.send("asynchronous-message", { eventType: "unwatch", fileName: this.currentWatchFile });
         }
+        this.currentWatchFile = this.state.SaveFileName;
+        console.log("watching %s", this.currentWatchFile);
+        ipcRenderer.send("asynchronous-message", { eventType: "watch", fileName: this.currentWatchFile });
+
 
     }
 
@@ -545,16 +550,11 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private setStateAsync = (newState: object): Promise<void> => {
 
-        console.log("oldState: %o", this.state);
-        console.log("newState: %o", newState);
         Object.keys(newState).map((key) => {
             if (!(key in this.state)) {
                 throw new Error(`setStateAsync called with bad property: ${key}`);
             }
-            if (newState[key] !== this.state[key]) {
-                console.log(`updating state for ${key}`);
-            }
-        })
+        });
 
         return new Promise((resolve, reject) => {
             this.setState(newState, () => {
@@ -709,7 +709,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 filter={false}
                                 optionLabel={"uniqueName"}
                                 itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
-                                    console.log("creating parameter %o with uniqueName %s", parameter, parameter.uniqueName);
                                     return (
                                         <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
                                     );
