@@ -691,7 +691,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             <InputText className="param-input" id="description_input" spellCheck={false}
                                                 value={this.state.descriptionCache}
                                                 onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value });
+                                                    await this.setStateAsync({ descriptionCache: e.currentTarget.value });
                                                 }}
                                                 onBlur={this.onBlurDescription} />
                                             <label className="param-label" htmlFor="description_input" >Description</label>
