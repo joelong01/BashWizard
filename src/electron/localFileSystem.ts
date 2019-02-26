@@ -2,10 +2,14 @@ import { BrowserWindow, dialog, FileFilter } from "electron";
 import fs from "fs";
 import path from "path";
 import { IStorageProvider } from "./storageProviderFactory";
+import { mainWindow } from "./main"
 
 export class LocalFileSystem implements IStorageProvider {
-    constructor(private browserWindow: BrowserWindow) {}
+    constructor(private browserWindow: BrowserWindow) { }
+    public setWindowTitle(name: string) {
 
+        mainWindow.setTitle("Bash Wizard: " + name);
+    }
     public getOpenFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             const fileNames = dialog.showOpenDialog({
@@ -16,6 +20,7 @@ export class LocalFileSystem implements IStorageProvider {
             if (fileNames === undefined || fileNames.length !== 1) {
                 return reject;
             }
+
             return resolve(fileNames[0]);
         });
     }
@@ -23,7 +28,7 @@ export class LocalFileSystem implements IStorageProvider {
 
     public getSaveFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
-            const fileName:string | undefined = dialog.showSaveDialog({
+            const fileName: string | undefined = dialog.showSaveDialog({
                 title: dlgTitle,
                 filters: exts
             });
@@ -31,7 +36,7 @@ export class LocalFileSystem implements IStorageProvider {
             if (fileName === undefined) {
                 return reject;
             }
-            console.log('getSaveFile: ${fileName}')
+            console.log(`getSaveFile: ${fileName}`)
             return resolve(fileName);
         });
     }
@@ -44,7 +49,7 @@ export class LocalFileSystem implements IStorageProvider {
                     if (err) {
                         return reject(err);
                     }
-
+                    this.setWindowTitle(filePath);
                     resolve(data.toString());
                 }
             );
@@ -87,6 +92,7 @@ export class LocalFileSystem implements IStorageProvider {
     }
 
     public writeText(filePath: string, contents: string): Promise<void> {
+        this.setWindowTitle(filePath);
         const buffer = Buffer.alloc(contents.length, contents);
         return this.writeBinary(filePath, buffer);
     }

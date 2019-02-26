@@ -16,23 +16,25 @@ import { IpcMainProxy } from "./ipcMainProxy";
 import LocalFileSystem from "./localFileSystem";
 import Cookies, { Cookie } from "universal-cookie"
 import fs, { FSWatcher } from "fs";
-import {IAsyncMessage} from "../Models/commonModel"
+import { IAsyncMessage } from "../Models/commonModel"
 
 const cookie: Cookie = new Cookies();
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let mainWindow: BrowserWindow;
+export let mainWindow: BrowserWindow;
 let ipcMainProxy: IpcMainProxy;
 
 //
 //  this receives messages from the renderer to update the settings in the main app
 ipcMain.on('synchronous-message', (event: any, arg: any): any => {
-    const menu:Menu|null = Menu.getApplicationMenu();
-    if (menu !== null){
+    const menu: Menu | null = Menu.getApplicationMenu();
+    if (menu !== null) {
         console.log("changing autosave menu to " + Boolean(arg.autoSave));
         menu.getMenuItemById("auto-save").checked = Boolean(arg.autoSave);
         event.returnValue = true;
+
+
         return;
     }
 
@@ -46,32 +48,33 @@ let myFileWatcher: FSWatcher;
 //
 //  this receives messages from the renderer to update the settings in the main app
 //
-//  arg should look like {eventyType: "watch" | "unwatch", filename: string}
+//  arg should look like {eventyType: "watch" | "unwatch", fileName: string}
 ipcMain.on('asynchronous-message', (event: any, arg: any): any => {
     console.log(`asynchronous-message-data: ${JSON.stringify(arg)}`)
 
 
     if (arg.eventType === "watch") {
-        myFileWatcher = fs.watch(arg.filename, { persistent: false }, (eventType: string, name: string) => {
+        console.log(`watching ${arg.fileName}`);
+        myFileWatcher = fs.watch(arg.fileName, { persistent: false }, (eventType: string, name: string) => {
             const currentTime: number = new Date().getTime();
             if (currentTime - lastFileNotificationTime < 100) { // unlikely the user saves twice in 100ms...
-                console.log(`rejecting notifcation at time ${currentTime} from ${lastFileNotificationTime} (diff: ${currentTime - lastFileNotificationTime})`)
+                console.log(`rejecting notification at time ${currentTime} from ${lastFileNotificationTime} (diff: ${currentTime - lastFileNotificationTime})`)
                 return;
             }
+            console.log("Firing message for %s", arg.fileName);
             lastFileNotificationTime = currentTime;
-            console.log("watch called");
-            const msgObj:IAsyncMessage  = { fileName: name, event: "file-changed", type: eventType };
+            const msgObj: IAsyncMessage = { fileName: name, event: "file-changed", type: eventType };
             event.sender.send('asynchronous-reply', JSON.stringify(msgObj));
 
         });
     } else if (arg.eventType === "unwatch") {
-        console.log(`${typeof myFileWatcher}`)
+
         if (myFileWatcher === undefined || myFileWatcher === null) {
             console.log("myFileWatcher null || undefined");
             return;
         }
-        console.log(`myFileWatcher count: ${myFileWatcher.listeners.length}`);
-        fs.unwatchFile(arg.filename, myFileWatcher.listeners[0]);
+        console.log(`un-watching ${arg.fileName}`);
+        fs.unwatchFile(arg.fileName, myFileWatcher.listeners[0]);
     } else {
         console.log("ERROR: BAD MESSAGE TYPE IN MAIN.TS");
     }
@@ -158,12 +161,12 @@ function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): 
 async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
 
     const fs: LocalFileSystem = new LocalFileSystem(mainWindow);
-    const filename: string = await fs.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
+    const fileName: string = await fs.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
 
-    if (filename !== null && filename !== "") {
-        const contents: string = await fs.readText(filename);
+    if (fileName !== null && fileName !== "") {
+        const contents: string = await fs.readText(fileName);
         const msg: string[] = [];
-        msg.push(filename);
+        msg.push(fileName);
         msg.push(contents);
         mainWindow.webContents.send('on-open', msg);
     }
@@ -183,7 +186,7 @@ function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, eve
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
-   
+
     let template: MenuItemConstructorOptions[];
     template = [
         {

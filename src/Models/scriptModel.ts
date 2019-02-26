@@ -354,11 +354,11 @@ export class ScriptModel {
         // console.count("toBash:");
         try {
 
-            if (this.parameters.length === 0) {
+           /*  if (this.parameters.length === 0) {
                 //
                 //  if there are no parameters, just mark it as user code
                 return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";
-            }
+            } */
 
             let sbBashScript: string = bashTemplates.bashTemplate;
             sbBashScript = sbBashScript.replace("__VERSION__", this.Version);

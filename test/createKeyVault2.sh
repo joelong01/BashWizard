@@ -85,7 +85,7 @@ function echoInput() {
 }
 
 function parseInput() {
-
+    
     local OPTIONS=u:e:p:k:l:r:vcdi:o:
     local LONGOPTS=sku:,enabled-for-disk-encryption:,enable-for-deployment:,keyvault-name:,datacenter-location:,resource-group:,verify-script,create,delete,input-file:,log-directory:
 
@@ -159,7 +159,7 @@ function parseInput() {
         esac
     done
 }
-# input variables
+# input variables 
 declare sku="standard"
 declare enableForDiskEncryption=true
 declare enableForDeployment=true
@@ -208,7 +208,7 @@ fi
 #logging support
 declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
 {
-    mkdir -p "${logDirectory}"
+    mkdir -p "${logDirectory}" 
     rm -f "${LOG_FILE}"
 } 2>>/dev/null
 #creating a tee so that we capture all the output to the log file
@@ -256,7 +256,7 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
         echo "Key Vault name: $(echo "$kvInfo" | jq .name)"
         echo ""
     fi
-    # sorry, ain't gonna happen!
+    # hi back!
     # --- END USER CODE ---
 
     time=$(date +"%m/%d/%y @ %r")
