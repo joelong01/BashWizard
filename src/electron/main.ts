@@ -137,7 +137,7 @@ function createWindow() {
     ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
 
     const bwService = new BashWizardMainService(mainWindow);
-    ipcMainProxy.registerProxy("LocalFileSystem", bwService);
+    ipcMainProxy.registerProxy("BashWizardMainService", bwService);
 }
 
 function onReloadApp() {
