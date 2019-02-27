@@ -1,6 +1,7 @@
-import { IpcRendererProxy } from "./ipcRendererProxy";
-import { IStorageProvider } from "./electron/storageProviderFactory";
+import { IpcRendererProxy } from "../ipcRendererProxy";
+import { IBashWizardMainService } from "../Models/commonModel"
 import { FileFilter } from 'electron';
+import { IBashWizardSettings } from "../Models/commonModel"
 
 const PROXY_NAME = "LocalFileSystem";
 
@@ -9,14 +10,23 @@ const PROXY_NAME = "LocalFileSystem";
  * Storage Provider for Local File System. Only available in Electron application
  * Leverages the IpcRendererProxy
  */
-export class LocalFileSystemProxy implements IStorageProvider {
+export class BashWizardMainServiceProxy implements IBashWizardMainService {
+    /**
+     * Uses the FileOpen dialog to find a file to open
+     * @param title - Title of the dialog
+     * @param extensions - FileFilter array for the dialog
+     */
     public getOpenFile(title: string, extensions: FileFilter[]): Promise<string> {
         return IpcRendererProxy.send(`${PROXY_NAME}:getOpenFile`, [
             title,
             extensions
         ]);
     }
-
+    /**
+     * Uses the FileSave dialog to find a file to save
+     * @param title - Title of the dialog
+     * @param extensions - FileFilter array for the dialog
+     */
     public getSaveFile(title: string, extensions: FileFilter[]): Promise<string> {
         return IpcRendererProxy.send(`${PROXY_NAME}:getSaveFile`, [
             title,
@@ -33,23 +43,6 @@ export class LocalFileSystemProxy implements IStorageProvider {
         return IpcRendererProxy.send(`${PROXY_NAME}:readText`, [filePath]);
     }
 
-    /**
-     * Read buffer from file
-     * @param fileName Name of file from which to read buffer
-     */
-    public readBinary(fileName: string): Promise<Buffer> {
-        const filePath = [fileName].join("/");
-        return IpcRendererProxy.send(`${PROXY_NAME}:readBinary`, [filePath]);
-    }
-
-    /**
-     * Delete file
-     * @param fileName Name of file to delete
-     */
-    public deleteFile(fileName: string): Promise<void> {
-        const filePath = [fileName].join("/");
-        return IpcRendererProxy.send(`${PROXY_NAME}:deleteFile`, [filePath]);
-    }
 
     /**
      * Write text to file
@@ -63,17 +56,20 @@ export class LocalFileSystemProxy implements IStorageProvider {
             contents
         ]);
     }
-
     /**
-     * Write buffer to file
-     * @param fileName Name of target file
-     * @param contents Contents to be written
+     * reads the file "bashWizardConfig.json" from the same directory as the .EXE and returns their values
      */
-    public writeBinary(fileName: string, contents: Buffer): Promise<void> {
-        const filePath = [fileName].join("/");
-        return IpcRendererProxy.send(`${PROXY_NAME}:writeBinary`, [
-            filePath,
-            contents
-        ]);
+    getAndApplySettings(): Promise<IBashWizardSettings> {
+        return IpcRendererProxy.send(`${PROXY_NAME}:getAndApplySettings`);
+
     }
+    /**
+     * saves the file "bashWizardConfig.json" in the same directory as the .EXE and returns their values
+     */
+    saveAndApplySettings(settings: IBashWizardSettings): Promise<void> {
+        return IpcRendererProxy.send(`${PROXY_NAME}:saveAndApplySettings`, [settings])
+
+    }
+
+
 }

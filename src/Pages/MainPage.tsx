@@ -1,5 +1,5 @@
 
-import React, { ReactElement } from 'react';
+import React from 'react';
 import svgFiles from "../Images/images"
 import { ParameterView } from '../Components/ParameterView';
 import { ParameterModel } from '../Models/ParameterModel';
@@ -12,18 +12,19 @@ import { InputText } from "primereact/inputtext"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
-import { YesNoDialog } from "../Components/askUserYesNoDlg";
+import { YesNoDialog, IYesNoResponse, YesNo } from "../Components/askUserYesNoDlg";
 import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/cobalt"
-import { LocalFileSystemProxy } from "../localFileSystemProxy"
+import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer } from "electron";
-import { IErrorMessage, ParameterType, IAsyncMessage } from "../Models/commonModel";
+import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/commonModel";
 import { ScriptModel } from "../Models/scriptModel";
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
+
 
 //
 //  represents the properties that will impact the UI
@@ -45,7 +46,7 @@ interface IMainPageState {
 
     // this data is for UI only and doesn't impact the model
     selectedParameter?: ParameterModel;
-    mode: string; // one of "light" or "dark"
+    mode: BashWizardTheme;
     autoSave: boolean;
     showYesNoDialog: boolean;
     dialogMessage: string;
@@ -66,33 +67,53 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
-    private mainFileSystemProxy: LocalFileSystemProxy = new LocalFileSystemProxy();
+    private mainServiceProxy: BashWizardMainServiceProxy = new BashWizardMainServiceProxy();
     private scriptModel: ScriptModel = new ScriptModel();
     private currentWatchFile: string = "";
+    private mySettings: IBashWizardSettings = {
+        autoSave: false,
+        theme: BashWizardTheme.Light,
+        alwaysLoadChangedFile: false
+    };
 
     constructor(props: {}) {
         super(props);
-        let savedMode = this.cookie.get("mode");
-        let autoSaveSetting = this.cookie.get("autosave");
-        if (autoSaveSetting === undefined) {
-            autoSaveSetting = false;
-        }
+
         //
         //  send settings to the main app to update the browser UI
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
-            ipcRenderer.sendSync("synchronous-message", { autoSave: autoSaveSetting });
+            //
+            //  can't do promises in the ctor, so use the .then construct.  note that this api
+            //  never rejects the promise, so we will get back default settings on any error
+            this.mainServiceProxy.getAndApplySettings().then((settings: IBashWizardSettings) => {
+                this.mySettings = settings;
+                console.log("Electron settings: %o", this.mySettings);
+            })
+        } else {
+            // browser stores this in a cookie
+            let saved: string = this.cookie.get("settings")
+            if (saved !== "" && saved !== null && saved !== undefined) {
+                try {
+                    this.mySettings = JSON.parse(saved);
+                }
+                catch (er) { // swollow errors and use defaults
+                    console.log(`error loading cookie: ${er}`);
+                }
+            }
+
+            console.log("Browser settings: %o", this.mySettings);
+
         }
 
-        if (savedMode === "" || savedMode === null || savedMode === undefined) {
-            savedMode = "light";
-        }
+
 
         const params: ParameterModel[] = []
         this.state =
             {
                 //
-                //  these get replaced in this.stringify
+                //   all "*cache" state is stored in the mainModel
+                //
                 jsonCache: "",
                 bashCache: "",
                 scriptNameCache: "",
@@ -100,8 +121,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 parametersCache: params,
                 errorsCache: [],
 
-                mode: savedMode,
-                autoSave: autoSaveSetting,
+                mode: this.mySettings.theme,
+                autoSave: this.mySettings.autoSave,
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
@@ -114,78 +135,78 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 SaveFileName: "",
                 Loaded: false,
 
-                ButtonModel: [
-
-                    {
-                        label: 'Add All',
-                        icon: "pi pi-globe",
-                        command: async () => {
-                            this.scriptModel.generateBashScript = false;
-                            this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                            this.scriptModel.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    },
-                    {
-                        //  target allows us to use CSS to style this item
-                        disabled: true, target: 'separator'
-                    },
-                    {
-                        label: 'Add Verbose Support',
-                        icon: "pi pi-camera",
-                        command: async () => {
-                            this.scriptModel.generateBashScript = false;
-                            this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                            this.scriptModel.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    },
-                    {
-                        label: 'Add Logging Support',
-                        icon: "pi pi-pencil",
-                        command: async () => {
-                            this.scriptModel.generateBashScript = false;
-                            this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                            this.scriptModel.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    },
-                    {
-                        label: 'Add Input File Support',
-                        icon: "pi pi-list",
-                        command: async () => {
-                            this.scriptModel.generateBashScript = false;
-                            this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                            this.scriptModel.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    },
-                    {
-                        label: 'Add Create, Validate, Delete',
-                        icon: "pi pi-table",
-                        command: async () => {
-                            this.scriptModel.generateBashScript = false;
-                            this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                            this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                            this.scriptModel.generateBashScript = true;
-                            await this.updateAllText();
-                        }
-                    }
-
-
-                ],
+                ButtonModel: this.getButtonModel(),
 
 
             }
     }
 
+    private getButtonModel(): any[] {
+        return [
 
+            {
+                label: 'Add All',
+                icon: "pi pi-globe",
+                command: async () => {
+                    this.scriptModel.generateBashScript = false;
+                    this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
+                    this.scriptModel.generateBashScript = true;
+                    await this.updateAllText();
+                }
+            },
+            {
+                //  target allows us to use CSS to style this item
+                disabled: true, target: 'separator'
+            },
+            {
+                label: 'Add Verbose Support',
+                icon: "pi pi-camera",
+                command: async () => {
+                    this.scriptModel.generateBashScript = false;
+                    this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
+                    this.scriptModel.generateBashScript = true;
+                    await this.updateAllText();
+                }
+            },
+            {
+                label: 'Add Logging Support',
+                icon: "pi pi-pencil",
+                command: async () => {
+                    this.scriptModel.generateBashScript = false;
+                    this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
+                    this.scriptModel.generateBashScript = true;
+                    await this.updateAllText();
+                }
+            },
+            {
+                label: 'Add Input File Support',
+                icon: "pi pi-list",
+                command: async () => {
+                    this.scriptModel.generateBashScript = false;
+                    this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
+                    this.scriptModel.generateBashScript = true;
+                    await this.updateAllText();
+                }
+            },
+            {
+                label: 'Add Create, Validate, Delete',
+                icon: "pi pi-table",
+                command: async () => {
+                    this.scriptModel.generateBashScript = false;
+                    this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
+                    this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
+                    this.scriptModel.generateBashScript = true;
+                    await this.updateAllText();
+                }
+            }
+        ]
+    }
 
     private getIpcRenderer(): IpcRenderer | undefined {
         const userAgent = navigator.userAgent.toLowerCase();
@@ -219,16 +240,19 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 await this.onSave(true);
             });
 
-            ipcRenderer.on("on-auto-save-checked", async (event: any, message: any[]) => {
-                await this.setStateAsync({ autoSave: message[0] });
-                this.saveSettings();
+            ipcRenderer.on("on-setting-changed", async (event: any, message: object) => {
+                Object.keys(message).map((key) => {
+                    console.log(`new Setting [${key}=${message[key]}]`)
+                    this.mySettings[key] = message[key];
+                });
+                await this.saveSettings();
             });
 
-            ipcRenderer.on('asynchronous-reply', (event: string, msg: string) => {
+            ipcRenderer.on('asynchronous-reply', async (event: string, msg: string) => {
                 const msgObj: IAsyncMessage = JSON.parse(msg);
                 if (msgObj.event === "file-changed") {
                     if (this.state.SaveFileName.endsWith(msgObj.fileName)) {
-                        this.onFileChanged(this.state.SaveFileName);
+                        await this.onFileChanged(this.state.SaveFileName);
                     } else {
                         console.log(`rejecting file change nofification for ${msgObj.fileName}`);
                     }
@@ -247,14 +271,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
         try {
             this.savingFile = true; // we don't want notifications of changes that we started
             if (this.state.SaveFileName === "" || alwaysPrompt === true) {
-                const newFileName = await this.mainFileSystemProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+                const newFileName = await this.mainServiceProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
                 if (newFileName === "" || newFileName === undefined) {
                     return;
                 }
                 await this.setStateAsync({ SaveFileName: newFileName });
             }
             await await this.parseBashUpdateUi();
-            await this.mainFileSystemProxy.writeText(this.state.SaveFileName, this.scriptModel.BashScript);
+            await this.mainServiceProxy.writeText(this.state.SaveFileName, this.scriptModel.BashScript);
             this.watchFile(); // this has to be done after .writeText, otherwise the file might not exist
         }
         catch (error) {
@@ -272,9 +296,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private onLoadFile = async (): Promise<boolean> => {
 
         try {
-            const newFileName = await this.mainFileSystemProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            const newFileName = await this.mainServiceProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
             if (newFileName !== "" || newFileName !== undefined) {
-                const contents: string = await this.mainFileSystemProxy.readText(newFileName);
+                const contents: string = await this.mainServiceProxy.readText(newFileName);
                 if (contents !== "") {
                     const ret: boolean = await this.setBashScript(newFileName, contents); // calls setState on the filenmae
                     if (ret) {
@@ -313,6 +337,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
             debugConfig: model.getDebugConfig("./")
 
         });
+
+        if (this.mySettings.autoSave) {
+            await this.onSave(false);
+        }
     }
 
 
@@ -325,43 +353,44 @@ class MainPage extends React.Component<{}, IMainPageState> {
             return;
         }
 
-        console.log("watchFile this.state=%o", this.state);
         if (this.state.SaveFileName === this.currentWatchFile) {
-
-            console.log("already watching %s", this.state.SaveFileName);
             return; // we are already watching it.
         }
         if (this.currentWatchFile !== "") {
-            console.log("unwatching file %s", this.currentWatchFile);
+
             ipcRenderer.send("asynchronous-message", { eventType: "unwatch", fileName: this.currentWatchFile });
         }
         this.currentWatchFile = this.state.SaveFileName;
-        console.log("watching %s", this.currentWatchFile);
         ipcRenderer.send("asynchronous-message", { eventType: "watch", fileName: this.currentWatchFile });
 
 
     }
 
     private onFileChanged = async (filename: string) => {
+        console.log("onFileChanged called.")
         if (this.savingFile) {
             return;
         }
-        await this.setStateAsync({ showYesNoDialog: true });
-        const response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`);
-        if (response === "yes") {
+        console.log("onFileChanged:mySettings: %o", this.mySettings);
+        let response: IYesNoResponse ={
+            answer: this.mySettings.alwaysLoadChangedFile ? YesNo.Yes : YesNo.No
+        };
 
-            const contents: string = await this.mainFileSystemProxy.readText(filename);
+        if (this.mySettings.alwaysLoadChangedFile === false ) {
+            response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`, true);
+            console.log("response=%o", response);
+            if (response.neverAsk === true) {
+                this.mySettings.alwaysLoadChangedFile = true;
+                await this.saveSettings();
+            }
+        }
+        if (response.answer === YesNo.Yes){
+            const contents: string = await this.mainServiceProxy.readText(filename);
             if (contents !== "") {
                 await this.setBashScript(filename, contents);
-                return;
             }
-            else {
-
-                return;
-            }
-
-
         }
+
     }
 
 
@@ -403,9 +432,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
 
     };
-    private saveSettings = (): void => {
-        this.cookie.set("mode", this.state.mode);
-        this.cookie.set("autosave", this.state.autoSave);
+    private saveSettings = async (): Promise<void> => {
+        if (this.electronEnabled) {
+            await this.mainServiceProxy.saveAndApplySettings(this.mySettings);
+        }
+        else {
+            this.cookie.set("settings", JSON.stringify(this.mySettings));
+        }
 
     }
 
@@ -573,21 +606,21 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //  and the answer to the dialog comes back to this.yesNoReset
     private onNew = async () => {
         if (this.state.parametersCache.length > 0) {
-            const response = await this.askUserQuestion("Create a new bash file?");
-            if (response === "yes") {
+            const response: IYesNoResponse = await this.askUserQuestion("Create a new bash file?", false);
+            if (response.answer === YesNo.Yes) {
                 this.reset();
             }
         }
     }
 
-    private askUserQuestion = async (question: string): Promise<string> => {
+    private askUserQuestion = async (question: string, showCheckbox: boolean): Promise<IYesNoResponse> => {
         try {
             await this.setStateAsync({ showYesNoDialog: true });
             if (this.yesNoDlg !== null && this.yesNoDlg.current !== null) {
-                const response = await this.yesNoDlg.current.waitForDlgAnswer(question);
+                const response = await this.yesNoDlg.current.waitForDlgAnswer(question, showCheckbox);
                 return response;
             }
-            return "no";
+            throw new Error("Fatal Error: Dialog should exist");
         }
         finally {
             await this.setStateAsync({ showYesNoDialog: false });
@@ -614,9 +647,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     }
 
+    get electronEnabled(): boolean {
+        return (this.getIpcRenderer() !== undefined);
+    }
+
     public render = () => {
-        let electronEnabled: boolean = (this.getIpcRenderer() !== undefined);
-        const mode: string = this.state.mode === "dark" ? "cobalt" : "xcode";
+
+        const aceTheme = (this.state.mode === BashWizardTheme.Dark) ? "cobalt" : "xcode";
         return (
 
             <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
@@ -638,8 +675,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-                                    {(electronEnabled) ?
-                                        <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
+                                    {(this.electronEnabled) ?
+                                        <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!this.electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
                                         :
                                         ""
                                     }
@@ -664,10 +701,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 </div>
                                 <div className="p-toolbar-group-right">
                                     <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
-                                        checked={this.state.mode === "dark"}
+                                        checked={this.state.mode === BashWizardTheme.Dark}
                                         onChange={async (e: { originalEvent: Event, value: boolean }) => {
-                                            await this.setStateAsync({ mode: e.value ? "dark" : "light" });
-                                            this.saveSettings();
+                                            await this.setStateAsync({ mode: e.value ? BashWizardTheme.Dark : BashWizardTheme.Light });
+                                            await this.saveSettings();
                                             this.growl.current!.show({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
                                         }}
                                         style={{ marginRight: '.25em' }} />
@@ -720,7 +757,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                         <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceBashEditor" theme={mode} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceBashEditor" theme={aceTheme} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.bashCache}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14, }}
                                         onChange={(newVal: string) => {
@@ -735,7 +772,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </TabPanel >
                             <TabPanel header="JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.jsonCache}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
                                         onChange={(newVal: string) => {
@@ -750,7 +787,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </TabPanel >
                             <TabPanel header="VS Code Debug Config" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.debugConfig}
                                         readOnly={true}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
@@ -759,7 +796,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </TabPanel >
                             <TabPanel header="Input JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={mode} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
                                         value={this.state.inputJson}
                                         readOnly={true}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}

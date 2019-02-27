@@ -296,11 +296,11 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                         </div>
                         <div className="p-grid checkbox-grid" >
                             <div className="p-col-fixed param-column">
-                                <label htmlFor="cb2" className="p-checkbox-label">Requires Input String: </label>
+                                <label htmlFor="requiresInputString" className="p-checkbox-label">Requires Input String: </label>
                                 <Checkbox id="requiresInputString" checked={this.state.requiresInputString} onChange={this.requiresInputStringChanged} disabled={this.state.type !== ParameterType.Custom} />
                             </div>
                             <div className="p-col-fixed param-column">
-                                <label htmlFor="cb2" className="p-checkbox-label">Required Parameter: </label>
+                                <label htmlFor="requiredParameter" className="p-checkbox-label">Required Parameter: </label>
                                 <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterType.Custom} />
                             </div>
                             <div className="p-col-fixed param-column" />

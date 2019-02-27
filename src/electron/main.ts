@@ -9,14 +9,13 @@ import {
     MenuItem,
     MenuItemConstructorOptions,
     dialog,
-    ipcRenderer,
-    Accelerator
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
-import LocalFileSystem from "./localFileSystem";
+import BashWizardMainService from "./bwMainService";
 import Cookies, { Cookie } from "universal-cookie"
 import fs, { FSWatcher } from "fs";
 import { IAsyncMessage } from "../Models/commonModel"
+import windowStateKeeper from "electron-window-state"
 
 const cookie: Cookie = new Cookies();
 
@@ -85,10 +84,22 @@ ipcMain.on('asynchronous-message', (event: any, arg: any): any => {
 
 function createWindow() {
     // and load the index.html of the app.
+    let mainWindowState = windowStateKeeper({
+        defaultWidth: 1000,
+        defaultHeight: 800
+    });
+
+    // Create the window using the state information
+
+    // Let us register listeners on the window, so we can update the state
+    // automatically (the listeners will be removed when the window is closed)
+    // and restore the maximized or full screen state
 
     const windowOptions: BrowserWindowConstructorOptions = {
-        width: 1200,
-        height: 900
+        'x': mainWindowState.x,
+        'y': mainWindowState.y,
+        'width': mainWindowState.width,
+        'height': mainWindowState.height
     };
     // Create the browser window.
 
@@ -100,6 +111,7 @@ function createWindow() {
         };
         mainWindow = new BrowserWindow(windowOptions);
         mainWindow.loadURL(process.env.ELECTRON_START_URL);
+        mainWindowState.manage(mainWindow);
     } else {
         // When running in production mode or with static files use loadFile api vs. loadUrl api.
         mainWindow = new BrowserWindow(windowOptions);
@@ -124,8 +136,8 @@ function createWindow() {
     ipcMainProxy.register("RELOAD_APP", onReloadApp);
     ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
 
-    const localFileSystem = new LocalFileSystem(mainWindow);
-    ipcMainProxy.registerProxy("LocalFileSystem", localFileSystem);
+    const bwService = new BashWizardMainService(mainWindow);
+    ipcMainProxy.registerProxy("LocalFileSystem", bwService);
 }
 
 function onReloadApp() {
@@ -160,7 +172,7 @@ function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): 
 
 async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
 
-    const fs: LocalFileSystem = new LocalFileSystem(mainWindow);
+    const fs: BashWizardMainService = new BashWizardMainService(mainWindow);
     const fileName: string = await fs.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
 
     if (fileName !== null && fileName !== "") {
@@ -180,9 +192,12 @@ function onSaveAs(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event
     mainWindow.webContents.send('on-save-as', "");
 }
 function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    console.log(`onAutoSaveChecked.event=${JSON.stringify(event)} menuItem=${JSON.stringify(menuItem["keys"])} checked=${menuItem.checked}`);
-    mainWindow.webContents.send('on-auto-save-checked', [menuItem.checked]);
-    cookie.set("autosave", menuItem.checked);
+    mainWindow.webContents.send('on-setting-changed', {autoSave: menuItem.checked});
+
+}
+function onAlwaysLoadChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
+    mainWindow.webContents.send('on-setting-changed', {alwaysLoadChangedFile: menuItem.checked});
+
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
@@ -198,6 +213,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                 { label: "Save As...", accelerator: "CommandOrControl+SHIFT+s", click: onSaveAs },
                 { type: "separator" },
                 { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
+                { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked},
                 { type: "separator" },
                 { role: "reload" },
                 { type: "separator" },
@@ -327,7 +343,6 @@ function registerContextMenu(browserWindow: BrowserWindow): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", () => {
-    console.log("ready called");
     createWindow();
 });
 

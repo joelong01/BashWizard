@@ -17,7 +17,7 @@ const tryConnection = () =>
             const electron = exec(
                 "npm run electron:run:dev",
                 (error, stdout, stderr) => {
-                    console.log("Electron Process Terminated");
+                    console.log("Electron Process Terminated [reason=%s] [error=%o]", error, error);
                 }
             );
 
