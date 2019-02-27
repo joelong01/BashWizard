@@ -55,7 +55,7 @@ interface IMainPageState {
     activeTabIndex: number;
     ButtonModel: any[];
     SaveFileName: string;
-
+    bashFocus: boolean; // used to set the AceEditor with the bashscript visible
     Loaded: boolean;
 
 }
@@ -63,6 +63,7 @@ interface IMainPageState {
 class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
+    private bashEditor: React.RefObject<AceEditor> = React.createRef<AceEditor>();
     private _settingState: boolean = false;
     private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
@@ -70,6 +71,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private mainServiceProxy: BashWizardMainServiceProxy = new BashWizardMainServiceProxy();
     private scriptModel: ScriptModel = new ScriptModel();
     private currentWatchFile: string = "";
+    private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
     private mySettings: IBashWizardSettings = {
         autoSave: false,
         theme: BashWizardTheme.Light,
@@ -134,7 +136,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 activeTabIndex: 0,
                 SaveFileName: "",
                 Loaded: false,
-
+                bashFocus: false,
                 ButtonModel: this.getButtonModel(),
 
 
@@ -323,27 +325,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return true;
     }
 
-    private updateStateWithModelData = async (model: ScriptModel): Promise<void> => {
-
-        this.scriptModel = model;
-        await this.setStateAsync({
-            jsonCache: model.stringify(),
-            bashCache: model.toBash(),
-            scriptNameCache: model.scriptName,
-            descriptionCache: model.description,
-            parametersCache: model.parameters,
-            errorsCache: model.Errors,
-            inputJson: model.inputJSON,
-            debugConfig: model.getDebugConfig("./")
-
-        });
-
-        if (this.mySettings.autoSave) {
-            await this.onSave(false);
-        }
-    }
-
-
     //
     //  called when you open or save a file.  this will watch the file in
     //
@@ -372,11 +353,11 @@ class MainPage extends React.Component<{}, IMainPageState> {
             return;
         }
         console.log("onFileChanged:mySettings: %o", this.mySettings);
-        let response: IYesNoResponse ={
+        let response: IYesNoResponse = {
             answer: this.mySettings.alwaysLoadChangedFile ? YesNo.Yes : YesNo.No
         };
 
-        if (this.mySettings.alwaysLoadChangedFile === false ) {
+        if (this.mySettings.alwaysLoadChangedFile === false) {
             response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`, true);
             console.log("response=%o", response);
             if (response.neverAsk === true) {
@@ -384,7 +365,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 await this.saveSettings();
             }
         }
-        if (response.answer === YesNo.Yes){
+        if (response.answer === YesNo.Yes) {
             const contents: string = await this.mainServiceProxy.readText(filename);
             if (contents !== "") {
                 await this.setBashScript(filename, contents);
@@ -407,8 +388,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
             this.setState({ Loaded: true });
             window.resizeBy(1, 0);
         }, 150);
-
-
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -503,9 +482,27 @@ class MainPage extends React.Component<{}, IMainPageState> {
         });
     }
 
-    private updateAllText = async () => {
+    private updateAllText = async (model?: ScriptModel) => {
 
-        await this.updateStateWithModelData(this.scriptModel);
+        if (model !== undefined) {
+            this.scriptModel = model;
+        }
+
+        await this.setStateAsync({
+            jsonCache: this.scriptModel.stringify(),
+            bashCache: this.scriptModel.toBash(),
+            scriptNameCache: this.scriptModel.scriptName,
+            descriptionCache: this.scriptModel.description,
+            parametersCache: this.scriptModel.parameters,
+            errorsCache: this.scriptModel.Errors,
+            inputJson: this.scriptModel.inputJSON,
+            debugConfig: this.scriptModel.getDebugConfig("./")
+
+        });
+
+        if (this.mySettings.autoSave) {
+            await this.onSave(false);
+        }
         if (this.state.autoSave) {
             await this.onSave(false);
         }
@@ -555,18 +552,18 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //  this is called by the model
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
 
-        if (this._loading === true) {
-            return;
-        }
-        if (this._settingState === true) {
-            return;
-        }
-        this._settingState = true;
-        if (name !== "BashScript" && name !== "JSON") {
-            await this.updateAllText();
+         if (this._loading === true) {
+             return;
+         }
+         if (this._settingState === true) {
+             return;
+         }
+         this._settingState = true;
+         if (name !== "BashScript" && name !== "JSON") {
+             await this.updateAllText();
 
-        }
-        this._settingState = false;
+         }
+         this._settingState = false;
     }
 
 
@@ -638,12 +635,12 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private parseBashUpdateUi = async () => {
         const model: ScriptModel = ScriptModel.parseBash(this.state.bashCache, this.onPropertyChanged);
-        await this.updateStateWithModelData(model);
+        await this.updateAllText(model);
     }
 
     private async parseJSONUpdateUi(): Promise<void> {
         const model: ScriptModel = ScriptModel.parseJSON(this.state.jsonCache, this.onPropertyChanged);
-        await this.updateStateWithModelData(model);
+        await this.updateAllText(model);
 
     }
 
@@ -757,11 +754,30 @@ class MainPage extends React.Component<{}, IMainPageState> {
                         <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceBashEditor" theme={aceTheme} className="aceBashEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor ref={this.bashEditor} mode="sh" focus={this.state.bashFocus} name="aceBashEditor" theme={aceTheme} className="aceBashEditor bw-ace"
+                                        showGutter={true} showPrintMargin={false}
                                         value={this.state.bashCache}
-                                        setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14, }}
-                                        onChange={(newVal: string) => {
-                                            this.setState({ bashCache: newVal });
+                                        editorProps={{ $blockScrolling: this.state.bashCache.split("\n").length + 5 }}
+                                        setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
+                                        onFocus={() => console.log("bash ACE Editor onFocus")}
+                                        onChange={async (newVal: string) => {
+                                            //
+                                            //  we are going to queue up changes for one second, and then save them all
+                                            //
+                                            await this.setState({ bashCache: newVal });
+                                            if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "") {
+                                                this.updateTimerSet = true;
+                                                //
+                                                //  there are a bunch of issues with auto-saving when typing that involve the cursor moving around.  onBlur reparses the file and recreates it so that the user
+                                                //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
+                                                //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
+                                                setTimeout(async () => {
+                                                    await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashCache);
+                                                    await this.setStateAsync({ bashFocus: true });
+                                                    this.updateTimerSet = false;
+                                                    console.log("")
+                                                }, 1000);
+                                            }
                                         }}
                                         onBlur={async () => {
                                             {/* on Blur we parse the bash script and update the model with the results*/ }

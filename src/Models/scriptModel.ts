@@ -654,20 +654,20 @@ export class ScriptModel {
                     this.BuiltInParameters.LoggingSupport = parameterModel;
                     break;
                 case ParameterType.VerboseSupport:
-                    if (this.BuiltInParameters.InputFileSupport !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.InputFileSupport, notify);
+                    if (this.BuiltInParameters.VerboseSupport !== undefined) {
+                        this.deleteParameter(this.BuiltInParameters.VerboseSupport, notify);
                     }
                     parameterModel.default = "";
-                    parameterModel.description = "the name of the input file. pay attention to $PWD when setting this";
-                    parameterModel.longParameter = "input-file";
-                    parameterModel.shortParameter = "i";
-                    parameterModel.requiresInputString = true;
+                    parameterModel.description = "echos the parsed input variables and creates a $verbose variable to be used in user code";
+                    parameterModel.longParameter = "verbose";
+                    parameterModel.shortParameter = "v";
+                    parameterModel.requiresInputString = false;
                     parameterModel.requiredParameter = false;
-                    parameterModel.valueIfSet = "$2";
-                    parameterModel.variableName = "inputFile";
+                    parameterModel.valueIfSet = "true";
+                    parameterModel.variableName = "verbose";
                     parameterModel.collapsed = true;
-                    parameterModel.type = ParameterType.InputFileSupport;
-                    this.BuiltInParameters.InputFileSupport = parameterModel;
+                    parameterModel.type = ParameterType.VerboseSupport;
+                    this.BuiltInParameters.VerboseSupport = parameterModel;
                     break;
                 default:
                     break;

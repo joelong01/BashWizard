@@ -23,7 +23,7 @@ const cookie: Cookie = new Cookies();
 // be closed automatically when the JavaScript object is garbage collected.
 export let mainWindow: BrowserWindow;
 let ipcMainProxy: IpcMainProxy;
-
+process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'false'; // we do not load remote content -- only load from localhost
 //
 //  this receives messages from the renderer to update the settings in the main app
 ipcMain.on('synchronous-message', (event: any, arg: any): any => {
@@ -99,7 +99,8 @@ function createWindow() {
         'x': mainWindowState.x,
         'y': mainWindowState.y,
         'width': mainWindowState.width,
-        'height': mainWindowState.height
+        'height': mainWindowState.height,
+        darkTheme: true
     };
     // Create the browser window.
 
