@@ -2,7 +2,7 @@ import electron, { BrowserWindow, dialog, FileFilter, Menu } from "electron";
 import fs from "fs";
 import path from "path";
 import { IBashWizardMainService, IBashWizardSettings, BashWizardTheme } from "../Models/commonModel";
-import { reject } from 'q';
+
 
 
 
@@ -106,6 +106,7 @@ export class BashWizardMainService implements IBashWizardMainService {
             autoSave: false,
             theme: BashWizardTheme.Light,
             alwaysLoadChangedFile: false,
+            showDebugger: false
         }
         return settings;
 
@@ -134,7 +135,7 @@ export class BashWizardMainService implements IBashWizardMainService {
     }
 
     public saveAndApplySettings(settings: IBashWizardSettings): Promise<void> {
-        return new Promise<void>((resolve, recect) => {
+        return new Promise<void>((resolve, reject) => {
             try {
                 this.applySettings(settings);
                 fs.writeFileSync(this.getSettingFileName(), JSON.stringify(settings));
@@ -146,17 +147,41 @@ export class BashWizardMainService implements IBashWizardMainService {
         });
     }
 
+    public updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
+            try {
+                console.log(`updating setting: [${key}=${value}]`);
+                const settings: IBashWizardSettings = await this.getAndApplySettings()
+                settings[key] = value;
+                fs.writeFileSync(this.getSettingFileName(), JSON.stringify(settings));
+                resolve();
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
+    }
+
     private applySettings(settings: IBashWizardSettings): void {
+
         console.log("applying settings: %s", JSON.stringify(settings))
-        const menu: Menu | null = Menu.getApplicationMenu();
-        if (menu !== null) {
-            console.log(`changing autosave menu to ${settings.autoSave} type=${typeof settings.autoSave}`);
-            menu.getMenuItemById("auto-save").checked = settings.autoSave;
-            menu.getMenuItemById("auto-load").checked = settings.alwaysLoadChangedFile;
+        if (settings === undefined) {
+            return;
         }
 
-        //
-        //  TODO: create menu items for other settings and apply them here
+        const menu: Menu | null = Menu.getApplicationMenu();
+        if (menu === null) {
+            throw new Error("No menu in react app!");
+        }
+
+        menu.getMenuItemById("auto-save").checked = settings.autoSave;
+        menu.getMenuItemById("auto-load").checked = settings.alwaysLoadChangedFile;
+        menu.getMenuItemById("toggle-dev-tools").checked = settings.showDebugger;
+        if (settings.showDebugger) {
+            this.myBrowserWindow.webContents.openDevTools();
+        } else {
+            this.myBrowserWindow.webContents.closeDevTools();
+        }
     }
 
 

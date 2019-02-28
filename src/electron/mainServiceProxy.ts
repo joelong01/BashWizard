@@ -3,6 +3,7 @@ import { IBashWizardMainService } from "../Models/commonModel"
 import { FileFilter } from 'electron';
 import { IBashWizardSettings } from "../Models/commonModel"
 
+
 const PROXY_NAME = "BashWizardMainService";
 
 
@@ -68,6 +69,14 @@ export class BashWizardMainServiceProxy implements IBashWizardMainService {
      */
     saveAndApplySettings(settings: IBashWizardSettings): Promise<void> {
         return IpcRendererProxy.send(`${PROXY_NAME}:saveAndApplySettings`, [settings])
+
+    }
+
+    /**
+     * saves the file "bashWizardConfig.json" in the same directory as the .EXE and returns their values
+     */
+    updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void> {
+        return IpcRendererProxy.send(`${PROXY_NAME}:updateSetting`, [key, value]);
 
     }
 

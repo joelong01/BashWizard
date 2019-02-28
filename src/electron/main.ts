@@ -146,12 +146,16 @@ function onReloadApp() {
     return true;
 }
 
-function onToggleDevTools(sender: any, show: boolean) {
+export async function onToggleDevTools(sender: any, show: boolean) {
     if (show) {
         mainWindow.webContents.openDevTools();
     } else {
         mainWindow.webContents.closeDevTools();
     }
+    console.log(`OnToggleDevTools [show=${show}`)
+    const bwService = new BashWizardMainService(mainWindow);
+    await bwService.updateSetting("showDebugger", show);
+
 }
 
 function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
@@ -193,12 +197,18 @@ function onSaveAs(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event
     mainWindow.webContents.send('on-save-as', "");
 }
 function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-setting-changed', {autoSave: menuItem.checked});
+    mainWindow.webContents.send('on-setting-changed', { autoSave: menuItem.checked });
 
 }
 function onAlwaysLoadChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-setting-changed', {alwaysLoadChangedFile: menuItem.checked});
+    mainWindow.webContents.send('on-setting-changed', { alwaysLoadChangedFile: menuItem.checked });
 
+}
+async function checkedShowDebugger(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
+    const show:boolean = menuItem.checked;
+    console.log(`OnToggleDevTools [show=${show}`)
+    const bwService = new BashWizardMainService(mainWindow);
+    await bwService.updateSetting("showDebugger", show);
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
@@ -214,7 +224,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                 { label: "Save As...", accelerator: "CommandOrControl+SHIFT+s", click: onSaveAs },
                 { type: "separator" },
                 { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
-                { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked},
+                { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked },
                 { type: "separator" },
                 { role: "reload" },
                 { type: "separator" },
@@ -222,25 +232,11 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             ]
         },
         {
-            label: "Edit", accelerator: "Alt+E",
-            submenu: [
-                { role: "undo" },
-                { role: "redo" },
-                { type: "separator" },
-                { role: "cut" },
-                { role: "copy" },
-                { role: "paste" },
-                { role: "pasteandmatchstyle" },
-                { role: "delete" },
-                { role: "selectall" }
-            ]
-        },
-        {
             label: "View", accelerator: "Alt+v",
             submenu: [
                 { role: "reload" },
                 { role: "forcereload" },
-                { role: "toggledevtools" },
+                { label: "Show Dev Tools", type:"checkbox", checked:false,  click: checkedShowDebugger, id: "toggle-dev-tools", accelerator: "F12"  },
                 { type: "separator" },
                 { role: "resetzoom" },
                 { role: "zoomin" },
@@ -260,7 +256,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                     label: "Learn More",
                     click() {
                         require("electron").shell.openExternal(
-                            "https://electronjs.org"
+                            "https://github.com/joelong01/bw-react"
                         );
                     }
                 }

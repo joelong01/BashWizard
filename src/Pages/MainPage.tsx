@@ -75,7 +75,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private mySettings: IBashWizardSettings = {
         autoSave: false,
         theme: BashWizardTheme.Light,
-        alwaysLoadChangedFile: false
+        alwaysLoadChangedFile: false,
+        showDebugger: false
     };
 
     constructor(props: {}) {
@@ -141,6 +142,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
 
             }
+
+
     }
 
     private getButtonModel(): any[] {
@@ -388,6 +391,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
             this.setState({ Loaded: true });
             window.resizeBy(1, 0);
         }, 150);
+
+        this.scriptModel.registerNotify(this.onPropertyChanged);
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -462,8 +467,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private reset = () => {
         this.state.parametersCache.map((el: ParameterModel) => {
             el.removeNotify(this.onPropertyChanged);
-        }
-        );
+        });
+
+        this.scriptModel.removeNotify(this.onPropertyChanged);
 
         this.scriptModel = new ScriptModel(this.onPropertyChanged);
         this.setState({
@@ -487,6 +493,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (model !== undefined) {
             this.scriptModel = model;
         }
+
+        console.log("UPDATE ALL TEXT: %o", this.scriptModel.Errors);
 
         await this.setStateAsync({
             jsonCache: this.scriptModel.stringify(),
@@ -549,21 +557,27 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     //
-    //  this is called by the model
+    //  this is called by the models
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
+        console.log("MainPage::onPropertyChanged  [name=%s] [loading=%s] [setting state=%s]", name, this._loading, this._settingState);
+        if (name === "Errors"){
+            console.log("Updating Errors %o", this.scriptModel.Errors);
+            this.setState({errorsCache: this.scriptModel.Errors});
+        }
+        if (this._loading === true) {
+            return;
+        }
+        if (this._settingState === true) {
+            return;
+        }
+        this._settingState = true;
+        if (name !== "BashScript" && name !== "JSON" && name !== "Errors") {
+            await this.updateAllText();
 
-         if (this._loading === true) {
-             return;
-         }
-         if (this._settingState === true) {
-             return;
-         }
-         this._settingState = true;
-         if (name !== "BashScript" && name !== "JSON") {
-             await this.updateAllText();
+        }
 
-         }
-         this._settingState = false;
+
+        this._settingState = false;
     }
 
 
@@ -575,6 +589,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (select) {
             await this.selectParameter(this.state.parametersCache[this.state.parametersCache.length - 1]);
         }
+
+
     }
 
 
@@ -761,21 +777,30 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
                                         onFocus={() => console.log("bash ACE Editor onFocus")}
                                         onChange={async (newVal: string) => {
+
                                             //
                                             //  we are going to queue up changes for one second, and then save them all
                                             //
                                             await this.setState({ bashCache: newVal });
                                             if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "") {
+
                                                 this.updateTimerSet = true;
                                                 //
                                                 //  there are a bunch of issues with auto-saving when typing that involve the cursor moving around.  onBlur reparses the file and recreates it so that the user
                                                 //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
                                                 //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
                                                 setTimeout(async () => {
-                                                    await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashCache);
-                                                    await this.setStateAsync({ bashFocus: true });
-                                                    this.updateTimerSet = false;
-                                                    console.log("")
+                                                    try {
+                                                        this.savingFile = true;
+                                                        await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashCache);
+                                                    }
+                                                    catch (e) {
+                                                        console.log("Error saving file: " + e.message);
+                                                    }
+                                                    finally {
+                                                        this.updateTimerSet = false;
+                                                        this.savingFile = false;
+                                                    }
                                                 }, 1000);
                                             }
                                         }}

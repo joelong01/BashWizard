@@ -32,47 +32,28 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     fi
    exit 1
 fi
-# we have a dependency on jq
-    if [[ ! -x "$(command -v jq)" ]]; then
-        echoError "'jq is needed to run this script. Please install jq - see https://stedolan.github.io/jq/download/"
-        exit 1
-    fi
+
 function usage() {
-    echoWarning "Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file."
+    
     echo ""
     echo ""
-    echo "Usage: $0  -v|--verbose -l|--log-directory -i|--input-file -c|--create -v|--verify -d|--delete " 1>&2
+    echo "Usage: $0  -- " 1>&2
     echo ""
-    echo " -v | --verbose           Optional     echos the parsed input variables and creates a $verbose variable to be used in user code"
-    echo " -l | --log-directory     Optional     Directory for the log file. The log file name will be based on the script name."
-    echo " -i | --input-file        Optional     the name of the input file. pay attention to $PWD when setting this"
-    echo " -c | --create            Optional     calls the onCreate function in the script"
-    echo " -v | --verify            Optional     calls the onVerify function in the script"
-    echo " -d | --delete            Optional     calls the onDelete function in the script"
+    echo "      --     Optional     "
     echo ""
     exit 1
 }
 function echoInput() {
     echo ":"
-    echo -n "    verbose.......... "
-    echoInfo "$verbose"
-    echo -n "    log-directory.... "
-    echoInfo "$logDirectory"
-    echo -n "    input-file....... "
-    echoInfo "$inputFile"
-    echo -n "    create........... "
-    echoInfo "$create"
-    echo -n "    verify........... "
-    echoInfo "$verify"
-    echo -n "    delete........... "
-    echoInfo "$delete"
+    echo -n "    .... "
+    echoInfo "$"
 
 }
 
 function parseInput() {
     
-    local OPTIONS=vl:i:cvd
-    local LONGOPTS=verbose,log-directory:,input-file:,create,verify,delete
+    local OPTIONS=
+    local LONGOPTS=
 
     # -use ! and PIPESTATUS to get exit code with errexit set
     # -temporarily store output to be able to check for errors
@@ -89,28 +70,8 @@ function parseInput() {
     eval set -- "$PARSED"
     while true; do
         case "$1" in
-        -v | --verbose)
-            verbose=true
-            shift 1
-            ;;
-        -l | --log-directory)
-            logDirectory=$2
-            shift 2
-            ;;
-        -i | --input-file)
-            inputFile=$2
-            shift 2
-            ;;
-        -c | --create)
-            create=true
-            shift 1
-            ;;
-        -v | --verify)
-            verify=true
-            shift 1
-            ;;
-        -d | --delete)
-            delete=true
+        - | --)
+            =
             shift 1
             ;;
         --)
@@ -125,78 +86,13 @@ function parseInput() {
     done
 }
 # input variables 
-declare verbose=
-declare logDirectory="./"
-declare inputFile=
-declare create=false
-declare verify=false
-declare delete=false
+declare =
 
 parseInput "$@"
 
-# if command line tells us to parse an input file
-if [ "${inputFile}" != "" ]; then
-    # load parameters from the file
-    configSection=$(jq . <"${inputFile}" | jq '.""')
-    if [[ -z $configSection ]]; then
-        echoError "$inputFile or  section not found "
-        exit 3
-    fi
-    verbose=$(echo "${configSection}" | jq '.["verbose"]' --raw-output)
-    logDirectory=$(echo "${configSection}" | jq '.["log-directory"]' --raw-output)
-    create=$(echo "${configSection}" | jq '.["create"]' --raw-output)
-    verify=$(echo "${configSection}" | jq '.["verify"]' --raw-output)
-    delete=$(echo "${configSection}" | jq '.["delete"]' --raw-output)
 
-    # we need to parse the again to see if there are any overrides to what is in the config file
-    parseInput "$@"
-fi
 
-#logging support
-declare LOG_FILE="${logDirectory}.log"
-{
-    mkdir -p "${logDirectory}" 
-    rm -f "${LOG_FILE}"
-} 2>>/dev/null
-#creating a tee so that we capture all the output to the log file
-{
-    time=$(date +"%m/%d/%y @ %r")
-    echo "started: $time"
-   if [[ $"verbose" == true ]];then
-        echoInput
-    fi
 
     # --- BEGIN USER CODE ---
-    function onVerify() {
-        echo "onVerify"
-    }
-    function onDelete() {
-        echo "onDelete"
-    }
-    function onCreate() {
-        echo "onCreate"
-    }
-
     
-
-    #
-    #  this order makes it so that passing in /cvd will result in a verified resource being created
-    #
-
-    if [[ $delete == "true" ]]; then
-        onDelete
-    fi
-
-    if [[ $create == "true" ]]; then
-        onCreate
-    fi
-
-    if [[ $verify == "true" ]]; then
-        onVerify
-    fi
-    thisigs a change of
     # --- END USER CODE ---
-
-    time=$(date +"%m/%d/%y @ %r")
-    echo "ended: $time"
-} | tee -a "${LOG_FILE}"

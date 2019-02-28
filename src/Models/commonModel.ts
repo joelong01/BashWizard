@@ -10,6 +10,7 @@ export interface IBashWizardMainService {
     getSaveFile(title: string, extensions: FileFilter[]): Promise<string>;
     getAndApplySettings(): Promise<IBashWizardSettings>;
     saveAndApplySettings(settings: IBashWizardSettings): Promise<void>;
+    updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void>;
 }
 
 export enum BashWizardTheme {
@@ -21,6 +22,7 @@ export interface IBashWizardSettings {
     autoSave: boolean;
     theme: BashWizardTheme;
     alwaysLoadChangedFile: boolean;
+    showDebugger: boolean;
 }
 
 export type INotifyPropertyChanged = (parameter: object, property: string) => void;
