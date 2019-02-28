@@ -386,8 +386,10 @@ export class ScriptModel {
                 //
                 // usage
                 let required: string = (param.requiredParameter) ? "Required    " : "Optional    ";
-                usageLine += `-${param.shortParameter}|--${param.longParameter} `
-                usageInfo += `${this.Tabs(1)}echo \" -${param.shortParameter} | --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
+                let shortUsageLine: string = (param.shortParameter) ? `-${param.shortParameter}|` : ``;
+                usageLine += `${shortUsageLine}--${param.longParameter} `
+                let shortUsageInfo: string = (param.shortParameter) ? `-${param.shortParameter} |` : `    `;
+                usageInfo += `${this.Tabs(1)}echo \" ${shortUsageInfo} --${padEnd(param.longParameter, longestLongParameter, " ")} ${required} ${param.description}\"${nl}`
 
                 //
                 // the  echoInput function
@@ -398,7 +400,10 @@ export class ScriptModel {
                 //
                 //  OPTIONS, LONGOPTS
                 let colon: string = (param.requiresInputString) ? ":" : "";
-                shortOptions += `${param.shortParameter}${colon}`
+                if (param.shortParameter) 
+                {
+                    shortOptions += `${param.shortParameter}${colon}`
+                }
                 longOptions += `${param.longParameter}${colon},`
 
                 // input Case
