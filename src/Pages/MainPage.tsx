@@ -17,13 +17,14 @@ import { SplitButton } from "primereact/splitbutton";
 import "brace/mode/sh"
 import "brace/mode/json"
 import "brace/theme/xcode"
-import "brace/theme/cobalt"
+import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer } from "electron";
 import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/commonModel";
 import { ScriptModel } from "../Models/scriptModel";
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
+import "../Themes/dark/theme.css"
 
 
 //
@@ -667,8 +668,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
     public render = () => {
 
         const aceTheme = (this.state.mode === BashWizardTheme.Dark) ? "cobalt" : "xcode";
+        document.body.classList.toggle('dark', this.state.mode === "dark")
         return (
-
             <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
                 <Growl ref={this.growl} />
                 {
@@ -718,7 +719,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         onChange={async (e: { originalEvent: Event, value: boolean }) => {
                                             await this.setStateAsync({ mode: e.value ? BashWizardTheme.Dark : BashWizardTheme.Light });
                                             await this.saveSettings();
-                                            this.growl.current!.show({ severity: "info", summary: "Bash Wizard", detail: "Only the editor has been themed so far." });
                                         }}
                                         style={{ marginRight: '.25em' }} />
                                     <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
