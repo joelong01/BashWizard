@@ -667,7 +667,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     public render = () => {
 
-        const aceTheme = (this.state.mode === BashWizardTheme.Dark) ? "cobalt" : "xcode";
+        const aceTheme = (this.state.mode === BashWizardTheme.Dark) ? "twilight" : "xcode";
         document.body.classList.toggle('dark', this.state.mode === "dark")
         return (
             <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
