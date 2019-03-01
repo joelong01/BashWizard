@@ -256,7 +256,7 @@ declare LOG_FILE="${logDirectory}createKeyVault.sh.log"
         echo "Key Vault name: $(echo "$kvInfo" | jq .name)"
         echo ""
     fi
-    # hi back!
+    #
     # --- END USER CODE ---
 
     time=$(date +"%m/%d/%y @ %r")

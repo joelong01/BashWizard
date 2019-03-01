@@ -96,9 +96,7 @@ export class ScriptModel {
         const nameObject = Object.create(null);
         const variableObject = {}
         for (let param of this.parameters) {
-            // tslint:disable-next-line
-
-            if (param.longParameter === "" && param.shortParameter === "") {
+            if (param.longParameter === "" || param.shortParameter === "") {
                 errors.push({ severity: "error", Parameter: param, message: "All Long Names, Short Names, and Variable Names must be non-empty.", key: uniqueId("ERROR") });
             }
 
@@ -170,6 +168,7 @@ export class ScriptModel {
 
 
     public registerNotify(callback: INotifyPropertyChanged) {
+        console.log("RegisterNotify");
         this.propertyChangedNotify.push(callback);
 
     }
@@ -178,6 +177,7 @@ export class ScriptModel {
         if (index === -1) {
             throw new Error("ScriptModel.tsx:removeNotify(): attempt to remove a callback that wasn't in the callback array")
         }
+        console.log("removeNotify");
         this.propertyChangedNotify.splice(index, 1)
 
     }
@@ -354,11 +354,11 @@ export class ScriptModel {
         // console.count("toBash:");
         try {
 
-           /*  if (this.parameters.length === 0) {
-                //
-                //  if there are no parameters, just mark it as user code
-                return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";
-            } */
+            /*  if (this.parameters.length === 0) {
+                 //
+                 //  if there are no parameters, just mark it as user code
+                 return "# --- BEGIN USER CODE ---\n" + this.UserCode + "\n# --- END USER CODE ---";
+             } */
 
             let sbBashScript: string = bashTemplates.bashTemplate;
             sbBashScript = sbBashScript.replace("__VERSION__", this.Version);
@@ -400,8 +400,7 @@ export class ScriptModel {
                 //
                 //  OPTIONS, LONGOPTS
                 let colon: string = (param.requiresInputString) ? ":" : "";
-                if (param.shortParameter) 
-                {
+                if (param.shortParameter) {
                     shortOptions += `${param.shortParameter}${colon}`
                 }
                 longOptions += `${param.longParameter}${colon},`
@@ -659,20 +658,20 @@ export class ScriptModel {
                     this.BuiltInParameters.LoggingSupport = parameterModel;
                     break;
                 case ParameterType.VerboseSupport:
-                    if (this.BuiltInParameters.InputFileSupport !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.InputFileSupport, notify);
+                    if (this.BuiltInParameters.VerboseSupport !== undefined) {
+                        this.deleteParameter(this.BuiltInParameters.VerboseSupport, notify);
                     }
                     parameterModel.default = "";
-                    parameterModel.description = "the name of the input file. pay attention to $PWD when setting this";
-                    parameterModel.longParameter = "input-file";
-                    parameterModel.shortParameter = "i";
-                    parameterModel.requiresInputString = true;
+                    parameterModel.description = "echos the parsed input variables and creates a $verbose variable to be used in user code";
+                    parameterModel.longParameter = "verbose";
+                    parameterModel.shortParameter = "v";
+                    parameterModel.requiresInputString = false;
                     parameterModel.requiredParameter = false;
-                    parameterModel.valueIfSet = "$2";
-                    parameterModel.variableName = "inputFile";
+                    parameterModel.valueIfSet = "true";
+                    parameterModel.variableName = "verbose";
                     parameterModel.collapsed = true;
-                    parameterModel.type = ParameterType.InputFileSupport;
-                    this.BuiltInParameters.InputFileSupport = parameterModel;
+                    parameterModel.type = ParameterType.VerboseSupport;
+                    this.BuiltInParameters.VerboseSupport = parameterModel;
                     break;
                 default:
                     break;
@@ -684,10 +683,11 @@ export class ScriptModel {
             this.parameters = [...this.parameters, parameterModel];
             this.FireChangeNotifications = true;
             parameterModel.FireChangeNotifications = true;
-            parameterModel.registerNotify(notify);
-            parameterModel.registerNotify(this.onPropertyChanged);
-            this.NotifyPropertyChanged("Parameters");
+            parameterModel.registerNotify(notify);  // main page updates the bash script when a parameter changes
+            parameterModel.registerNotify(this.onPropertyChanged);  // the model validates the data when it is entered
             this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
+            this.NotifyPropertyChanged("Parameters");
+
         }
 
         return this.parameters;
@@ -714,6 +714,8 @@ export class ScriptModel {
         this.parameters.splice(index, 1);
         array.splice(index, 1);
         this.parameters = array; // keeping array immutable
+        this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
+
         return this.parameters;
     }
     //#endregion
@@ -815,15 +817,11 @@ export class ScriptModel {
 
     private _settingState: boolean = false;
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
+        // console.log("model::onPropertyChanged  [name=%s] [loading=%s] [setting state=%s]", name, this._loading, this._settingState);
         if (this._loading === true) {
             return;
         }
         if (this._settingState === true) {
-            return;
-        }
-
-        if (name === "focus" || name === "selected") { // UI properties
-            // the app.tsx deals with these
             return;
         }
 
@@ -860,11 +858,11 @@ export class ScriptModel {
 
             }
 
-            // tslint:disable-next-line
-            this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl); // this will append Errors and leave Warnings
+
         }
         finally {
             this._settingState = false;
+            this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl); // this will append Errors and leave Warnings
         }
 
     }

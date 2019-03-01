@@ -1,13 +1,25 @@
 import React from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
+import { Checkbox } from 'primereact/checkbox';
 
-export type YesNoResponse = (response: "yes" | "no") => void;
+export enum YesNo {
+    Yes,
+    No
+}
+
+export interface IYesNoResponse{
+    answer:YesNo;
+    neverAsk?:boolean;
+}
+
+export type YesNoResponse = (response: IYesNoResponse) => void;
 
 interface IYesNoDialogProps {
     message?: string;
     visible?: boolean;
     Notify?: YesNoResponse;
+
 }
 
 interface IYesNoDialogState {
@@ -15,7 +27,8 @@ interface IYesNoDialogState {
     Notify?: YesNoResponse;
     dialogAnswer: "yes" | "no";
     visible: boolean;
-
+    neverAsk?: boolean;
+    showYesAlways: boolean;
 }
 
 export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDialogState> {
@@ -28,13 +41,16 @@ export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDi
             Notify: this.props.Notify,
             visible: false,
             dialogAnswer: "no",
+            showYesAlways: false,
+            neverAsk: undefined,
         };
     }
-    public waitForDlgAnswer = async (msg: string): Promise<string> => {
-        return new Promise<string>((resolve, reject) => {
-            this.setState({ visible: true, message: msg }, () => {
-                this.setState({Notify: (response: string) => {
-                    this.setState({ visible: false }, () => {;
+    public waitForDlgAnswer = async (msg: string, showCB: boolean): Promise<IYesNoResponse> => {
+        return new Promise<IYesNoResponse>((resolve, reject) => {
+            this.setState({ visible: true, message: msg, showYesAlways: showCB }, () => {
+                this.setState({
+                    Notify: (response: IYesNoResponse) => {
+                        this.setState({ visible: false }, () => {
                             resolve(response);
                         });
                     }
@@ -44,12 +60,17 @@ export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDi
     }
     private dlgOnYes = async () => {
         if (this.state.Notify !== undefined) {
-            this.state.Notify("yes");
+            this.state.Notify({answer: YesNo.Yes, neverAsk: false});
+        }
+    }
+    private dlgOnYesAlways = async () => {
+        if (this.state.Notify !== undefined) {
+            this.state.Notify({answer: YesNo.Yes, neverAsk: true});
         }
     }
     private dlgOnNo = async () => {
         if (this.state.Notify !== undefined) {
-            this.state.Notify("no");
+            this.state.Notify({answer: YesNo.No, neverAsk: false});
         }
     }
 
@@ -59,8 +80,15 @@ export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDi
     public render = () => {
         const dialogFooter = (
             <div>
+
                 <Button label="Yes" icon="pi pi-check" onClick={this.dlgOnYes} />
+                {(this.state.showYesAlways === true) ?
+                    <Button label="Yes Always" icon="pi pi-check" onClick={this.dlgOnYesAlways} />
+                    :
+                    null
+                }
                 <Button label="No" icon="pi pi-times" onClick={this.dlgOnNo} />
+
             </div>);
 
         return (

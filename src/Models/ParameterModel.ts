@@ -83,10 +83,6 @@ export class ParameterModel {
         }
     }
 
-    public focus = () => {
-       // this.NotifyPropertyChanged("focus");
-    }
-
 
     // we set oldDefault to "" when they select "requires input string"
     private _oldDefault: string = "";

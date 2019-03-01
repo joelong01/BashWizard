@@ -8,7 +8,7 @@
 .parameter-item-grid {
     position: relative;
     border-radius: .25em;
-    margin: 0em .5em;
+    margin: 0.5em .5em 0em .5em;
     width: calc(100% - 1.0em);
     transition: all 10ms linear;
 }

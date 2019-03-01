@@ -1,5 +1,29 @@
 import { GrowlMessage } from 'primereact/growl';
 import { ParameterModel } from "./ParameterModel";
+import { FileFilter } from "electron";
+
+export interface IBashWizardMainService {
+
+    readText(filePath: string): Promise<string>;
+    writeText(filePath: string, contents: string): Promise<void>;
+    getOpenFile(title: string, extensions: FileFilter[]): Promise<string>;
+    getSaveFile(title: string, extensions: FileFilter[]): Promise<string>;
+    getAndApplySettings(): Promise<IBashWizardSettings>;
+    saveAndApplySettings(settings: IBashWizardSettings): Promise<void>;
+    updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void>;
+}
+
+export enum BashWizardTheme {
+    Dark = "dark",
+    Light = "light"
+}
+
+export interface IBashWizardSettings {
+    autoSave: boolean;
+    theme: BashWizardTheme;
+    alwaysLoadChangedFile: boolean;
+    showDebugger: boolean;
+}
 
 export type INotifyPropertyChanged = (parameter: object, property: string) => void;
 export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void;
@@ -58,3 +82,4 @@ export interface IAsyncMessage {
     event: "file-changed";
     type: string;
 }
+
