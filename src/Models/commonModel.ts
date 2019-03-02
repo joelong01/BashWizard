@@ -21,7 +21,7 @@ export enum BashWizardTheme {
 export interface IBashWizardSettings {
     autoSave: boolean;
     theme: BashWizardTheme;
-    alwaysLoadChangedFile: boolean;
+    autoUpdate: boolean;
     showDebugger: boolean;
 }
 

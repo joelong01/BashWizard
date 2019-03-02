@@ -105,7 +105,7 @@ export class BashWizardMainService implements IBashWizardMainService {
         const settings: IBashWizardSettings = {
             autoSave: false,
             theme: BashWizardTheme.Light,
-            alwaysLoadChangedFile: false,
+            autoUpdate: false,
             showDebugger: false
         }
         return settings;
@@ -175,7 +175,7 @@ export class BashWizardMainService implements IBashWizardMainService {
         }
 
         menu.getMenuItemById("auto-save").checked = settings.autoSave;
-        menu.getMenuItemById("auto-load").checked = settings.alwaysLoadChangedFile;
+        menu.getMenuItemById("auto-load").checked = settings.autoUpdate;
         menu.getMenuItemById("toggle-dev-tools").checked = settings.showDebugger;
         if (settings.showDebugger) {
             this.myBrowserWindow.webContents.openDevTools();

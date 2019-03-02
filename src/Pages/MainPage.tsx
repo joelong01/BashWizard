@@ -49,6 +49,7 @@ interface IMainPageState {
     selectedParameter?: ParameterModel;
     mode: BashWizardTheme;
     autoSave: boolean;
+    autoUpdate: boolean;
     showYesNoDialog: boolean;
     dialogMessage: string;
     selectedError: IErrorMessage | undefined;
@@ -76,7 +77,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private mySettings: IBashWizardSettings = {
         autoSave: false,
         theme: BashWizardTheme.Light,
-        alwaysLoadChangedFile: false,
+        autoUpdate: false,
         showDebugger: false
     };
 
@@ -127,6 +128,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
                 mode: this.mySettings.theme,
                 autoSave: this.mySettings.autoSave,
+                autoUpdate: this.mySettings.autoUpdate,
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
@@ -358,14 +360,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
         console.log("onFileChanged:mySettings: %o", this.mySettings);
         let response: IYesNoResponse = {
-            answer: this.mySettings.alwaysLoadChangedFile ? YesNo.Yes : YesNo.No
+            answer: this.mySettings.autoUpdate ? YesNo.Yes : YesNo.No
         };
 
-        if (this.mySettings.alwaysLoadChangedFile === false) {
+        if (this.mySettings.autoUpdate === false) {
             response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`, true);
             console.log("response=%o", response);
             if (response.neverAsk === true) {
-                this.mySettings.alwaysLoadChangedFile = true;
+                this.mySettings.autoUpdate = true;
                 await this.saveSettings();
             }
         }
@@ -375,6 +377,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 await this.setBashScript(filename, contents);
             }
         }
+
+        this.setState({ autoUpdate: this.mySettings.autoUpdate });
 
     }
 
@@ -561,9 +565,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //  this is called by the models
     public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
         console.log("MainPage::onPropertyChanged  [name=%s] [loading=%s] [setting state=%s]", name, this._loading, this._settingState);
-        if (name === "Errors"){
+        if (name === "Errors") {
             console.log("Updating Errors %o", this.scriptModel.Errors);
-            this.setState({errorsCache: this.scriptModel.Errors});
+            this.setState({ errorsCache: this.scriptModel.Errors });
         }
         if (this._loading === true) {
             return;
@@ -671,7 +675,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         document.body.classList.toggle('dark', this.state.mode === "dark")
         return (
             <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
-                <Growl ref={this.growl} />
+               <Growl ref={this.growl} />
                 {
                     (this.state.showYesNoDialog) ? <YesNoDialog ref={this.yesNoDlg} /> : ""
                 }
@@ -755,9 +759,12 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
                             <ListBox className="Parameter_List" style={{ height: this.state.parameterListHeight, width: "100%" }} options={this.state.parametersCache}
                                 value={this.state.selectedParameter}
-                                onChange={(e: { originalEvent: Event, value: any }) => this.setState({ selectedParameter: e.value })}
+                                onChange={(e: { originalEvent: Event, value: any }) => {
+                                    this.setState({ selectedParameter: e.value })
+                                }}
                                 filter={false}
                                 optionLabel={"uniqueName"}
+
                                 itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
                                     return (
                                         <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
@@ -878,9 +885,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
             </div >
         );
     }
-
-
-
 }
 
 export default MainPage;
