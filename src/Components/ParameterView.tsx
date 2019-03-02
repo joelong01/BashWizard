@@ -39,7 +39,7 @@ interface IParameterState {
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
     private _updatingModel: boolean;
     private refParameterForm = React.createRef<HTMLDivElement>();
-    private refLongName = React.createRef<HTMLInputElement>();
+    private refLongName = React.createRef<InputText>();
     constructor(props: IParameterProperties) {
         super(props);
         const id: string = uniqueId("ParameterView");
@@ -238,17 +238,30 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         }
     }
 
+    //
+    //  sets the focus when the user clicks inside the ParameterView
+    //  if it is a DIV or a FIELDSET, put the focus on longParameter
+    public focusFirst = (e: any) => {
+
+        if (e.target.tagName === "DIV" || e.target.tagName === "FIELDSET") {
+            const el: any = e.currentTarget.querySelector("#longParameter");
+            if (el !== null) {
+                el.focus();
+            }
+        }
+    }
 
     public render = () => {
         let fieldSetName: string = this.state.collapsed ? "parameter-fieldset parameter-fieldset-collapsed" : "parameter-fieldset";
 
         return (
-            <div className="parameter-layout-root" key={this.state.key}>
+            <div className="parameter-layout-root" key={this.state.key} onClick={this.focusFirst}>
 
                 <Button className="collapse-button p-button-secondary"
                     icon={this.state.collapsed ? "pi pi-angle-down" : "pi pi-angle-up"}
-                    onClick={() => { this.setState({ collapsed: !this.state.collapsed })}} />
-                <fieldset className={fieldSetName}>
+                    onClick={() => { this.setState({ collapsed: !this.state.collapsed }) }} />
+                <fieldset className={fieldSetName} onClick={this.focusFirst}>
+
                     <legend>{this.state.type === ParameterType.Custom ? (this.state.Model.longParameter === "" ? "Custom" : this.state.Model.longParameter) : this.state.type}</legend>
                     <div className="TheWholeThing">
                         <div className={this.state.collapsed ? "p-grid parameter-item-grid parameter-item-grid-collapsed" : "p-grid parameter-item-grid"} ref={this.refParameterForm}

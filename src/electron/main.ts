@@ -100,6 +100,7 @@ function createWindow() {
         'y': mainWindowState.y,
         'width': mainWindowState.width,
         'height': mainWindowState.height,
+        frame: true,
         darkTheme: true
     };
     // Create the browser window.
