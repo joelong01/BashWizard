@@ -5,6 +5,7 @@ import {ParameterType, IErrorMessage, IParseState } from "../Models/commonModel"
 
 import { uniqueId, fromPairs } from 'lodash-es';
 import { ScriptModel } from './scriptModel';
+import { ErrorModel } from './errorModel';
 
 
 
@@ -12,8 +13,8 @@ import { ScriptModel } from './scriptModel';
 //  this class knows how to parse bash Files
 export class ParseBash {
 
-    private addParseError = (errors: IErrorMessage[], msg: string, sev: "error" | "warn" | "info" = "error") => {
-        errors.push({ severity: sev, key: uniqueId("PARSEERROR"), message: msg });
+    private addParseError = (errorModel: ErrorModel, msg: string, sev: "error" | "warn" | "info" = "error") => {
+        errorModel.addError({ severity: sev, key: uniqueId("PARSEERROR"), message: msg });
     }
     private splitByTwoStrings = (from: string, string1: string, string2: string): string[] => {
 
@@ -117,12 +118,9 @@ export class ParseBash {
         return undefined;
     }
 
-    public static parseBashScript = (input: string): ScriptModel => {
-        const parser: ParseBash = new ParseBash();
-        return parser.fromBash(input);
-    }
 
-    public fromBash = (input: string): ScriptModel => {
+
+    public parseBash = (scriptModel:ScriptModel, input: string): boolean => {
         //
         //  Error Messages constants used when parsing the Bash file
         const unMergedGitFile: string = "Bash Script has \"<<<<<<< HEAD\" string in it, indicating an un-merged GIT file.  fix merge before opening.";
@@ -135,7 +133,6 @@ export class ParseBash {
         const missingVersionInfo: string = "couldn't find script version information";
         const noUsage: string = "There is no usage() function in this bash script";
         const noParseInput: string = "Could not locate the parseInput() function in the bashScript";
-        const scriptModel:ScriptModel = new ScriptModel();
 
 
         //
@@ -163,8 +160,8 @@ export class ParseBash {
         //
         // make sure the file doesn't have GIT merge conflicts
         if (input.indexOf("<<<<<<< HEAD") !== -1) {
-            this.addParseError(scriptModel.Errors, unMergedGitFile);
-            return scriptModel;
+            this.addParseError(scriptModel.ErrorModel, unMergedGitFile);
+            return false;
         }
 
         /*
@@ -191,13 +188,13 @@ export class ParseBash {
                 //
                 //  this means we couldn't find any of the comments -- treat this as a non-BW file
                 scriptModel.UserCode = input.trim(); // make it all user code
-                this.addParseError(scriptModel.Errors, missingComments);
-                this.addParseError(scriptModel.Errors, addingComments);
-                return scriptModel;
+                this.addParseError(scriptModel.ErrorModel, missingComments);
+                this.addParseError(scriptModel.ErrorModel, addingComments);
+                return false;
             case 1:
-                this.addParseError(scriptModel.Errors, missingOneUserComment);
-                this.addParseError(scriptModel.Errors, pleaseFix);
-                return scriptModel;
+                this.addParseError(scriptModel.ErrorModel, missingOneUserComment);
+                this.addParseError(scriptModel.ErrorModel, pleaseFix);
+                return false;
             case 2:
             case 3:
                 bashWizardCode = sections[0];
@@ -205,8 +202,8 @@ export class ParseBash {
                 // ignore section[2], it is code after the "# --- END USER CODE ---" that will be regenerated
                 break;
             default:
-                this.addParseError(scriptModel.Errors, tooManyUserComments);
-                return scriptModel;
+                this.addParseError(scriptModel.ErrorModel, tooManyUserComments);
+                return false;
         }
 
         //
@@ -223,7 +220,7 @@ export class ParseBash {
             if (Number.isNaN(userBashVersion)) {
                 userBashVersion = parseFloat(bashWizardCode.substring(startPos, startPos + 3)); // 0.9 is a version i have out there...
                 if (Number.isNaN(userBashVersion)) {
-                    this.addParseError(scriptModel.Errors, missingVersionInfo);
+                    this.addParseError(scriptModel.ErrorModel, missingVersionInfo);
                 }
             }
         }
@@ -233,7 +230,7 @@ export class ParseBash {
         //  find the usage() function and parse it out - this gives us the 4 properties in the ParameterModel below
         let bashFragment: string | null = this.getStringBetween(bashWizardCode, "usage() {", "}");
         if (bashFragment === null) {
-            this.addParseError(scriptModel.Errors, noUsage);
+            this.addParseError(scriptModel.ErrorModel, noUsage);
         }
         else {
             bashFragment = bashFragment.replace(/echoWarning/g, "echo");
@@ -282,9 +279,9 @@ export class ParseBash {
                 if (line.substring(0, 1) === "-") // we have a parameter!
                 {
                     const paramTokens: string[] = this.splitByTwoStrings(line, " ", "|");
-                    if (line.indexOf("|")<0) 
-                    { 
-                        paramTokens.unshift("-"); // there is no short parameter, so add token 
+                    if (line.indexOf("|")<0)
+                    {
+                        paramTokens.unshift("-"); // there is no short parameter, so add token
                     }
                     let description: string = "";
                     for (let i = 3; i < paramTokens.length; i++) {
@@ -292,7 +289,7 @@ export class ParseBash {
                     }
 
                     description = description.trim();
-                    const parameterItem: ParameterModel = new ParameterModel();
+                    const parameterItem: ParameterModel = new ParameterModel(scriptModel.ErrorModel);
 
                     parameterItem.shortParameter = paramTokens[0].trim();
                     parameterItem.longParameter = paramTokens[1].trim();
@@ -331,7 +328,7 @@ export class ParseBash {
 
         bashFragment = this.getStringBetween(bashWizardCode, "eval set -- \"$PARSED\"", "--)");
         if (bashFragment === null) {
-            this.addParseError(scriptModel.Errors, noParseInput);
+            this.addParseError(scriptModel.ErrorModel, noParseInput);
         }
         else {
             lines = bashFragment.split("\n");
@@ -348,13 +345,13 @@ export class ParseBash {
                 {
                     const paramTokens: string[] = lines[index + 1].trim().split("=");
                     if (paramTokens.length !== 2) {
-                        this.addParseError(scriptModel.Errors,
+                        this.addParseError(scriptModel.ErrorModel,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index + 1].trim()} which doesn't parse.  It should look like varName=$2 or the like.`);
                     }
                     const nameTokens: string[] = line.split("|");
                     if (nameTokens.length !== 2) // the first is the short param, second long param, and third is empty
                     {
-                        this.addParseError(scriptModel.Errors,
+                        this.addParseError(scriptModel.ErrorModel,
                             `When parsing the parseInput() function to get the variable names, encountered the line ${lines[index].trim()} which doesn't parse.  It should look like \"-l | --long-name)\" or the like.`,
                             "warn");
                     }
@@ -364,7 +361,7 @@ export class ParseBash {
 
                     const param: ParameterModel | undefined = this.findParameterByLongName(scriptModel.parameters, longParam);
                     if (param === undefined) {
-                        this.addParseError(scriptModel.Errors, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
+                        this.addParseError(scriptModel.ErrorModel, `When parsing the parseInput() function to get the variable names, found a long parameter named ${longParam} which was not found in the usage() function`,
                             "warn");
                     }
                     else {
@@ -377,7 +374,7 @@ export class ParseBash {
                             param.requiresInputString = true;
                         }
                         else {
-                            this.addParseError(scriptModel.Errors, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
+                            this.addParseError(scriptModel.ErrorModel, `When parsing the parseInput() function to see if ${param.variableName} requires input, found this line: ${lines[index + 1]} which does not parse.  it should either be \"shift 1\" or \"shift 2\"`,
                                 "warn");
                         }
                     }
@@ -388,7 +385,7 @@ export class ParseBash {
         // the last bit of info to figure out is the default value -- find these with a comment
         bashFragment = this.getStringBetween(bashWizardCode, "# input variables", "parseInput");
         if (bashFragment === null) {
-            this.addParseError(scriptModel.Errors, noParseInput);
+            this.addParseError(scriptModel.ErrorModel, noParseInput);
         }
         else {
             // throw away the "declare "
@@ -405,7 +402,7 @@ export class ParseBash {
 
                 const varTokens: string[] = line.split("=");
                 if (varTokens.length === 0 || varTokens.length > 2) {
-                    this.addParseError(scriptModel.Errors,
+                    this.addParseError(scriptModel.ErrorModel,
                         `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, the line \"${line}\" was encountered that didn't parse.  it should be in the form of varName=Default`,
                         "warn");
 
@@ -413,9 +410,9 @@ export class ParseBash {
                 const varName: string = varTokens[0].trim();
                 const param: ParameterModel | undefined = this.findParameterByVarName(scriptModel.parameters, varName);
                 if (param === undefined) {
-                    this.addParseError(scriptModel.Errors, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
+                    this.addParseError(scriptModel.ErrorModel, `When parsing the variable declarations between the \"# input variables\" comment and the \"parseInput\" calls, found a variable named ${varName} which was not found in the usage() function`,
                         "warn");
-                    this.addParseError(scriptModel.Errors, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
+                    this.addParseError(scriptModel.ErrorModel, `\"{line}\" will be removed from the script.  If you want to declare it, put the declaration inside the user code comments`, "info");
 
                 }
                 else {
@@ -451,7 +448,7 @@ export class ParseBash {
             scriptModel.BuiltInParameters.Delete.type = ParameterType.Delete;
         }
 
-        return scriptModel;
+        return true;
 
 
 

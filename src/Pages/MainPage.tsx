@@ -20,7 +20,7 @@ import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer } from "electron";
-import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/commonModel";
+import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashWizardTheme, IMainPageUiState } from "../Models/commonModel";
 import { ScriptModel } from "../Models/scriptModel";
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
@@ -30,24 +30,12 @@ import "../Themes/dark/theme.css"
 //
 //  represents the properties that will impact the UI
 //
-interface IMainPageState {
+interface IMainPageState extends IMainPageUiState {
 
-    //
-    //  if it has "cache" in the name, it means we store the UI state in this variable and then set the model in the onBlur method
-    jsonCache: string;
-    bashCache: string;
-    errorsCache: IErrorMessage[];
-    scriptNameCache: string;
-    descriptionCache: string;
-    parametersCache: ParameterModel[];
-
-    // these is read only in the UI
-    inputJson: string;
-    debugConfig: string;
 
     // this data is for UI only and doesn't impact the model
     selectedParameter?: ParameterModel;
-    mode: BashWizardTheme;
+    theme: BashWizardTheme;
     autoSave: boolean;
     autoUpdate: boolean;
     showYesNoDialog: boolean;
@@ -66,12 +54,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
     private bashEditor: React.RefObject<AceEditor> = React.createRef<AceEditor>();
-    private _settingState: boolean = false;
-    private _loading: boolean = false;
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
     private mainServiceProxy: BashWizardMainServiceProxy = new BashWizardMainServiceProxy();
-    private scriptModel: ScriptModel = new ScriptModel();
+    private scriptModel: ScriptModel;
     private currentWatchFile: string = "";
     private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
     private mySettings: IBashWizardSettings = {
@@ -93,7 +79,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
             //  never rejects the promise, so we will get back default settings on any error
             this.mainServiceProxy.getAndApplySettings().then((settings: IBashWizardSettings) => {
                 this.mySettings = settings;
-                console.log("Electron settings: %o", this.mySettings);
             })
         } else {
             // browser stores this in a cookie
@@ -106,9 +91,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
                     console.log(`error loading cookie: ${er}`);
                 }
             }
-
-            console.log("Browser settings: %o", this.mySettings);
-
         }
 
 
@@ -119,14 +101,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 //
                 //   all "*cache" state is stored in the mainModel
                 //
-                jsonCache: "",
-                bashCache: "",
-                scriptNameCache: "",
-                descriptionCache: "",
-                parametersCache: params,
-                errorsCache: [],
+                JSON: "",
+                bashScript: "",
+                scriptName: "",
+                description: "",
+                parameters: params,
+                Errors: [],
 
-                mode: this.mySettings.theme,
+                theme: this.mySettings.theme,
                 autoSave: this.mySettings.autoSave,
                 autoUpdate: this.mySettings.autoUpdate,
                 debugConfig: "",
@@ -155,16 +137,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
             {
                 label: 'Add All',
                 icon: "pi pi-globe",
-                command: async () => {
-                    this.scriptModel.generateBashScript = false;
-                    this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                    this.scriptModel.generateBashScript = true;
-                    await this.updateAllText();
+                command: () => {
+                    this.scriptModel.startBatchChanges();
+                    this.scriptModel.addParameter(ParameterType.VerboseSupport);
+                    this.scriptModel.addParameter(ParameterType.LoggingSupport);
+                    this.scriptModel.addParameter(ParameterType.InputFileSupport);
+                    this.scriptModel.addParameter(ParameterType.Create);
+                    this.scriptModel.addParameter(ParameterType.Verify);
+                    this.scriptModel.addParameter(ParameterType.Delete);
+                    this.scriptModel.endBatchChanges();;
+
                 }
             },
             {
@@ -174,43 +156,35 @@ class MainPage extends React.Component<{}, IMainPageState> {
             {
                 label: 'Add Verbose Support',
                 icon: "pi pi-camera",
-                command: async () => {
-                    this.scriptModel.generateBashScript = false;
-                    this.scriptModel.addParameter(ParameterType.VerboseSupport, this.onPropertyChanged);
-                    this.scriptModel.generateBashScript = true;
-                    await this.updateAllText();
+                command: () => {
+                    this.scriptModel.addParameter(ParameterType.VerboseSupport);
+
                 }
             },
             {
                 label: 'Add Logging Support',
                 icon: "pi pi-pencil",
-                command: async () => {
-                    this.scriptModel.generateBashScript = false;
-                    this.scriptModel.addParameter(ParameterType.LoggingSupport, this.onPropertyChanged);
-                    this.scriptModel.generateBashScript = true;
-                    await this.updateAllText();
+                command: () => {
+                    this.scriptModel.addParameter(ParameterType.LoggingSupport);
+
                 }
             },
             {
                 label: 'Add Input File Support',
                 icon: "pi pi-list",
-                command: async () => {
-                    this.scriptModel.generateBashScript = false;
-                    this.scriptModel.addParameter(ParameterType.InputFileSupport, this.onPropertyChanged);
-                    this.scriptModel.generateBashScript = true;
-                    await this.updateAllText();
+                command: () => {
+                    this.scriptModel.addParameter(ParameterType.InputFileSupport)
                 }
             },
             {
                 label: 'Add Create, Validate, Delete',
                 icon: "pi pi-table",
                 command: async () => {
-                    this.scriptModel.generateBashScript = false;
-                    this.scriptModel.addParameter(ParameterType.Create, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.Verify, this.onPropertyChanged);
-                    this.scriptModel.addParameter(ParameterType.Delete, this.onPropertyChanged);
-                    this.scriptModel.generateBashScript = true;
-                    await this.updateAllText();
+                    this.scriptModel.startBatchChanges();
+                    this.scriptModel.addParameter(ParameterType.Create);
+                    this.scriptModel.addParameter(ParameterType.Verify);
+                    this.scriptModel.addParameter(ParameterType.Delete);
+                    this.scriptModel.endBatchChanges();
                 }
             }
         ]
@@ -285,8 +259,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 }
                 await this.setStateAsync({ SaveFileName: newFileName });
             }
-            await await this.parseBashUpdateUi();
-            await this.mainServiceProxy.writeText(this.state.SaveFileName, this.scriptModel.BashScript);
+            await this.mainServiceProxy.writeText(this.state.SaveFileName, this.scriptModel.bashScript);
             this.watchFile(); // this has to be done after .writeText, otherwise the file might not exist
         }
         catch (error) {
@@ -325,7 +298,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //
     //  called when the main process opens a file, reads the contents, and sends it back to the render process
     private setBashScript = async (filename: string, contents: string): Promise<boolean> => {
-        await this.setStateAsync({ bashCache: contents, SaveFileName: filename });
+        await this.setStateAsync({ bashScript: contents, SaveFileName: filename });
         this.watchFile();
         await this.parseBashUpdateUi();
         return true;
@@ -365,7 +338,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
         if (this.mySettings.autoUpdate === false) {
             response = await this.askUserQuestion(`The file ${filename} has changed.  Would you like to re-load it?`, true);
-            console.log("response=%o", response);
             if (response.neverAsk === true) {
                 this.mySettings.autoUpdate = true;
                 await this.saveSettings();
@@ -394,10 +366,11 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //
         window.setTimeout(() => {
             this.setState({ Loaded: true });
+            this.setState({ theme: this.mySettings.theme })
             window.resizeBy(1, 0);
-        }, 150);
+        }, 250);
 
-        this.scriptModel.registerNotify(this.onPropertyChanged);
+        this.reset(); // will create models
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -452,17 +425,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
         if (this.state.selectedParameter !== undefined) {
             const toDelete: ParameterModel = this.state.selectedParameter;
-            let index: number = this.state.parametersCache.indexOf(this.state.selectedParameter)
+            let index: number = this.state.parameters.indexOf(this.state.selectedParameter)
             if (index !== -1) {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
-
-                let toSelect: ParameterModel | undefined = this.state.parametersCache[index === 0 ? 0 : index - 1]; // might be undefined
+                console.log("deleting parameter: %s", this.state.selectedParameter.longParameter);
+                let toSelect: ParameterModel | undefined = this.state.parameters[index === 0 ? 0 : index - 1]; // might be undefined
                 this.selectParameter(toSelect); // select a new one (or nothing)
                 await this.deleteParameter(toDelete) // delte the one we want
-            }
-            else {
-                throw new Error("index of selected item is -1!");
             }
         }
 
@@ -470,90 +440,44 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
 
     private reset = () => {
-        this.state.parametersCache.map((el: ParameterModel) => {
-            el.removeNotify(this.onPropertyChanged);
-        });
 
-        this.scriptModel.removeNotify(this.onPropertyChanged);
+        if (this.scriptModel !== undefined) {
+            this.scriptModel.onScriptModelChanged.unsubscribe(this.onScriptModelChanged);
+            this.scriptModel.ErrorModel.onErrorsChanged.unsubscribe(this.onErrorsChanged);
+            this.scriptModel.ErrorModel.showGrowl.unsubscribe(this.growlError);
+        }
 
-        this.scriptModel = new ScriptModel(this.onPropertyChanged);
+        this.scriptModel = this.createScriptModel();
+
+        if (this.mainServiceProxy !== null) {
+            this.mainServiceProxy.setWindowTitle("");
+        }
         this.setState({
-            jsonCache: "",
-            bashCache: "",
+            JSON: "",
+            bashScript: "",
 
             debugConfig: "",
             inputJson: "",
-            errorsCache: [],
+            Errors: [],
 
             // these do not get replaced
-            scriptNameCache: "",
-            descriptionCache: "",
-            parametersCache: [],
+            scriptName: "",
+            description: "",
+            parameters: [],
 
         });
-    }
-
-    private updateAllText = async (model?: ScriptModel) => {
-
-        if (model !== undefined) {
-            this.scriptModel = model;
-        }
-
-        console.log("UPDATE ALL TEXT: %o", this.scriptModel.Errors);
-
-        await this.setStateAsync({
-            jsonCache: this.scriptModel.stringify(),
-            bashCache: this.scriptModel.toBash(),
-            scriptNameCache: this.scriptModel.scriptName,
-            descriptionCache: this.scriptModel.description,
-            parametersCache: this.scriptModel.parameters,
-            errorsCache: this.scriptModel.Errors,
-            inputJson: this.scriptModel.inputJSON,
-            debugConfig: this.scriptModel.getDebugConfig("./")
-
-        });
-
-        if (this.mySettings.autoSave) {
-            await this.onSave(false);
-        }
-        if (this.state.autoSave) {
-            await this.onSave(false);
-        }
-
     }
 
     private onBlurDescription = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        this.scriptModel.description = this.state.descriptionCache;
-        await this.updateAllText();
+        this.scriptModel.description = this.state.description;
     }
     private onBlurScriptName = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        const end: string = e.currentTarget.value!.slice(-3);
-        let name: string = e.currentTarget.value;
-        if (end !== ".sh" && end !== "") {
-            this.growl.current!.show({ severity: "warn", summary: "Bash Wizard", detail: "Adding .sh to the end of your script name." });
-            name += ".sh";
-            await this.setState({ scriptNameCache: name });
-            await this.updateAllText();
-        }
-        this.scriptModel.scriptName = name;
-        await this.updateAllText();
+        this.scriptModel.scriptName = this.state.scriptName;
     }
 
     private deleteParameter = async (parameter: ParameterModel) => {
-        try {
-            await this.setStateAsync({ parametersCache: this.scriptModel.deleteParameter(parameter, this.onPropertyChanged) });
-            await this.updateAllText();
-        }
-        catch (error) {
-            this.addErrorMessage("error", "Could not delete parameter.  Exception: " + error, parameter);
-        }
 
-    }
-
-    private addErrorMessage = (sev: "warn" | "error" | "info", message: string, parameter?: ParameterModel) => {
-
-        this.growl.current!.show({ severity: sev, summary: "Error Message", detail: message + "\n\rSee \"Message\" tab." });
-        this.setState({ errorsCache: this.scriptModel.addErrorMessage(sev, message, parameter) });
+        this.scriptModel.deleteParameter(parameter);
     }
 
 
@@ -563,52 +487,20 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     //
     //  this is called by the models
-    public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
-        console.log("MainPage::onPropertyChanged  [name=%s] [loading=%s] [setting state=%s]", name, this._loading, this._settingState);
-        if (name === "Errors") {
-            console.log("Updating Errors %o", this.scriptModel.Errors);
-            this.setState({ errorsCache: this.scriptModel.Errors });
-        }
-        if (this._loading === true) {
-            return;
-        }
-        if (this._settingState === true) {
-            return;
-        }
-        this._settingState = true;
-        if (name !== "BashScript" && name !== "JSON" && name !== "Errors") {
-            await this.updateAllText();
-
-        }
-
-
-        this._settingState = false;
+    public onScriptModelChanged = async (newState: Partial<IMainPageUiState>) => {
+        // console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
+        await this.setStateAsync(newState);
     }
 
 
-    private addParameter = async (type: ParameterType, select: boolean) => {
 
+    private setStateAsync = async (newState: Partial<IMainPageState>): Promise<void> => {
 
-        await this.setStateAsync({ parametersCache: this.scriptModel.addParameter(ParameterType.Custom, this.onPropertyChanged) });
-        await this.updateAllText();
-        if (select) {
-            await this.selectParameter(this.state.parametersCache[this.state.parametersCache.length - 1]);
-        }
-
-
-    }
-
-
-    private setStateAsync = (newState: object): Promise<void> => {
-
-        Object.keys(newState).map((key) => {
-            if (!(key in this.state)) {
-                throw new Error(`setStateAsync called with bad property: ${key}`);
-            }
-        });
-
+        //
+        //   got the typings working all the way down to here, but SetState() doesn't like newState
+        const o: object = newState as object;
         return new Promise((resolve, reject) => {
-            this.setState(newState, () => {
+            this.setState(o, () => {
                 resolve();
             });
         });
@@ -623,7 +515,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //  note that we have some async stuff going on.  we'll resturn from this function
     //  and the answer to the dialog comes back to this.yesNoReset
     private onNew = async () => {
-        if (this.state.parametersCache.length > 0) {
+        if (this.state.parameters.length > 0) {
             const response: IYesNoResponse = await this.askUserQuestion("Create a new bash file?", false);
             if (response.answer === YesNo.Yes) {
                 this.reset();
@@ -645,23 +537,39 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
     }
 
-    private onErrorClicked = (e: React.MouseEvent<HTMLDivElement>, item: IErrorMessage) => {
-
-        this.setState({ selectedError: item });
-        if (item.Parameter !== undefined) {
-            this.selectParameter(item.Parameter);
-        }
-
+    private createScriptModel = (): ScriptModel => {
+        const scriptModel: ScriptModel = new ScriptModel();
+        scriptModel.onScriptModelChanged.subscribe(this.onScriptModelChanged);
+        scriptModel.ErrorModel.onErrorsChanged.subscribe(this.onErrorsChanged);
+        scriptModel.ErrorModel.showGrowl.subscribe(this.growlError);
+        return scriptModel;
     }
 
     private parseBashUpdateUi = async () => {
-        const model: ScriptModel = ScriptModel.parseBash(this.state.bashCache, this.onPropertyChanged);
-        await this.updateAllText(model);
+        this.scriptModel = this.createScriptModel();
+        this.scriptModel.parseBash(this.state.bashScript);
+    }
+    private growlError = (error: IErrorMessage): void => {
+
+        this.growl.current!.show({
+            severity: error.severity,
+            detail: error.message,
+            closable: true,
+            life: 5000
+
+        });
     }
 
+    private onErrorsChanged = (errors: IErrorMessage[]): void => {
+        this.setState({ Errors: errors });
+    }
+    //
+    //  parse the JSON, but preserve any user code
+    //  e.g. maybe the user is adding some parameters, but doesn't want a whole new script.
     private async parseJSONUpdateUi(): Promise<void> {
-        const model: ScriptModel = ScriptModel.parseJSON(this.state.jsonCache, this.onPropertyChanged);
-        await this.updateAllText(model);
+        const currentUserCode: string = this.scriptModel.UserCode;
+        this.scriptModel = this.createScriptModel();
+        this.scriptModel.parseJSON(this.state.JSON, currentUserCode);
 
     }
 
@@ -669,63 +577,123 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return (this.getIpcRenderer() !== undefined);
     }
 
-    public render = () => {
+    public onChangedBashScript = async (value: string, event?: any): Promise<void> => {
+        //
+        //  we are going to queue up changes for one second, and then save them all
+        //
+        await this.setStateAsync({ bashScript: value });
+        if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "") {
 
-        const aceTheme = (this.state.mode === BashWizardTheme.Dark) ? "twilight" : "xcode";
-        document.body.classList.toggle('dark', this.state.mode === "dark")
+            this.updateTimerSet = true;
+            //
+            //  there are a bunch of issues with auto-saving when typing that involve the cursor moving around.  onBlur reparses the file and recreates it so that the user
+            //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
+            //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
+            setTimeout(async () => {
+                try {
+                    this.savingFile = true;
+                    await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashScript);
+                }
+                catch (e) {
+                    console.log("Error saving file: " + e.message);
+                }
+                finally {
+                    this.updateTimerSet = false;
+                    this.savingFile = false;
+                }
+            }, 1000);
+        }
+    }
+
+    public render = () => {
+        // console.count("MainPage::render()");
+        const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
+        document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
         return (
-            <div className="outer-container" id="outer-container" style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
-               <Growl ref={this.growl} />
+            <div className="outer-container"
+                id="outer-container"
+                style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
+                <Growl ref={this.growl} />
                 {
                     (this.state.showYesNoDialog) ? <YesNoDialog ref={this.yesNoDlg} /> : ""
                 }
                 <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
-                    <SplitPane className="Splitter" split="horizontal" defaultSize={"50%"} minSize={"125"} onDragFinished={(newSize: number) => {
-                        //
-                        //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
-                        window.dispatchEvent(new Event('resize'));
+                    <SplitPane className="Splitter"
+                        split="horizontal"
+                        defaultSize={"50%"}
+                        minSize={"8em"}
+                        onDragFinished={(newSize: number) => {
+                            //
+                            //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
+                            window.dispatchEvent(new Event('resize'));
 
-                    }} >
+                        }} >
                         <div className="DIV_Top">
                             <Toolbar className="toolbar" id="toolbar">
                                 <div className="p-toolbar-group-left">
-                                    <button className="bw-button p-component" onClick={this.onNew}>
-                                        <img className="bw-button-icon" srcSet={svgFiles.FileNewBlack} />
+                                    <button className="bw-button p-component"
+                                        onClick={this.onNew}>
+                                        <img className="bw-button-icon"
+                                            srcSet={svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
-                                    {(this.electronEnabled) ?
-                                        <Button className="p-button-secondary" label="Open File" icon="pi pi-upload" disabled={!this.electronEnabled} onClick={this.onLoadFile} style={{ marginRight: '.25em' }} />
-                                        :
-                                        ""
-                                    }
-                                    <Button className="p-button-secondary" disabled={this.state.activeTabIndex > 1} label="Refresh" icon="pi pi-refresh" onClick={this.onRefresh} style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel} menuStyle={{ width: "16.5em" }} className="p-button-secondary" label="Add Parameter" icon="pi pi-plus" onClick={() => this.addParameter(ParameterType.Custom, true)} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Delete Parameter" icon="pi pi-trash" onClick={async () => await this.onDeleteParameter()} style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Expand All" icon="pi pi-eye"
+                                    <Button className="p-button-secondary"
+                                        disabled={this.state.activeTabIndex > 1}
+                                        label="Refresh" icon="pi pi-refresh"
+                                        onClick={this.onRefresh}
+                                        style={{ marginRight: '.25em' }} />
+                                    <SplitButton model={this.state.ButtonModel}
+                                        menuStyle={{ width: "16.5em" }}
+                                        className="p-button-secondary"
+                                        label="Add Parameter" icon="pi pi-plus"
+                                        onClick={() => this.scriptModel.addParameter(ParameterType.Custom)}
+                                        style={{ marginRight: '.25em' }}
+                                    />
+                                    <Button className="p-button-secondary"
+                                        disabled={this.state.parameters.length === 0}
+                                        label="Delete Parameter"
+                                        icon="pi pi-trash"
+                                        onClick={async () => await this.onDeleteParameter()}
+                                        style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary"
+                                        disabled={this.state.parameters.length === 0}
+                                        label="Expand All"
+                                        icon="pi pi-eye"
                                         onClick={() => {
                                             this.scriptModel.generateBashScript = false;
-                                            this.state.parametersCache.map((p) => p.collapsed = false);
+                                            this.state.parameters.map((p) => p.collapsed = false);
                                             this.scriptModel.generateBashScript = true;
                                         }}
                                         style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" disabled={this.state.parametersCache.length === 0} label="Collapse All" icon="pi pi-eye-slash"
+                                    <Button className="p-button-secondary"
+                                        disabled={this.state.parameters.length === 0}
+                                        label="Collapse All" icon="pi pi-eye-slash"
                                         onClick={() => {
                                             this.scriptModel.generateBashScript = false;
-                                            this.state.parametersCache.map((p) => p.collapsed = true);
+                                            this.state.parameters.map((p) => p.collapsed = true);
                                             this.scriptModel.generateBashScript = true;
                                         }}
                                         style={{ marginRight: '.25em' }} />
 
                                 </div>
                                 <div className="p-toolbar-group-right">
-                                    <ToggleButton className="p-button-secondary" onIcon="pi pi-circle-on" onLabel="Dark Mode" offIcon="pi pi-circle-off" offLabel="Light Mode"
-                                        checked={this.state.mode === BashWizardTheme.Dark}
+                                    <ToggleButton className="p-button-secondary"
+                                        onIcon="pi pi-circle-on"
+                                        onLabel="Dark Mode"
+                                        offIcon="pi pi-circle-off"
+                                        offLabel="Light Mode"
+                                        checked={this.state.theme === BashWizardTheme.Dark}
                                         onChange={async (e: { originalEvent: Event, value: boolean }) => {
-                                            await this.setStateAsync({ mode: e.value ? BashWizardTheme.Dark : BashWizardTheme.Light });
+                                            this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
+                                            await this.setStateAsync({ theme: this.mySettings.theme });
                                             await this.saveSettings();
                                         }}
                                         style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary" label="" icon="pi pi-question" onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")} style={{ marginRight: '.25em' }} />
+                                    <Button className="p-button-secondary"
+                                        label=""
+                                        icon="pi pi-question"
+                                        onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
+                                        style={{ marginRight: '.25em' }} />
                                 </div>
                             </Toolbar>
                             {/* this is the section for entering script name and description */}
@@ -733,10 +701,12 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 <div className="p-grid grid-global-entry">
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
-                                            <InputText id="scriptName" className="param-input" spellCheck={false}
-                                                value={this.state.scriptNameCache}
+                                            <InputText id="scriptName"
+                                                className="param-input"
+                                                spellCheck={false}
+                                                value={this.state.scriptName}
                                                 onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ scriptNameCache: e.currentTarget.value });
+                                                    await this.setStateAsync({ scriptName: e.currentTarget.value });
                                                 }}
                                                 onBlur={this.onBlurScriptName} />
                                             <label htmlFor="scriptName" className="param-label">Script Name</label>
@@ -744,27 +714,31 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                     </div>
                                     <div className="p-col-fixed column-global-entry">
                                         <span className="p-float-label">
-                                            <InputText className="param-input" id="description_input" spellCheck={false}
-                                                value={this.state.descriptionCache}
+                                            <InputText className="param-input"
+                                                id="description_input"
+                                                spellCheck={false}
+                                                value={this.state.description}
                                                 onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ descriptionCache: e.currentTarget.value });
+                                                    await this.setStateAsync({ description: e.currentTarget.value });
                                                 }}
                                                 onBlur={this.onBlurDescription} />
-                                            <label className="param-label" htmlFor="description_input" >Description</label>
+                                            <label className="param-label"
+                                                htmlFor="description_input" >Description</label>
                                         </span>
                                     </div>
                                 </div>
                             </div>
                             {/* this is the section for parameter list */}
 
-                            <ListBox className="Parameter_List" style={{ height: this.state.parameterListHeight, width: "100%" }} options={this.state.parametersCache}
+                            <ListBox className="Parameter_List"
+                                style={{ height: this.state.parameterListHeight, width: "100%" }}
+                                options={this.state.parameters}
                                 value={this.state.selectedParameter}
                                 onChange={(e: { originalEvent: Event, value: any }) => {
                                     this.setState({ selectedParameter: e.value })
                                 }}
                                 filter={false}
                                 optionLabel={"uniqueName"}
-
                                 itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
                                     return (
                                         <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
@@ -774,43 +748,23 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             />
                         </div>
                         {/* this is the section for the area below the splitter */}
-                        <TabView id="tabControl" className="tabControl" activeIndex={this.state.activeTabIndex} onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
+                        <TabView id="tabControl" className="tabControl"
+                            activeIndex={this.state.activeTabIndex}
+                            onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
                             <TabPanel header="Bash Script">
                                 <div className="divEditor">
-                                    <AceEditor ref={this.bashEditor} mode="sh" focus={this.state.bashFocus} name="aceBashEditor" theme={aceTheme} className="aceBashEditor bw-ace"
+                                    <AceEditor ref={this.bashEditor}
+                                        mode="sh"
+                                        focus={this.state.bashFocus}
+                                        name="aceBashEditor"
+                                        theme={aceTheme}
+                                        className="aceBashEditor bw-ace"
                                         showGutter={true} showPrintMargin={false}
-                                        value={this.state.bashCache}
-                                        editorProps={{ $blockScrolling: this.state.bashCache.split("\n").length + 5 }}
+                                        value={this.state.bashScript}
+                                        editorProps={{ $blockScrolling: this.state.bashScript.split("\n").length + 5 }}
                                         setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
                                         onFocus={() => console.log("bash ACE Editor onFocus")}
-                                        onChange={async (newVal: string) => {
-
-                                            //
-                                            //  we are going to queue up changes for one second, and then save them all
-                                            //
-                                            await this.setState({ bashCache: newVal });
-                                            if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "") {
-
-                                                this.updateTimerSet = true;
-                                                //
-                                                //  there are a bunch of issues with auto-saving when typing that involve the cursor moving around.  onBlur reparses the file and recreates it so that the user
-                                                //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
-                                                //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
-                                                setTimeout(async () => {
-                                                    try {
-                                                        this.savingFile = true;
-                                                        await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashCache);
-                                                    }
-                                                    catch (e) {
-                                                        console.log("Error saving file: " + e.message);
-                                                    }
-                                                    finally {
-                                                        this.updateTimerSet = false;
-                                                        this.savingFile = false;
-                                                    }
-                                                }, 1000);
-                                            }
-                                        }}
+                                        onChange={this.onChangedBashScript}
                                         onBlur={async () => {
                                             {/* on Blur we parse the bash script and update the model with the results*/ }
                                             await this.parseBashUpdateUi();
@@ -820,11 +774,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </TabPanel >
                             <TabPanel header="JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
-                                        value={this.state.jsonCache}
+                                    <AceEditor mode="sh"
+                                        name="aceJSON"
+                                        theme={aceTheme}
+                                        className="aceJSONEditor bw-ace"
+                                        showGutter={true}
+                                        showPrintMargin={false}
+                                        value={this.state.JSON}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
                                         onChange={(newVal: string) => {
-                                            this.setState({ jsonCache: newVal });
+                                            this.setState({ JSON: newVal });
                                         }}
                                         onBlur={async () => {
                                             {/* on Blur we parse the bash script and update the model with the results*/ }
@@ -844,21 +803,26 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </TabPanel >
                             <TabPanel header="Input JSON" >
                                 <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                    <AceEditor mode="sh" name="aceJSON"
+                                        theme={aceTheme}
+                                        className="aceJSONEditor bw-ace"
+                                        showGutter={true}
+                                        showPrintMargin={false}
                                         value={this.state.inputJson}
                                         readOnly={true}
                                         setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
                                     />
                                 </div>
                             </TabPanel >
-                            <TabPanel header={`Messages (${this.state.errorsCache.length})`}>
+                            <TabPanel header={`Messages (${this.state.Errors.length})`}>
                                 <div className="error-message-tab-panel">
                                     <div className="bw-error-header">
                                         <span className="bw-header-span bw-header-col1">Severity</span>
                                         <span className="bw-header-span bw-header-col2">Message</span>
                                     </div>
 
-                                    <ListBox className="bw-error-listbox" options={this.state.errorsCache}
+                                    <ListBox className="bw-error-listbox"
+                                        options={this.state.Errors}
                                         value={this.state.selectedError}
                                         onChange={(e: { originalEvent: Event, value: any }) => {
                                             if (e !== undefined && e.value !== null && e.value !== undefined) {
@@ -872,7 +836,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         optionLabel={"key"}
                                         itemTemplate={(errorMessage: IErrorMessage): JSX.Element | undefined => {
                                             return (
-                                                <BWError ErrorMessage={errorMessage} clicked={(error: BWError) => this.setState({ selectedParameter: error.Parameter })} />
+                                                <BWError ErrorMessage={errorMessage}
+                                                    clicked={(error: BWError) => this.setState({ selectedParameter: error.Parameter })} />
                                             )
                                         }}
 

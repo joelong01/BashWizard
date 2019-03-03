@@ -1,13 +1,11 @@
 import React from 'react';
 import { ParameterModel } from '../Models/ParameterModel';
-import { ParameterType, IGrowlCallback } from "../Models/commonModel"
+import { ParameterType, IGrowlCallback, IParameterUiState } from "../Models/commonModel"
 
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
 import { Button } from "primereact/button"
 import { uniqueId } from 'lodash-es';
-
-
 
 
 export interface IParameterProperties {
@@ -17,17 +15,8 @@ export interface IParameterProperties {
     GrowlCallback: IGrowlCallback;
 }
 
+interface IParameterState extends IParameterUiState {
 
-
-interface IParameterState {
-    default: string;
-    description: string;
-    longParameter: string;
-    requiresInputString: boolean;
-    requiredParameter: boolean;
-    shortParameter: string;
-    variableName: string;
-    valueIfSet: string;
     Model: ParameterModel;
     GrowlCallback: IGrowlCallback;
     type: ParameterType;
@@ -37,13 +26,11 @@ interface IParameterState {
 }
 
 export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
-    private _updatingModel: boolean;
     private refParameterForm = React.createRef<HTMLDivElement>();
     private refLongName = React.createRef<InputText>();
     constructor(props: IParameterProperties) {
         super(props);
         const id: string = uniqueId("ParameterView");
-        //  console.log("creating ParameterView: " + id);
         this.state = {
             key: id,
             label: id,
@@ -61,29 +48,29 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
             collapsed: this.props.Model.collapsed
         };
 
-        this._updatingModel = false;
+
 
     }
 
     public componentWillMount() {
-        if (this.props.Model.registerNotify !== undefined) {
-            this.props.Model.registerNotify(this.onPropertyChanged)
-        }
+        this.state.Model.onPropertyChanged.subscribe(this.onPropertyChanged);
 
     }
 
     public componentWillUnmount() {
-        if (this.props.Model.registerNotify !== undefined) {
-            this.props.Model.removeNotify(this.onPropertyChanged)
-        }
+        this.props.Model.onPropertyChanged.unsubscribe(this.onPropertyChanged);
     }
 
     get Model(): ParameterModel {
         return this.state.Model;
     }
-    private setStateAsync = (newState: object) => {
+
+
+    private setStateAsync = (name: keyof IParameterUiState, value: any): Promise<void> => {
         return new Promise((resolve, reject) => {
-            this.setState(newState, () => {
+            const o: object = {}
+            o[name] = value;
+            this.setState(o, () => {
                 resolve();
             });
 
@@ -95,109 +82,30 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  (e.g. picks a short name), then the model calls here.
     //   e.g. this flow has to work:
     //  1. user types in long-paramter and hits TAB => onBlur is called
-    //  2. this updates the model (model.longParameter) => change notifications sent out
-    //  3. the app tries to find a reasonable shortParameter and variable name
+    //  2. this updates the model (model.longParameter) => event fired to all subscribers
+    //  3. the model tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
-    public onPropertyChanged = async (model: ParameterModel, name: string) => {
-
-
-        if (!(name in this.state)) {
-            console.log(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
-            throw new Error(`ERRROR: ${name} was passed to onPropertyChanged in error.  View: ${this}`);
-        }
-
-        const obj: object = {}
-        obj[name] = model[name];
-        await this.setStateAsync(obj);
-
-        if (name === "collapsed") {
-            console.log(`setting collapsed=${model[name]} for ${model.longParameter}`)
-        }
-
-
+    public onPropertyChanged = async (model: ParameterModel, name: keyof IParameterUiState) => {
+       await this.setStateAsync(name, model[name]);
     }
 
     //
     //  when we blur we update the model with whatever the user typed
     private onBlur = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        e.bubbles = true;
-        if (this._updatingModel) {
-            return;
-        }
-        try {
-
-            this._updatingModel = true;
-            const key = e.currentTarget.id;
-            if (key !== undefined) {
-                this.state.Model[key] = e.currentTarget.value;
-            }
-        }
-        finally {
-            this._updatingModel = false;
-
+        const key = e.currentTarget.id;
+        if (key !== undefined) {
+            this.state.Model[key] = e.currentTarget.value;
         }
     }
     //
     //  for the checkboxes we update both the the model, which then gets a callback
     //  where we update the internal state, which will then call render()
     private requiresInputStringChanged = (e: { originalEvent: Event, value: any, checked: boolean }): void => {
-
-        //
-        //  if they check "requiresInputString", set valueIfSet to $2
-        //  but remember what they had before and put it back if they uncheck it.
-        if (e.checked) {
-            this.state.Model.oldValueIfSet = this.state.Model.valueIfSet;
-            if (this.state.Model.valueIfSet !== "$2") {
-                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the parameter requires input, then \"Value if Set\" must be set to $2.  Unclick to reset to previous value." });
-                this.state.Model.valueIfSet = "$2"
-
-            }
-
-        }
-        else { // not checked
-            if (this.state.Model.valueIfSet === "$2") {
-                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the parameter does not use input, then the \"Value if Set\" cannot be \"$2\". Resetting \"Value if Set\".  Unclick to reset to previous value." });
-                if (this.state.Model.oldValueIfSet === "$2") {
-                    this.state.Model.oldValueIfSet = "";
-                }
-                this.state.Model.valueIfSet = this.state.Model.oldValueIfSet;
-            }
-        }
-
-
-
-
-
-
         this.state.Model.requiresInputString = e.checked;
-        //
-        //  do not call this.setState -- this will happen in the notification
-
     }
 
     private requiredParameterChanged = async (e: { originalEvent: Event, value: any, checked: boolean }): Promise<void> => {
-
-        if (e.checked) { // if you require a parameter, you must have an empty initialization for the scripts to work
-            if (this.state.Model.default !== "") {
-                this.state.Model.oldDefault = this.state.Model.default;
-                this.state.Model.default = "";
-                this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "You cannot have a \"Required Parameter\" and a \"Default\" at the same time.  Reseting \"Default\".  Unselect to restore." });
-            }
-
-        }
-        else { // it is not required, so we can have a default
-
-            if (this.state.Model.default === "") { // if we emptied it, put it back to what it was before
-                this.state.Model.default = this.state.Model.oldDefault;
-            }
-        }
-
         this.state.Model.requiredParameter = e.checked;
-        //   console.log("required Parameter: " + this.state.Model.requiredParameter);
-
-        //
-        //  do not call this.setState -- this will happen in the notification
-
     }
     //
     //  this is for the input fields in the grid - we store the changes
@@ -212,30 +120,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
         const value: string = e.currentTarget.value;
         const obj: object = {}
         obj[key] = value;
-
-
-        if (key === "shortParameter") {
-            if (value.length > 1) {
-                this.setState({ shortParameter: e.currentTarget.value.substr(-1) }); // short parameter can only be one char long -- always put in the last one typed
-                return;
-            }
-        }
-
         this.setState(obj);
-
-        if (key === "default" && value !== "" && this.state.Model.requiredParameter === true) {
-            this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "You cannot have a \"Required Property\" and a \"Default\" at the same time.  Unchecking \"Required Parameter\"." });
-            this.state.Model.requiredParameter = false; // internal statue updated via callback
-        }
-        if (key === "valueIfSet" && value === "$2" && this.state.Model.requiresInputString === false) {
-            this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the \"Value if set\" is \"$2\", then \"Requires Input String\" must be true.  Checking \"Requires Input String\"." });
-            this.state.Model.requiresInputString = true; // internal statue updated via callback
-        }
-
-        if (key === "valueIfSet" && value !== "$2" && this.state.Model.requiresInputString === true) {
-            this.state.GrowlCallback({ life: 5000, severity: "warn", summary: "Bash Wizard", detail: "If the \"Value if set\" is not \"$2\", then \"Requires Input String\" must be false.  Unchecking \"Requires Input String\"." });
-            this.state.Model.requiresInputString = false; // internal statue updated via callback
-        }
     }
 
     //
@@ -243,7 +128,8 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  if it is a DIV or a FIELDSET, put the focus on longParameter
     public focusFirst = (e: any) => {
 
-        if (e.target.tagName === "DIV" || e.target.tagName === "FIELDSET") {
+        if ((e.target.tagName === "DIV" || e.target.tagName === "FIELDSET") && !e.target.className.includes("p-checkbox")) {
+
             const el: any = e.currentTarget.querySelector("#longParameter");
             if (el !== null) {
                 el.focus();
@@ -316,7 +202,9 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                                 <label htmlFor="requiredParameter" className="p-checkbox-label">Required Parameter: </label>
                                 <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterType.Custom} />
                             </div>
-                            <div className="p-col-fixed param-column" />
+                            <div className="p-col-fixed param-column" >
+                                <label className="p-checkbox-label" style={{visibility: "collapse"}}>{`id: ${this.state.Model.uniqueName.toString()}`}</label>
+                            </div>
 
                         </div>
                     </div>
