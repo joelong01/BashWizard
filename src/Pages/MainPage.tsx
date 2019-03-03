@@ -567,7 +567,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //  parse the JSON, but preserve any user code
     //  e.g. maybe the user is adding some parameters, but doesn't want a whole new script.
     private async parseJSONUpdateUi(): Promise<void> {
-        const currentUserCode:string = this.scriptModel.UserCode;
+        const currentUserCode: string = this.scriptModel.UserCode;
         this.scriptModel = this.createScriptModel();
         this.scriptModel.parseJSON(this.state.JSON, currentUserCode);
 
@@ -606,7 +606,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-        console.count("MainPage::render()");
+        // console.count("MainPage::render()");
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
         return (
