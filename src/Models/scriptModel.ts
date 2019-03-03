@@ -1,17 +1,20 @@
 import { ParameterModel } from "./ParameterModel";
-import { INotifyPropertyChanged, IBuiltInParameterName, ParameterType, IErrorMessage, ValidationOptions, IParseState, IScriptModelProps } from "./commonModel"
+import { IBuiltInParameterName, ParameterType, IErrorMessage, ValidationOptions, NotifyScriptModelChanged, IParameterUiState, IMainPageUiState } from "./commonModel"
 import { bashTemplates } from './bashTemplates';
 import { padEnd, trimEnd, trimStart, trim, uniqueId, camelCase } from 'lodash-es'
 import { ParseBash } from "./parseBash";
+import { ErrorModel } from './errorModel';
+import { SimpleEventDispatcher, ISimpleEvent } from 'ste-simple-events';
 
 
 
 export class ScriptModel {
 
-    constructor(app?: INotifyPropertyChanged) {
-        if (app !== undefined) {
-            this.registerNotify(app);
-        }
+    constructor() {
+
+        this._errorModel = new ErrorModel();
+
+
     }
     //
     //  this are capitalized because JSON serlizes all data and it is easier to have them named the way we want to see them
@@ -21,42 +24,62 @@ export class ScriptModel {
     private Description: string = "";;
     private Parameters: ParameterModel[] = [];
 
-    private propertyChangedNotify: INotifyPropertyChanged[] = [];
     private fireChangeNotifications: boolean = false;
     private _bashScript: string = "";
 
     private _json: string = "";;
-
+    private _errorModel: ErrorModel;
     private _userCode: string = "";;
     private _generateBashScript: boolean = true;
     private _builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel } = {};
-    private _errors: IErrorMessage[] = [];
     private _loading: boolean = false;
 
+    private propertyChangedEvent = new SimpleEventDispatcher<Partial<IMainPageUiState>>();
+
+    public generateAll = () => {
+
+
+        if (this.propertyChangedEvent !== undefined && this.generateBashScript) {
+            this.propertyChangedEvent.dispatch({
+                scriptName: this.ScriptName,
+                description: this.Description,
+                parameters: this.Parameters,
+                Errors: this._errorModel.Errors,
+                JSON: this.stringify(),
+                debugConfig: this.debugConfig,
+                inputJson: this.inputJSON,
+                bashScript: this.toBash()
+            })
+        }
+    }
+
     public updateAll = () => {
-        this.NotifyPropertyChanged("BashScript")
-        this.NotifyPropertyChanged("ScriptName")
-        this.NotifyPropertyChanged("Version")
-        this.NotifyPropertyChanged("Description")
-        this.NotifyPropertyChanged("JSON")
-        this.NotifyPropertyChanged("Parameters")
-        this.NotifyPropertyChanged("Errors")
+        if (this.propertyChangedEvent !== undefined) {
+            this.propertyChangedEvent.dispatch({
+                scriptName: this.ScriptName,
+                description: this.Description,
+                parameters: this.Parameters,
+                Errors: this._errorModel.Errors,
+                JSON: this.JSON,
+                debugConfig: this.debugConfig,
+                inputJson: this.inputJSON,
+                bashScript: this.bashScript
+            })
+        }
     }
 
-
-
-    public addError = (error: IErrorMessage): IErrorMessage[] => {
-        return this._errors = [...this._errors, error];
+    public startBatchChanges = (): void => {
+        this._generateBashScript = false;
+        this.fireChangeNotifications = false;
     }
 
-    public addErrorMessage = (sev: "warn" | "error" | "info", message: string, parameter?: ParameterModel): IErrorMessage[] => {
-        let newMsg = {} as IErrorMessage;
-        newMsg.severity = sev;
-        newMsg.message = message;
-        newMsg.Parameter = parameter;
-        newMsg.key = uniqueId("error:");
-        return this.addError(newMsg);
+    public endBatchChanges = (): void => {
+        this._generateBashScript = true;
+        this.fireChangeNotifications = true;
+        this.generateAll();
+
     }
+
 
     //
     //  make sure we don't have any errors in the parameters.  if there are we growl them and add them to the Message list.
@@ -70,21 +93,13 @@ export class ScriptModel {
 
         //
         //  putting this here means you can't do ValidateOnly and anything else
-        // tslint:disable-next-line
         if (options & ValidationOptions.ValidateOnly) {
             return newErrors.length === 0;
         }
 
-        // tslint:disable-next-line
-        if (options & ValidationOptions.ClearErrors) {
-            this._errors = [];
-        }
+        this._errorModel.replaceErrors(newErrors);
 
-        newErrors.concat(this._errors);
-
-        this._errors = newErrors;
-        this.NotifyPropertyChanged("Errors");
-        return this._errors.length === 0;
+        return newErrors.length === 0;
     }
 
     //
@@ -153,6 +168,16 @@ export class ScriptModel {
 
         return errors;
     }
+    //#region Properties
+    /**
+     * expected call flow
+     * 1. create a ScriptModel object
+     * 2. call model.onScriptModelChanged.subscribe()
+     */
+
+    public get onScriptModelChanged(): ISimpleEvent<Partial<IMainPageUiState>> {
+        return this.propertyChangedEvent.asEvent();
+    }
 
 
     get BuiltInParameters(): { [key in keyof IBuiltInParameterName]: ParameterModel } {
@@ -167,40 +192,11 @@ export class ScriptModel {
     }
 
 
-    public registerNotify(callback: INotifyPropertyChanged) {
-        console.log("RegisterNotify");
-        this.propertyChangedNotify.push(callback);
 
-    }
-    public removeNotify(callback: INotifyPropertyChanged) {
-        const index: number = this.propertyChangedNotify.indexOf(callback)
-        if (index === -1) {
-            throw new Error("ScriptModel.tsx:removeNotify(): attempt to remove a callback that wasn't in the callback array")
-        }
-        console.log("removeNotify");
-        this.propertyChangedNotify.splice(index, 1)
-
+    get ErrorModel(): ErrorModel {
+        return this._errorModel;
     }
 
-    public NotifyPropertyChanged(property: string): void {
-        if (this.fireChangeNotifications) {
-            for (const notify of this.propertyChangedNotify) {
-                notify(this, property)
-            }
-        }
-
-    }
-    //#region Properties
-    get Errors(): IErrorMessage[] {
-        return this._errors;
-    }
-    set Errors(value: IErrorMessage[]) {
-        if (value !== this._errors) {
-
-            this._errors = value;
-            this.NotifyPropertyChanged("Errors")
-        }
-    }
     get Loading(): boolean {
         return this._loading;
     }
@@ -209,6 +205,7 @@ export class ScriptModel {
         if (value !== this._loading) {
 
             this._loading = value;
+
 
         }
     }
@@ -221,7 +218,6 @@ export class ScriptModel {
         if (value !== this._userCode) {
 
             this._userCode = value;
-
         }
     }
     get generateBashScript(): boolean {
@@ -232,7 +228,6 @@ export class ScriptModel {
         if (value !== this._generateBashScript) {
 
             this._generateBashScript = value;
-
         }
     }
     get FireChangeNotifications(): boolean {
@@ -247,14 +242,14 @@ export class ScriptModel {
         }
     }
 
-    get BashScript(): string {
+    get bashScript(): string {
         return this._bashScript;
     }
 
-    set BashScript(value: string) {
+    set bashScript(value: string) {
         if (value !== this._bashScript) {
             this._bashScript = value;
-            this.NotifyPropertyChanged("BashScript");
+            this.propertyChangedEvent.dispatch({ bashScript: value });
         }
     }
 
@@ -265,9 +260,13 @@ export class ScriptModel {
     set scriptName(value: string) {
         if (value !== this.ScriptName) {
 
-            this.ScriptName = value;
-            this.NotifyPropertyChanged("ScriptName")
-
+            let name: string = value;
+            const end: string = value.slice(-3);
+            if (end !== ".sh" && end !== "") {
+                name += ".sh";
+            }
+            this.ScriptName = name;
+            this.propertyChangedEvent.dispatch({ scriptName: this.ScriptName, bashScript: this.toBash(), JSON: this.stringify() });
         }
     }
 
@@ -292,7 +291,8 @@ export class ScriptModel {
         if (value !== this.Description) {
 
             this.Description = value;
-            this.NotifyPropertyChanged("Description");
+            this.propertyChangedEvent.dispatch({ description: value, bashScript: this.toBash(), JSON: this.stringify() });
+
         }
 
     }
@@ -305,8 +305,7 @@ export class ScriptModel {
         if (value !== this.Parameters) {
 
             this.Parameters = value;
-            this.NotifyPropertyChanged("Parameters");
-
+            this.propertyChangedEvent.dispatch({ parameters: value, bashScript: this.toBash(), JSON: this.stringify(), debugConfig: this.debugConfig, inputJson: this.inputJSON });
         }
     }
 
@@ -318,7 +317,7 @@ export class ScriptModel {
         if (value !== this._json) {
 
             this._json = value;
-            this.NotifyPropertyChanged("JSON");
+            this.propertyChangedEvent.dispatch({ JSON: value });
         }
     }
 
@@ -329,18 +328,26 @@ export class ScriptModel {
     //
     //  static method that takes a bash file and then parses it to return a ScriptModel
     //
-    public static parseBash = (bash: string, notify: INotifyPropertyChanged): ScriptModel => {
-        const model: ScriptModel = ParseBash.parseBashScript(bash);
-        model.registerNotify(notify);
-        if (model.parameters.length > 0) {
-            for (let p of model.parameters) {
-                p.registerNotify(model.onPropertyChanged);
-                p.registerNotify(notify);
-                p.FireChangeNotifications = true;
+    public parseBash = (bash: string): boolean => {
+        this.FireChangeNotifications = false;
+        const parser: ParseBash = new ParseBash();
+        const ret: boolean = parser.parseBash(this, bash);
+        if (!ret) {
+            this.FireChangeNotifications = true;
+            return false;
+        }
+
+        if (this.parameters.length > 0) {
+            for (let p of this.parameters) {
+                p.FireChangeNotifications = false;
+                p.onPropertyChanged.subscribe(this.onParameterChanged);
                 p.collapsed = (p.type !== ParameterType.Custom)
+                p.FireChangeNotifications = true;
             }
         }
-        return model;
+        this.FireChangeNotifications = true;
+        this.generateAll();
+        return true;
     }
 
     //
@@ -348,7 +355,7 @@ export class ScriptModel {
     public toBash = (): string => {
 
         if (!this.generateBashScript) {
-            return this.BashScript;
+            return this.bashScript;
         }
 
         // console.count("toBash:");
@@ -511,7 +518,7 @@ export class ScriptModel {
             // put the user code where it belongs -- it might contain the functions already
 
             sbBashScript = sbBashScript.replace("__USER_CODE_1__", this.UserCode);
-            this.BashScript = sbBashScript;
+            this.bashScript = sbBashScript;
 
             return sbBashScript;
         }
@@ -567,18 +574,33 @@ export class ScriptModel {
         const jsonDoc = JSON.stringify(this, this.jsonReplacer, 4);
         return jsonDoc;
     }
+
+    private getShortName = (longname: string): string => {
+        for (const c of longname) {
+
+            if (c === "") {
+                continue;
+            }
+            if (!this.shortParameterExists(c)) {
+                return c;
+            }
+        }
+        return "";
+    }
+
     //#endregion
     //#region Parameter functions
-    public addParameter = (type: ParameterType, notify: INotifyPropertyChanged): ParameterModel[] => {
-        const parameterModel: ParameterModel = new ParameterModel();
+    public addParameter = (type: ParameterType): ParameterModel[] => {
+        const parameterModel: ParameterModel = new ParameterModel(this.ErrorModel);
+        parameterModel.FireChangeNotifications = false;
         try {
             switch (type) {
                 case ParameterType.Create:
                     if (this.BuiltInParameters.Create !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.Create, notify);
+                        this.deleteParameter(this.BuiltInParameters.Create);
                     }
                     parameterModel.longParameter = "create";
-                    parameterModel.shortParameter = "c";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
                     parameterModel.description = "calls the onCreate function in the script";
                     parameterModel.variableName = "create";
                     parameterModel.default = "false";
@@ -592,10 +614,10 @@ export class ScriptModel {
                     break;
                 case ParameterType.Verify:
                     if (this.BuiltInParameters.Verify !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.Verify, notify);
+                        this.deleteParameter(this.BuiltInParameters.Verify);
                     }
                     parameterModel.longParameter = "verify";
-                    parameterModel.shortParameter = "v";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
                     parameterModel.description = "calls the onVerify function in the script";
                     parameterModel.variableName = "verify";
                     parameterModel.default = "false";
@@ -608,10 +630,10 @@ export class ScriptModel {
                     break;
                 case ParameterType.Delete:
                     if (this.BuiltInParameters.Delete !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.Delete, notify);
+                        this.deleteParameter(this.BuiltInParameters.Delete);
                     }
                     parameterModel.longParameter = "delete";
-                    parameterModel.shortParameter = "d";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
                     parameterModel.description = "calls the onDelete function in the script";
                     parameterModel.variableName = "delete";
                     parameterModel.default = "false";
@@ -624,16 +646,16 @@ export class ScriptModel {
                     break;
                 case ParameterType.InputFileSupport:
                     if (this.BuiltInParameters.InputFileSupport !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.InputFileSupport, notify);
+                        this.deleteParameter(this.BuiltInParameters.InputFileSupport);
                     }
 
                     parameterModel.default = "";
                     parameterModel.description = "the name of the input file. pay attention to $PWD when setting this";
                     parameterModel.longParameter = "input-file";
-                    parameterModel.shortParameter = "i";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
+                    parameterModel.valueIfSet = "$2";
                     parameterModel.requiresInputString = true;
                     parameterModel.requiredParameter = false;
-                    parameterModel.valueIfSet = "$2";
                     parameterModel.variableName = "inputFile";
                     parameterModel.collapsed = true;
                     parameterModel.type = ParameterType.InputFileSupport;
@@ -641,11 +663,11 @@ export class ScriptModel {
                     break;
                 case ParameterType.LoggingSupport:
                     if (this.BuiltInParameters.LoggingSupport !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.LoggingSupport, notify);
+                        this.deleteParameter(this.BuiltInParameters.LoggingSupport);
                     }
 
                     parameterModel.longParameter = "log-directory";
-                    parameterModel.shortParameter = "l";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
                     parameterModel.description = "Directory for the log file. The log file name will be based on the script name.";
                     parameterModel.variableName = "logDirectory";
                     parameterModel.default = "\"./\"";
@@ -659,12 +681,12 @@ export class ScriptModel {
                     break;
                 case ParameterType.VerboseSupport:
                     if (this.BuiltInParameters.VerboseSupport !== undefined) {
-                        this.deleteParameter(this.BuiltInParameters.VerboseSupport, notify);
+                        this.deleteParameter(this.BuiltInParameters.VerboseSupport);
                     }
-                    parameterModel.default = "";
+                    parameterModel.default = "false";
                     parameterModel.description = "echos the parsed input variables and creates a $verbose variable to be used in user code";
                     parameterModel.longParameter = "verbose";
-                    parameterModel.shortParameter = "v";
+                    parameterModel.shortParameter = this.getShortName(parameterModel.longParameter);
                     parameterModel.requiresInputString = false;
                     parameterModel.requiredParameter = false;
                     parameterModel.valueIfSet = "true";
@@ -683,24 +705,26 @@ export class ScriptModel {
             this.parameters = [...this.parameters, parameterModel];
             this.FireChangeNotifications = true;
             parameterModel.FireChangeNotifications = true;
-            parameterModel.registerNotify(notify);  // main page updates the bash script when a parameter changes
-            parameterModel.registerNotify(this.onPropertyChanged);  // the model validates the data when it is entered
+            parameterModel.onPropertyChanged.subscribe(this.onParameterChanged);  // the model validates the data when it is entered
             this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
-            this.NotifyPropertyChanged("Parameters");
+            parameterModel.updateAll();
 
         }
 
         return this.parameters;
     }
-    public deleteParameter = (parameter: ParameterModel, notify: INotifyPropertyChanged): ParameterModel[] => {
+    public deleteParameter = (parameter: ParameterModel): void => {
         if (parameter === undefined) {
-            return this.parameters;
+            return;
 
         }
+
+        console.log(`deleting parameter: ${parameter.uniqueName}`);
+
         let array: ParameterModel[] = [...this.parameters]
         const index: number = array.indexOf(parameter)
         if (index === -1) {
-            return this.parameters;
+            return;
         }
 
         for (let builtInName in this.BuiltInParameters) {
@@ -709,19 +733,18 @@ export class ScriptModel {
                 break;
             }
         }
-        parameter.removeNotify(notify);
-        parameter.removeNotify(this.onPropertyChanged);
+
+        parameter.onPropertyChanged.unsubscribe(this.onParameterChanged);
         this.parameters.splice(index, 1);
         array.splice(index, 1);
         this.parameters = array; // keeping array immutable
         this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.AllowBlankValues);
-
-        return this.parameters;
     }
     //#endregion
 
-    public getDebugConfig = (scriptDirectory: string): string => {
+    public get debugConfig(): string {
         let sb: string = "";
+        const scriptDirectory: string = "./"
         try {
 
             let scriptName: string = this.ScriptName
@@ -765,27 +788,28 @@ export class ScriptModel {
         return JSON.stringify(obj, null, 4);
     }
 
-    public static parseJSON(json: string, notify: INotifyPropertyChanged): ScriptModel {
-        const scriptModel = new ScriptModel(notify);
-        scriptModel.FireChangeNotifications = false;
+    public parseJSON(json: string, userCode: string): boolean {
+
+        this.FireChangeNotifications = false;
+        this.UserCode = userCode;
         try {
             //
             //  do it in this order in case the json parse throws, we don't wipe any UI
             const objs = JSON.parse(json);
-            scriptModel.JSON = json;
-            scriptModel.generateBashScript = false;
+            this.JSON = json;
+            this.generateBashScript = false;
             // older version of Bash Wizard don't have a description field
             // react doesn't like it when the state moves from "undefined" to a regular value
-            scriptModel.Description = (objs.Description === undefined) ? "" : objs.Description;
-            scriptModel.ScriptName = (objs.ScriptName === undefined) ? "" : objs.ScriptName;
-            scriptModel.Version = (objs.Version === undefined) ? "" : objs.Version;
+            this.Description = (objs.Description === undefined) ? "" : objs.Description;
+            this.ScriptName = (objs.ScriptName === undefined) ? "" : objs.ScriptName;
+            this.Version = (objs.Version === undefined) ? "" : objs.Version;
 
 
             //
             //  these unserialized things are only partially ParameterModels -- create the real ones
 
             for (let p of objs.Parameters) {
-                let model: ParameterModel = new ParameterModel();
+                let model: ParameterModel = new ParameterModel(this.ErrorModel);
                 model.FireChangeNotifications = false;
                 model.default = p.Default;
                 model.description = p.Description;
@@ -798,26 +822,28 @@ export class ScriptModel {
                 model.collapsed = p.collapsed;
                 model.requiresInputString = p.RequiresInputString;
                 model.uniqueName = uniqueId("JSON_PARAMETER");
-                scriptModel.Parameters.push(model);
+                this.Parameters.push(model);
                 model.FireChangeNotifications = true;
-                model.registerNotify(scriptModel.onPropertyChanged);
-                model.registerNotify(notify);
+                model.onPropertyChanged.subscribe(this.onParameterChanged);
             }
-
+            this.generateBashScript = true;
+            this.fireChangeNotifications = true;
+            this.generateAll();
         }
         catch (e) {
-            scriptModel.Errors.push({ severity: "error", message: `Error parsing JSON: ${e}`, key: uniqueId("ERROR") });
+            this.ErrorModel.addError({ severity: "error", message: `Error parsing JSON: ${e}`, key: uniqueId("ERROR") });
+            return false;
         }
+        finally {
+            this.generateBashScript = true;
+            this.fireChangeNotifications = true;
 
-        scriptModel.generateBashScript = true;
-        scriptModel.fireChangeNotifications = true;
-
-        return scriptModel;
+        }
+        return true;
     }
-
     private _settingState: boolean = false;
-    public onPropertyChanged = async (parameter: ParameterModel, name: string) => {
-        // console.log("model::onPropertyChanged  [name=%s] [loading=%s] [setting state=%s]", name, this._loading, this._settingState);
+    private onParameterChanged = (model: ParameterModel, name: keyof IParameterUiState) => {
+        // console.log(`ScriptModel::onParameterChanged [${name}=${model[name]}] [loading=${this._loading}] [settingState=${this._settingState}]`)
         if (this._loading === true) {
             return;
         }
@@ -827,33 +853,20 @@ export class ScriptModel {
 
 
         try {
-
             this._settingState = true;
             if (name === "longParameter") {
                 //
                 //  attempt to autofill short name and variable name
                 //
 
-                if (parameter.shortParameter === "") {
-                    for (const c of parameter.longParameter) {
-
-                        if (c === "") {
-                            continue;
-                        }
-                        if (!this.shortParameterExists(c)) {
-                            parameter.shortParameter = c;
-
-                            break;
-                        }
-                    }
-                }
-                if (parameter.shortParameter === "") {
-                    this.addError({ severity: "warn", message: "Unable to auto generate a Short Parameter", Parameter: parameter, key: uniqueId("ERROR") });
+                model.shortParameter = this.getShortName(model.longParameter);
+                if (model.shortParameter === "") {
+                    this.ErrorModel.addError({ severity: "warn", message: "Unable to auto generate a Short Parameter", Parameter: model, key: uniqueId("ERROR") });
                     return;
                 }
 
-                if (parameter.variableName === "") {
-                    parameter.variableName = camelCase(parameter.longParameter);
+                if (model.variableName === "") {
+                    model.variableName = camelCase(model.longParameter);
                 }
 
             }
@@ -863,9 +876,13 @@ export class ScriptModel {
         finally {
             this._settingState = false;
             this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors | ValidationOptions.Growl); // this will append Errors and leave Warnings
+            this.generateAll();
         }
 
     }
+
+
+
     private shortParameterExists = (shortParam: string): boolean => {
         for (let parameter of this.parameters) {
             if (parameter.shortParameter === shortParam) {

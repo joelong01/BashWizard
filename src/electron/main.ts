@@ -12,17 +12,18 @@ import {
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import BashWizardMainService from "./bwMainService";
-import Cookies, { Cookie } from "universal-cookie"
+
 import fs, { FSWatcher } from "fs";
 import { IAsyncMessage } from "../Models/commonModel"
 import windowStateKeeper from "electron-window-state"
 
-const cookie: Cookie = new Cookies();
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-export let mainWindow: BrowserWindow;
-let ipcMainProxy: IpcMainProxy;
+export let g_mainWindow: BrowserWindow;
+let g_ipcMainProxy: IpcMainProxy;
+let g_bwService:BashWizardMainService;
+
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'false'; // we do not load remote content -- only load from localhost
 //
 //  this receives messages from the renderer to update the settings in the main app
@@ -32,14 +33,9 @@ ipcMain.on('synchronous-message', (event: any, arg: any): any => {
         console.log("changing autosave menu to " + Boolean(arg.autoSave));
         menu.getMenuItemById("auto-save").checked = Boolean(arg.autoSave);
         event.returnValue = true;
-
-
         return;
     }
-
     event.returnValue = false;
-
-
 })
 
 let lastFileNotificationTime: number = new Date().getTime();
@@ -111,51 +107,50 @@ function createWindow() {
         windowOptions.webPreferences = {
             webSecurity: false
         };
-        mainWindow = new BrowserWindow(windowOptions);
-        mainWindow.loadURL(process.env.ELECTRON_START_URL);
-        mainWindowState.manage(mainWindow);
+        g_mainWindow = new BrowserWindow(windowOptions);
+        g_mainWindow.loadURL(process.env.ELECTRON_START_URL);
+        mainWindowState.manage(g_mainWindow);
     } else {
         // When running in production mode or with static files use loadFile api vs. loadUrl api.
-        mainWindow = new BrowserWindow(windowOptions);
-        mainWindow.loadFile("build/index.html");
+        g_mainWindow = new BrowserWindow(windowOptions);
+        g_mainWindow.loadFile("build/index.html");
     }
 
     // Emitted when the window is closed.
-    mainWindow.on("closed", () => {
+    g_mainWindow.on("closed", () => {
         // Dereference the window object, usually you would store windows
         // in an array if your app supports multi windows, this is the time
         // when you should delete the corresponding element.
-        mainWindow.destroy();
+        g_mainWindow.destroy();
     });
 
-    registerContextMenu(mainWindow);
+    registerContextMenu(g_mainWindow);
 
 
-    createMainMenu(mainWindow, false);
+    createMainMenu(g_mainWindow, false);
 
 
-    ipcMainProxy = new IpcMainProxy(ipcMain, mainWindow);
-    ipcMainProxy.register("RELOAD_APP", onReloadApp);
-    ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
-
-    const bwService = new BashWizardMainService(mainWindow);
-    ipcMainProxy.registerProxy("BashWizardMainService", bwService);
+    g_ipcMainProxy = new IpcMainProxy(ipcMain, g_mainWindow);
+    g_ipcMainProxy.register("RELOAD_APP", onReloadApp);
+    g_ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
+    g_bwService = new BashWizardMainService(g_mainWindow);
+    g_ipcMainProxy.registerProxy("BashWizardMainService", g_bwService);
 }
 
 function onReloadApp() {
-    mainWindow.reload();
+    g_mainWindow.reload();
     return true;
 }
 
 export async function onToggleDevTools(sender: any, show: boolean) {
     if (show) {
-        mainWindow.webContents.openDevTools();
+        g_mainWindow.webContents.openDevTools();
     } else {
-        mainWindow.webContents.closeDevTools();
+        g_mainWindow.webContents.closeDevTools();
     }
     console.log(`OnToggleDevTools [show=${show}`)
-    const bwService = new BashWizardMainService(mainWindow);
-    await bwService.updateSetting("showDebugger", show);
+
+    await g_bwService.updateSetting({showDebugger: show});
 
 }
 
@@ -168,9 +163,9 @@ function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): 
         message: 'Create a new Script?',
     };
 
-    dialog.showMessageBox(mainWindow, options, (response: number) => {
+    dialog.showMessageBox(g_mainWindow, options, (response: number) => {
         if (response === 0) {
-            mainWindow.webContents.send('on-new', '');
+            g_mainWindow.webContents.send('on-new', '');
         }
     });
 
@@ -178,38 +173,38 @@ function onNew(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): 
 
 async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
 
-    const fs: BashWizardMainService = new BashWizardMainService(mainWindow);
-    const fileName: string = await fs.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
+
+    const fileName: string = await g_bwService.getOpenFile("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
 
     if (fileName !== null && fileName !== "") {
-        const contents: string = await fs.readText(fileName);
+        const contents: string = await g_bwService.readText(fileName);
         const msg: string[] = [];
         msg.push(fileName);
         msg.push(contents);
-        mainWindow.webContents.send('on-open', msg);
+        g_mainWindow.webContents.send('on-open', msg);
     }
 }
 
 function onSave(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-save', "");
+    g_mainWindow.webContents.send('on-save', "");
 }
 
 function onSaveAs(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-save-as', "");
+    g_mainWindow.webContents.send('on-save-as', "");
 }
 function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-setting-changed', { autoSave: menuItem.checked });
+    g_mainWindow.webContents.send('on-setting-changed', { autoSave: menuItem.checked });
 
 }
 function onAlwaysLoadChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
-    mainWindow.webContents.send('on-setting-changed', { alwaysLoadChangedFile: menuItem.checked });
+    g_mainWindow.webContents.send('on-setting-changed', { autoUpdate: menuItem.checked });
 
 }
 async function checkedShowDebugger(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
     const show:boolean = menuItem.checked;
     console.log(`OnToggleDevTools [show=${show}`)
-    const bwService = new BashWizardMainService(mainWindow);
-    await bwService.updateSetting("showDebugger", show);
+
+    await g_bwService.updateSetting({showDebugger: show});
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
@@ -356,7 +351,7 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
     // On OS X it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (mainWindow === null) {
+    if (g_mainWindow === null) {
         createWindow();
     }
 });

@@ -1,6 +1,6 @@
 #!/bin/bash
 #---------- see https://github.com/joelong01/Bash-Wizard----------------
-# bashWizard version 0.909
+# bashWizard version 0.90911
 # this will make the error text stand out in red - if you are looking at these errors/warnings in the log file
 # you can use cat <logFile> to see the text in color.
 function echoError() {

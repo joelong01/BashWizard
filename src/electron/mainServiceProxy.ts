@@ -75,8 +75,17 @@ export class BashWizardMainServiceProxy implements IBashWizardMainService {
     /**
      * saves the file "bashWizardConfig.json" in the same directory as the .EXE and returns their values
      */
-    updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void> {
-        return IpcRendererProxy.send(`${PROXY_NAME}:updateSetting`, [key, value]);
+    updateSetting(setting: Partial<IBashWizardSettings>): Promise<void> {
+        return IpcRendererProxy.send(`${PROXY_NAME}:updateSetting`, [setting]);
+
+    }
+
+
+    /**
+     * saves the file "bashWizardConfig.json" in the same directory as the .EXE and returns their values
+     */
+    setWindowTitle(name:string): Promise<void> {
+        return IpcRendererProxy.send(`${PROXY_NAME}:setWindowTitle`, [name]);
 
     }
 

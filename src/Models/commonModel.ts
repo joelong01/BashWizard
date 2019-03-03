@@ -2,6 +2,38 @@ import { GrowlMessage } from 'primereact/growl';
 import { ParameterModel } from "./ParameterModel";
 import { FileFilter } from "electron";
 
+
+//
+//  the state parameters should be the same names as the properties in the scriptModel
+
+export interface IMainPageUiState {
+    JSON: string;
+    bashScript: string;
+    Errors: IErrorMessage[];
+    scriptName: string;
+    description: string;
+    parameters: ParameterModel[];
+    inputJson: string;
+    debugConfig: string;
+
+
+}
+
+export interface IParameterUiState {
+    default: string;
+    description: string;
+    longParameter: string;
+    requiresInputString: boolean;
+    requiredParameter: boolean;
+    shortParameter: string;
+    variableName: string;
+    valueIfSet: string;
+    collapsed: boolean;
+    type: ParameterType;
+}
+
+export type NotifyScriptModelChanged = <K extends keyof IMainPageUiState>(newState: Pick<IMainPageUiState, K> | IMainPageUiState ) => void;
+
 export interface IBashWizardMainService {
 
     readText(filePath: string): Promise<string>;
@@ -10,7 +42,8 @@ export interface IBashWizardMainService {
     getSaveFile(title: string, extensions: FileFilter[]): Promise<string>;
     getAndApplySettings(): Promise<IBashWizardSettings>;
     saveAndApplySettings(settings: IBashWizardSettings): Promise<void>;
-    updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void>;
+    updateSetting(setting: Partial<IBashWizardSettings>): Promise<void>;
+    setWindowTitle(title: string): Promise<void>;
 }
 
 export enum BashWizardTheme {
@@ -25,7 +58,7 @@ export interface IBashWizardSettings {
     showDebugger: boolean;
 }
 
-export type INotifyPropertyChanged = (parameter: object, property: string) => void;
+
 export type IGrowlCallback = (message: GrowlMessage | GrowlMessage[]) => void;
 export interface IErrorMessage {
     severity: "warn" | "error" | "info";
@@ -71,10 +104,6 @@ export interface IParseState {
     ParseErrors: IErrorMessage[];
     UserCode: string;
     builtInParameters: { [key in keyof IBuiltInParameterName]: ParameterModel }; // this isn't in the this.state object because it doesn't affect the UI
-}
-
-export interface IScriptModelProps {
-    notify: INotifyPropertyChanged;
 }
 
 export interface IAsyncMessage {

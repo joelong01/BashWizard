@@ -1,5 +1,8 @@
 import { uniqueId } from 'lodash-es';
-import {INotifyPropertyChanged, ParameterType} from "./commonModel"
+import { ParameterType, IParameterUiState } from "./commonModel"
+import { ErrorModel } from './errorModel';
+
+import { EventDispatcher, IEvent } from 'ste-events';
 
 
 
@@ -8,7 +11,9 @@ import {INotifyPropertyChanged, ParameterType} from "./commonModel"
 //  these need to JSON.stringify the same as https://github.com/joelong01/Bash-Wizard/blob/master/bashGeneratorSharedModels/ParameterItem.cs
 export class ParameterModel {
 
-
+    constructor(errorModel: ErrorModel) {
+        this.ErrorModel = errorModel; // publish here, no subscribe
+    }
     private Default: string = "";
     private Description: string = "";
     private LongParameter: string = "";
@@ -19,9 +24,19 @@ export class ParameterModel {
     private ValueIfSet: string = "";
     private Type: ParameterType = ParameterType.Custom;
     private fireChangeNotifications: boolean = false;
-    private _collapsed: boolean = false;
+    private Collapsed: boolean = false;
+    private ErrorModel: ErrorModel;
+    private propertyChangedEvent = new EventDispatcher<ParameterModel, keyof IParameterUiState>();
+    private modelUpdate: boolean = false; // an update that is initiated inside the model
 
-    private propertyChangedNotify: INotifyPropertyChanged[] = []
+
+    public get onPropertyChanged(): IEvent<ParameterModel, keyof IParameterUiState> {
+        return this.propertyChangedEvent.asEvent();
+    }
+    public signal(changedProperty: keyof IParameterUiState) {
+        this.propertyChangedEvent.dispatch(this, changedProperty);
+    }
+
 
     public updateAll = () => {
         this.NotifyPropertyChanged("default")
@@ -30,6 +45,7 @@ export class ParameterModel {
         this.NotifyPropertyChanged("shortParameter")
         this.NotifyPropertyChanged("variableName")
         this.NotifyPropertyChanged("valueIfSet")
+
     }
 
     //
@@ -49,13 +65,13 @@ export class ParameterModel {
     }
 
     get collapsed(): boolean {
-        return this._collapsed;
+        return this.Collapsed;
     }
 
     set collapsed(value: boolean) {
-        if (value !== this._collapsed) {
+        if (value !== this.Collapsed) {
 
-            this._collapsed = value;
+            this.Collapsed = value;
             this.NotifyPropertyChanged("collapsed");
         }
     }
@@ -106,23 +122,10 @@ export class ParameterModel {
         return undefined;
     }
 
-    public registerNotify(callback: INotifyPropertyChanged) {
-        this.propertyChangedNotify.push(callback);
 
-    }
-    public removeNotify(callback: INotifyPropertyChanged) {
-        const index: number = this.propertyChangedNotify.indexOf(callback)
-        if (index === -1) {
-            throw new Error("ParameterModel.ts:removeNotify(): attempt to remove a callback that wasn't in the callback array")
-        }
-        this.propertyChangedNotify.splice(index, 1)
-
-    }
-    public NotifyPropertyChanged(property: string): void {
+    public NotifyPropertyChanged(property: keyof IParameterUiState): void {
         if (this.fireChangeNotifications) {
-            for (const notify of this.propertyChangedNotify) {
-                notify(this, property)
-            }
+            this.signal(property);
         }
 
     }
@@ -137,6 +140,12 @@ export class ParameterModel {
         if (value !== this.Default) {
 
             this.Default = value;
+            if (this.requiredParameter && !this.modelUpdate) {
+                this.modelUpdate = true;
+                this.sendErrorMessage("You cannot have a \"Required Property\" and a \"Default\" at the same time.  Unchecking \"Required Parameter\".");
+                this.requiredParameter = false;
+                this.modelUpdate = false;
+            }
             this.NotifyPropertyChanged("default")
         }
     }
@@ -150,7 +159,6 @@ export class ParameterModel {
 
             this._uniqueName = value;
             // uniqueName does not need to be propagated
-            // this.NotifyPropertyChanged("uniqueName")
         }
     }
 
@@ -179,9 +187,16 @@ export class ParameterModel {
     }
     public set shortParameter(value: string) {
         if (value !== this.ShortParameter) {
-            this.ShortParameter = value.replace(new RegExp(/^-{1}/, "i"), "");
+            this.ShortParameter = value.substr(-1); // short parameter can only be one char long -- always put in the last one typed
+            this.ShortParameter = this.ShortParameter.replace(new RegExp(/^-{1}/, "i"), "");// no whitespace - variable names
             this.ShortParameter = this.ShortParameter.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("shortParameter")
+        }
+    }
+
+    private sendErrorMessage = (message: string): void => {
+        if (this.FireChangeNotifications) {
+            this.ErrorModel.addErrorMessage("info", message);
         }
     }
 
@@ -191,6 +206,28 @@ export class ParameterModel {
     public set requiresInputString(value: boolean) {
         if (value !== this.RequiresInputString) {
             this.RequiresInputString = value;
+            if (!this.modelUpdate) {
+                this.modelUpdate = true;
+                if (this.RequiresInputString) {
+                    this.oldValueIfSet = this.valueIfSet;
+                    if (this.valueIfSet !== "$2") {
+                        this.sendErrorMessage(`If the parameter requires input, then \"Value if Set\" must be set to $2 instead of ${this.valueIfSet}  Unclick to reset to previous value.`);
+                        this.valueIfSet = "$2"
+                    }
+                }
+                else { // not checked
+                    if (this.valueIfSet === "$2") {
+                        this.sendErrorMessage("If the parameter does not use input, then the \"Value if Set\" cannot be \"$2\". Resetting \"Value if Set\".  Unclick to reset to previous value.");
+                        if (this.oldValueIfSet === "$2") {
+                            this.oldValueIfSet = "";
+                        }
+                        this.valueIfSet = this.oldValueIfSet;
+                    }
+                }
+
+                this.modelUpdate = false;
+            }
+
             this.NotifyPropertyChanged("requiresInputString")
         }
     }
@@ -201,6 +238,23 @@ export class ParameterModel {
     public set requiredParameter(value: boolean) {
         if (value !== this.RequiredParameter) {
             this.RequiredParameter = value;
+            if (!this.modelUpdate) {
+                this.modelUpdate = true;
+                if (this.RequiredParameter) { // if you require a parameter, you must have an empty initialization for the scripts to work
+                    if (this.default !== "") {
+                        this.oldDefault = this.default;
+                        this.default = "";
+                        this.sendErrorMessage("You cannot have a \"Required Parameter\" and a \"Default\" at the same time.  Reseting \"Default\".  Unselect to restore.");
+                    }
+                }
+                else { // it is not required, so we can have a default
+
+                    if (this.default === "") { // if we emptied it, put it back to what it was before
+                        this.default = this.oldDefault;
+                    }
+                }
+                this.modelUpdate = false;
+            }
             this.NotifyPropertyChanged("requiredParameter")
         }
     }
@@ -211,7 +265,6 @@ export class ParameterModel {
 
     set variableName(value: string) {
         if (value !== this.VariableName) {
-            this.VariableName = value;
             this.VariableName = value.replace(new RegExp(/\s/, "g"), ""); // no whitespace in variable names
             this.NotifyPropertyChanged("variableName")
         }
@@ -223,6 +276,19 @@ export class ParameterModel {
     set valueIfSet(value: string) {
         if (value !== this.ValueIfSet) {
             this.ValueIfSet = value;
+            if (!this.modelUpdate) {
+                this.modelUpdate = true;
+                if (value === "$2" && this.requiresInputString === false) {
+                    this.sendErrorMessage("If the \"Value if set\" is \"$2\", then \"Requires Input String\" must be true.  Checking \"Requires Input String\".");
+                    this.requiresInputString = true;
+                }
+                if (value !== "$2" && this.requiresInputString === true) {
+                    this.sendErrorMessage("If the \"Value if set\" is not \"$2\", then \"Requires Input String\" must be false.  Unchecking \"Requires Input String\".");
+                    this.requiresInputString = false;
+                }
+                this.modelUpdate = false;
+            }
+
             this.NotifyPropertyChanged("valueIfSet")
         }
     }

@@ -26,6 +26,7 @@
         "react-splitter-layout": "^3.0.1",
         "react-transition-group": "^2.5.3",
         "shortid": "^2.2.14",
+        "strongly-typed-events": "^1.4.10",
         "universal-cookie": "^3.0.7"
     },
     "eslintConfig": {

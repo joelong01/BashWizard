@@ -12,9 +12,12 @@ export class BashWizardMainService implements IBashWizardMainService {
     constructor(private browserWindow: BrowserWindow) {
         this.myBrowserWindow = browserWindow;
     }
-    public setWindowTitle(name: string) {
+    public setWindowTitle(name: string):Promise<void> {
+        return new Promise<void>((resolve,reject) => {
+            this.myBrowserWindow.setTitle("Bash Wizard: " + name);
+            resolve();
+        });
 
-        this.myBrowserWindow.setTitle("Bash Wizard: " + name);
     }
     public getOpenFile(dlgTitle: string, exts: FileFilter[]): Promise<string> {
         return new Promise<string>((resolve, reject) => {
@@ -137,6 +140,7 @@ export class BashWizardMainService implements IBashWizardMainService {
     public saveAndApplySettings(settings: IBashWizardSettings): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             try {
+                console.log(`saving settings: ${JSON.stringify(settings)}`)
                 this.applySettings(settings);
                 fs.writeFileSync(this.getSettingFileName(), JSON.stringify(settings));
                 resolve();
@@ -147,13 +151,13 @@ export class BashWizardMainService implements IBashWizardMainService {
         });
     }
 
-    public updateSetting(key: keyof IBashWizardSettings, value: any): Promise<void> {
+    public updateSetting(setting: Partial<IBashWizardSettings>): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             try {
-                console.log(`updating setting: [${key}=${value}]`);
+                console.log(`updating setting: ${JSON.stringify(setting)}`);
                 const settings: IBashWizardSettings = await this.getAndApplySettings()
-                settings[key] = value;
-                fs.writeFileSync(this.getSettingFileName(), JSON.stringify(settings));
+                const newStettings = Object.assign(settings, setting);
+                fs.writeFileSync(this.getSettingFileName(), JSON.stringify(newStettings));
                 resolve();
             }
             catch (e) {
@@ -163,8 +167,6 @@ export class BashWizardMainService implements IBashWizardMainService {
     }
 
     private applySettings(settings: IBashWizardSettings): void {
-
-        console.log("applying settings: %s", JSON.stringify(settings))
         if (settings === undefined) {
             return;
         }
@@ -176,7 +178,7 @@ export class BashWizardMainService implements IBashWizardMainService {
 
         menu.getMenuItemById("auto-save").checked = settings.autoSave;
         menu.getMenuItemById("auto-load").checked = settings.autoUpdate;
-        menu.getMenuItemById("toggle-dev-tools").checked = settings.showDebugger;
+        menu.getMenuItemById("toggle-dev-tools").checked = (settings.showDebugger == true);
         if (settings.showDebugger) {
             this.myBrowserWindow.webContents.openDevTools();
         } else {
