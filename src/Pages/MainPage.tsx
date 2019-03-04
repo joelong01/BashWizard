@@ -634,7 +634,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                     <button className="bw-button p-component"
                                         onClick={this.onNew}>
                                         <img className="bw-button-icon"
-                                            srcSet={svgFiles.FileNewBlack} />
+                                            srcSet={this.state.theme === BashWizardTheme.Dark ? svgFiles.FileNew : svgFiles.FileNewBlack} />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
                                     <Button className="p-button-secondary"
