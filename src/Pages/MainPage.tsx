@@ -24,6 +24,7 @@ import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashW
 import { ScriptModel } from "../Models/scriptModel";
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
+import ReactSVG from "react-svg";
 import "../Themes/dark/theme.css"
 
 
@@ -56,7 +57,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private bashEditor: React.RefObject<AceEditor> = React.createRef<AceEditor>();
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
-    private mainServiceProxy: BashWizardMainServiceProxy = new BashWizardMainServiceProxy();
+    private mainServiceProxy: BashWizardMainServiceProxy | null;
     private scriptModel: ScriptModel;
     private currentWatchFile: string = "";
     private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
@@ -69,7 +70,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     constructor(props: {}) {
         super(props);
-
+        console.clear();
         //
         //  send settings to the main app to update the browser UI
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
@@ -77,6 +78,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             //
             //  can't do promises in the ctor, so use the .then construct.  note that this api
             //  never rejects the promise, so we will get back default settings on any error
+            this.mainServiceProxy = new BashWizardMainServiceProxy();
             this.mainServiceProxy.getAndApplySettings().then((settings: IBashWizardSettings) => {
                 this.mySettings = settings;
             })
@@ -253,13 +255,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
         try {
             this.savingFile = true; // we don't want notifications of changes that we started
             if (this.state.SaveFileName === "" || alwaysPrompt === true) {
-                const newFileName = await this.mainServiceProxy.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+                const newFileName = await this.mainServiceProxy!.getSaveFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
                 if (newFileName === "" || newFileName === undefined) {
                     return;
                 }
                 await this.setStateAsync({ SaveFileName: newFileName });
             }
-            await this.mainServiceProxy.writeText(this.state.SaveFileName, this.scriptModel.bashScript);
+            await this.mainServiceProxy!.writeText(this.state.SaveFileName, this.scriptModel.bashScript);
             this.watchFile(); // this has to be done after .writeText, otherwise the file might not exist
         }
         catch (error) {
@@ -277,9 +279,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private onLoadFile = async (): Promise<boolean> => {
 
         try {
-            const newFileName = await this.mainServiceProxy.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
+            const newFileName = await this.mainServiceProxy!.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
             if (newFileName !== "" || newFileName !== undefined) {
-                const contents: string = await this.mainServiceProxy.readText(newFileName);
+                const contents: string = await this.mainServiceProxy!.readText(newFileName);
                 if (contents !== "") {
                     const ret: boolean = await this.setBashScript(newFileName, contents); // calls setState on the filenmae
                     if (ret) {
@@ -344,7 +346,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             }
         }
         if (response.answer === YesNo.Yes) {
-            const contents: string = await this.mainServiceProxy.readText(filename);
+            const contents: string = await this.mainServiceProxy!.readText(filename);
             if (contents !== "") {
                 await this.setBashScript(filename, contents);
             }
@@ -395,7 +397,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     };
     private saveSettings = async (): Promise<void> => {
-        if (this.electronEnabled) {
+        if (this.electronEnabled && this.mainServiceProxy !== null) {
             await this.mainServiceProxy.saveAndApplySettings(this.mySettings);
         }
         else {
@@ -448,9 +450,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
 
         this.scriptModel = this.createScriptModel();
-
-        if (this.mainServiceProxy !== null) {
-            this.mainServiceProxy.setWindowTitle("");
+        if (this.electronEnabled) {
+            if (this.mainServiceProxy !== null) {
+                this.mainServiceProxy.setWindowTitle("");
+            }
         }
         this.setState({
             JSON: "",
@@ -582,32 +585,36 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //  we are going to queue up changes for one second, and then save them all
         //
         await this.setStateAsync({ bashScript: value });
-        if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "") {
+        if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "" && this.mainServiceProxy !== null) {
 
             this.updateTimerSet = true;
             //
             //  there are a bunch of issues with auto-saving when typing that involve the cursor moving around.  onBlur reparses the file and recreates it so that the user
             //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
             //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
-            setTimeout(async () => {
-                try {
-                    this.savingFile = true;
-                    await this.mainServiceProxy.writeText(this.state.SaveFileName, this.state.bashScript);
-                }
-                catch (e) {
-                    console.log("Error saving file: " + e.message);
-                }
-                finally {
-                    this.updateTimerSet = false;
-                    this.savingFile = false;
-                }
-            }, 1000);
+
+                setTimeout(async () => {
+                    try {
+                        this.savingFile = true;
+                        await this.mainServiceProxy!.writeText(this.state.SaveFileName, this.state.bashScript);
+
+                    }
+                    catch (e) {
+                        console.log("Error saving file: " + e.message);
+                    }
+                    finally {
+                        this.updateTimerSet = false;
+                        this.savingFile = false;
+                    }
+                }, 1000);
         }
     }
 
     public render = () => {
         // console.count("MainPage::render()");
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
+        //
+        //  this does the theming
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
         return (
             <div className="outer-container"
@@ -633,8 +640,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 <div className="p-toolbar-group-left">
                                     <button className="bw-button p-component"
                                         onClick={this.onNew}>
-                                        <img className="bw-button-icon"
-                                            srcSet={this.state.theme === BashWizardTheme.Dark ? svgFiles.FileNew : svgFiles.FileNewBlack} />
+                                        <ReactSVG className="svg-file-new"
+                                            src={require("../Images/fileNew.svg")}
+                                        />
                                         <span className="bw-button-span p-component">New Script</span>
                                     </button>
                                     <Button className="p-button-secondary"

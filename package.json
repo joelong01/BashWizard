@@ -24,6 +24,7 @@
         "react-dom": "^16.8.2",
         "react-split-pane": "^0.1.85",
         "react-splitter-layout": "^3.0.1",
+        "react-svg": "^7.2.7",
         "react-transition-group": "^2.5.3",
         "shortid": "^2.2.14",
         "strongly-typed-events": "^1.4.10",
