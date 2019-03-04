@@ -41,21 +41,24 @@ body.dark .p-menuitem:hover {
     color: var(--button-hover-fg-color) ;
 }
 
-body.dark.bw-button {
+body.dark .bw-button {
     background-color: var(--button-bg-color);
     color: var(--main-fg-color);
     border-color: var(--button-border-color);
 }
 
-body.dark.bw-button-icon {
-    color: var(--main-fg-color);
+
+
+body.dark .svg-file-new path {
+    stroke:var(--main-fg-color);
+    fill: var(--main-fg-color);
+    stroke-width: 0.75px;
 }
 
-body.dark.bw-button:hover {
+body.dark .bw-button:hover {
     background-color: var(--button-hover-bg-color);
     color: var(--button-hover-fg-color);
     border-color: var(--button-hover-border-color);
-    ;
 }
 
 body.dark .Resizer.horizontal {

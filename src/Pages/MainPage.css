@@ -139,12 +139,19 @@
     left: 1.75em;
 }
 
-.bw-button-icon {
+.svg-file-new svg {
     position: absolute;
     top: 50%;
     margin-top: -0.5em;
-    height: 1.25em;
+    height: 1.0em;
+    width: 1.0em;
     margin-left: 0.25em;
+}
+
+.svg-file-new path {
+    stroke: #333333;;
+    fill: #333333;;
+    stroke-width: 0.75px;
 }
 
 .p-menuitem-link[target="separator"] {
