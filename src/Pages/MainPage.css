@@ -5,24 +5,21 @@
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
-.outer-container {
-    margin-left: 0px;
-    position: absolute;
-    display: flex;
+.DIV_Top {
     width: 100%;
-    height: 100%;
-    top: 0em;
-    overflow: hidden;
-    min-width: 20em;
+    margin: 0.25em 0.25em 0.25em 0.25em;
+    position: relative;
+    background-color: transparent;
+
+}
+.Parameter_List {
+    overflow: auto;
+    position: relative;
+    margin: 0em;
+    flex: 1;
+    /* height: calc(100% - 115px); Height calculated in this.handleResize() and set as style in code*/
 }
 
-.DIV_LayoutRoot {
-    position: relative;
-    float: right;
-    width: 100%;
-    height: 100%;
-    top: 0em;
-}
 
 /* the div that holds the form for entering description and scriptname */
 
@@ -77,21 +74,9 @@
     border-radius: 3px;
 }
 
-.DIV_Top {
-    width: 100%;
-    margin: 0.25em 0.25em 0.25em 0.25em;
-    position: relative;
-    background-color: transparent;
-    left: 0px;
-    top: 0px;
-}
 
-.Parameter_List {
-    overflow: auto;
-    position: relative;
-    margin: 0em;
-    /* height: calc(100% - 115px); Height calculated in this.handleResize() and set as style in code*/
-}
+
+
 
 /* this is the little dot next to the light/dark mode.
    it makes the circle dark when in dark mode */
@@ -101,7 +86,9 @@
 }
 
 /*  the New Button on the Toolbar */
-
+.bw-button > div {
+    display: inline-block;
+}
 .bw-button {
     margin-top: 0px;
     color: #333333;
@@ -110,14 +97,12 @@
     vertical-align: middle;
     transition: background-color 0.2s, box-shadow 0.2s;
     border-radius: 3px;
-    display: inline-block;
     position: relative;
+    box-sizing: unset;
     padding: 0;
     text-decoration: none !important;
     cursor: pointer;
-    text-align: left;
-    zoom: 1;
-    overflow: visible;
+    text-align: center;
     width: 7.5em;
     height: 2.5em;
     margin-right: 0.25em;
@@ -136,16 +121,21 @@
     position: relative;
     font-size: 1em;
     font-weight: normal;
-    left: 1.75em;
+    padding-left: .25em;
+    line-height: 1em;
+
+}
+.svg-file-new {
+    margin-top: 0.125em;
 }
 
 .svg-file-new svg {
-    position: absolute;
-    top: 50%;
-    margin-top: -0.5em;
+    position: relative;
     height: 1.0em;
     width: 1.0em;
-    margin-left: 0.25em;
+
+
+
 }
 
 .svg-file-new path {

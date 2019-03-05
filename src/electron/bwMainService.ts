@@ -178,12 +178,12 @@ export class BashWizardMainService implements IBashWizardMainService {
 
         menu.getMenuItemById("auto-save").checked = settings.autoSave;
         menu.getMenuItemById("auto-load").checked = settings.autoUpdate;
-        menu.getMenuItemById("toggle-dev-tools").checked = (settings.showDebugger == true);
+      /*   menu.getMenuItemById("toggle-dev-tools").checked = (settings.showDebugger == true);
         if (settings.showDebugger) {
             this.myBrowserWindow.webContents.openDevTools();
         } else {
             this.myBrowserWindow.webContents.closeDevTools();
-        }
+        } */
     }
 
 

@@ -96,7 +96,7 @@ function createWindow() {
         'y': mainWindowState.y,
         'width': mainWindowState.width,
         'height': mainWindowState.height,
-        frame: true,
+        frame: false,
         darkTheme: true
     };
     // Create the browser window.
@@ -214,10 +214,10 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
         {
             label: "File", accelerator: "Alt+F",
             submenu: [
-                { label: "New...", accelerator: "CommandOrControl+N", click: onNew },
-                { label: "Open...", accelerator: "CommandOrControl+O", click: onOpen },
-                { label: "Save", accelerator: "CommandOrControl+s", click: onSave },
-                { label: "Save As...", accelerator: "CommandOrControl+SHIFT+s", click: onSaveAs },
+                { label: "New...", accelerator: "CmdOrCtrl+N", click: onNew },
+                { label: "Open...", accelerator: "CmdOrCtrl+O", click: onOpen },
+                { label: "Save", accelerator: "CmdOrCtrl+s", click: onSave },
+                { label: "Save As...", accelerator: "CmdOrCtrl+SHIFT+s", click: onSaveAs },
                 { type: "separator" },
                 { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
                 { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked },
@@ -232,7 +232,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             submenu: [
                 { role: "reload" },
                 { role: "forcereload" },
-                { label: "Show Dev Tools", type:"checkbox", checked:false,  click: checkedShowDebugger, id: "toggle-dev-tools", accelerator: "F12"  },
+                { role: "toggledevtools", label: "Show Dev Tools", type:"checkbox", checked:false,  accelerator: "F12"  },
                 { type: "separator" },
                 { role: "resetzoom" },
                 { role: "zoomin" },
