@@ -6,7 +6,7 @@ import "./index.css"
 import "./Components/ParameterView.css"
 import "./Components/bwError.css"
 import "./Pages/MainPage.css"
-
+import "@fortawesome/fontawesome-free/css/all.css"
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import registerServiceWorker from './registerServiceWorker';

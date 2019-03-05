@@ -25,7 +25,9 @@ import { ScriptModel } from "../Models/scriptModel";
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
+import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
+import { callbackify } from 'util';
 
 
 //
@@ -390,7 +392,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
         const geDiv: HTMLElement | null = window.document.getElementById("div-global-entry");
         if (toolbar !== null && geDiv !== null) {
-            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
+            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter 
             const htStyle: string = `calc(100% - ${height}px)`
             this.setState({ parameterListHeight: htStyle });
         }
@@ -486,6 +488,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     private selectParameter = async (toSelect: ParameterModel): Promise<void> => {
         await this.setStateAsync({ selectedParameter: toSelect })
+
     }
 
     //
@@ -593,20 +596,20 @@ class MainPage extends React.Component<{}, IMainPageState> {
             //  can't change the BashWizard generated code -- but this makes the cursor "jump around" when the user is typing, which is annoying.  so instead we just save
             //  only the bash file as the user types -- and then in onBlur() we reparse and fix anything that broke.
 
-                setTimeout(async () => {
-                    try {
-                        this.savingFile = true;
-                        await this.mainServiceProxy!.writeText(this.state.SaveFileName, this.state.bashScript);
+            setTimeout(async () => {
+                try {
+                    this.savingFile = true;
+                    await this.mainServiceProxy!.writeText(this.state.SaveFileName, this.state.bashScript);
 
-                    }
-                    catch (e) {
-                        console.log("Error saving file: " + e.message);
-                    }
-                    finally {
-                        this.updateTimerSet = false;
-                        this.savingFile = false;
-                    }
-                }, 1000);
+                }
+                catch (e) {
+                    console.log("Error saving file: " + e.message);
+                }
+                finally {
+                    this.updateTimerSet = false;
+                    this.savingFile = false;
+                }
+            }, 1000);
         }
     }
 
@@ -617,245 +620,250 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //  this does the theming
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
         return (
-            <div className="outer-container"
-                id="outer-container"
-                style={{ opacity: this.state.Loaded ? 1.0 : 0.01 }}>
-                <Growl ref={this.growl} />
-                {
-                    (this.state.showYesNoDialog) ? <YesNoDialog ref={this.yesNoDlg} /> : ""
-                }
-                <div id="DIV_LayoutRoot" className="DIV_LayoutRoot">
-                    <SplitPane className="Splitter"
-                        split="horizontal"
-                        defaultSize={"50%"}
-                        minSize={"8em"}
-                        onDragFinished={(newSize: number) => {
-                            //
-                            //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
-                            window.dispatchEvent(new Event('resize'));
+            <SplitPane className="Splitter"
+                split="horizontal"
+                defaultSize={"50%"}
+                minSize={"8em"}
+                onDragFinished={(newSize: number) => {
+                    //
+                    //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
+                    window.dispatchEvent(new Event('resize'));
 
-                        }} >
-                        <div className="DIV_Top">
-                            <Toolbar className="toolbar" id="toolbar">
-                                <div className="p-toolbar-group-left">
-                                    <button className="bw-button p-component"
-                                        onClick={this.onNew}>
-                                        <ReactSVG className="svg-file-new"
-                                            src={require("../Images/fileNew.svg")}
-                                        />
-                                        <span className="bw-button-span p-component">New Script</span>
-                                    </button>
-                                    <Button className="p-button-secondary"
-                                        disabled={this.state.activeTabIndex > 1}
-                                        label="Refresh" icon="pi pi-refresh"
-                                        onClick={this.onRefresh}
-                                        style={{ marginRight: '.25em' }} />
-                                    <SplitButton model={this.state.ButtonModel}
-                                        menuStyle={{ width: "16.5em" }}
-                                        className="p-button-secondary"
-                                        label="Add Parameter" icon="pi pi-plus"
-                                        onClick={() => this.scriptModel.addParameter(ParameterType.Custom)}
-                                        style={{ marginRight: '.25em' }}
+                }} >
+
+                <div className="DIV_Top">
+                    {(this.electronEnabled) &&
+                        <TitleBar
+                            icon={<ReactSVG className="svg-file-new"
+                                src={require("../Images/vsCodeDebugInfo.svg")}
+                            />}
+                            title={"Bash Wizard " + this.state.SaveFileName}>
+                        </TitleBar>
+                    }
+                    <div className="top-non-titlebar">
+                        <Growl ref={this.growl} />
+                        {
+                            this.state.showYesNoDialog && <YesNoDialog ref={this.yesNoDlg} />
+                        }
+                        <Toolbar className="toolbar" id="toolbar">
+                            <div className="p-toolbar-group-left">
+                                <button className="bw-button p-component"
+                                    onClick={this.onNew}>
+                                    <ReactSVG className="svg-file-new"
+                                        src={require("../Images/fileNew.svg")}
                                     />
-                                    <Button className="p-button-secondary"
-                                        disabled={this.state.parameters.length === 0}
-                                        label="Delete Parameter"
-                                        icon="pi pi-trash"
-                                        onClick={async () => await this.onDeleteParameter()}
-                                        style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary"
-                                        disabled={this.state.parameters.length === 0}
-                                        label="Expand All"
-                                        icon="pi pi-eye"
-                                        onClick={() => {
-                                            this.scriptModel.generateBashScript = false;
-                                            this.state.parameters.map((p) => p.collapsed = false);
-                                            this.scriptModel.generateBashScript = true;
-                                        }}
-                                        style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary"
-                                        disabled={this.state.parameters.length === 0}
-                                        label="Collapse All" icon="pi pi-eye-slash"
-                                        onClick={() => {
-                                            this.scriptModel.generateBashScript = false;
-                                            this.state.parameters.map((p) => p.collapsed = true);
-                                            this.scriptModel.generateBashScript = true;
-                                        }}
-                                        style={{ marginRight: '.25em' }} />
+                                    <span className="bw-button-span p-component">New Script</span>
+                                </button>
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.activeTabIndex > 1}
+                                    label="Refresh" icon="pi pi-refresh"
+                                    onClick={this.onRefresh}
+                                    style={{ marginRight: '.25em' }} />
+                                <SplitButton model={this.state.ButtonModel}
+                                    menuStyle={{ width: "16.5em" }}
+                                    className="p-button-secondary"
+                                    label="Add Parameter" icon="pi pi-plus"
+                                    onClick={() => this.scriptModel.addParameter(ParameterType.Custom)}
+                                    style={{ marginRight: '.25em' }}
+                                />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Delete Parameter"
+                                    icon="pi pi-trash"
+                                    onClick={async () => await this.onDeleteParameter()}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Expand All"
+                                    icon="pi pi-eye"
+                                    onClick={() => {
+                                        this.scriptModel.generateBashScript = false;
+                                        this.state.parameters.map((p) => p.collapsed = false);
+                                        this.scriptModel.generateBashScript = true;
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Collapse All" icon="pi pi-eye-slash"
+                                    onClick={() => {
+                                        this.scriptModel.generateBashScript = false;
+                                        this.state.parameters.map((p) => p.collapsed = true);
+                                        this.scriptModel.generateBashScript = true;
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
 
+                            </div>
+                            <div className="p-toolbar-group-right">
+                                <ToggleButton className="p-button-secondary"
+                                    onIcon="pi pi-circle-on"
+                                    onLabel="Dark Mode"
+                                    offIcon="pi pi-circle-off"
+                                    offLabel="Light Mode"
+                                    checked={this.state.theme === BashWizardTheme.Dark}
+                                    onChange={async (e: { originalEvent: Event, value: boolean }) => {
+                                        this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
+                                        await this.setStateAsync({ theme: this.mySettings.theme });
+                                        await this.saveSettings();
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    label=""
+                                    icon="pi pi-question"
+                                    onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
+                                    style={{ marginRight: '.25em' }} />
+                            </div>
+                        </Toolbar>
+                        {/* this is the section for entering script name and description */}
+                        <div className="DIV_globalEntry" id="div-global-entry">
+                            <div className="p-grid grid-global-entry">
+                                <div className="p-col-fixed column-global-entry">
+                                    <span className="p-float-label">
+                                        <InputText id="scriptName"
+                                            className="param-input"
+                                            spellCheck={false}
+                                            value={this.state.scriptName}
+                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                await this.setStateAsync({ scriptName: e.currentTarget.value });
+                                            }}
+                                            onBlur={this.onBlurScriptName} />
+                                        <label htmlFor="scriptName" className="param-label">Script Name</label>
+                                    </span>
                                 </div>
-                                <div className="p-toolbar-group-right">
-                                    <ToggleButton className="p-button-secondary"
-                                        onIcon="pi pi-circle-on"
-                                        onLabel="Dark Mode"
-                                        offIcon="pi pi-circle-off"
-                                        offLabel="Light Mode"
-                                        checked={this.state.theme === BashWizardTheme.Dark}
-                                        onChange={async (e: { originalEvent: Event, value: boolean }) => {
-                                            this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
-                                            await this.setStateAsync({ theme: this.mySettings.theme });
-                                            await this.saveSettings();
-                                        }}
-                                        style={{ marginRight: '.25em' }} />
-                                    <Button className="p-button-secondary"
-                                        label=""
-                                        icon="pi pi-question"
-                                        onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
-                                        style={{ marginRight: '.25em' }} />
-                                </div>
-                            </Toolbar>
-                            {/* this is the section for entering script name and description */}
-                            <div className="DIV_globalEntry" id="div-global-entry">
-                                <div className="p-grid grid-global-entry">
-                                    <div className="p-col-fixed column-global-entry">
-                                        <span className="p-float-label">
-                                            <InputText id="scriptName"
-                                                className="param-input"
-                                                spellCheck={false}
-                                                value={this.state.scriptName}
-                                                onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ scriptName: e.currentTarget.value });
-                                                }}
-                                                onBlur={this.onBlurScriptName} />
-                                            <label htmlFor="scriptName" className="param-label">Script Name</label>
-                                        </span>
-                                    </div>
-                                    <div className="p-col-fixed column-global-entry">
-                                        <span className="p-float-label">
-                                            <InputText className="param-input"
-                                                id="description_input"
-                                                spellCheck={false}
-                                                value={this.state.description}
-                                                onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                    await this.setStateAsync({ description: e.currentTarget.value });
-                                                }}
-                                                onBlur={this.onBlurDescription} />
-                                            <label className="param-label"
-                                                htmlFor="description_input" >Description</label>
-                                        </span>
-                                    </div>
+                                <div className="p-col-fixed column-global-entry">
+                                    <span className="p-float-label">
+                                        <InputText className="param-input"
+                                            id="description_input"
+                                            spellCheck={false}
+                                            value={this.state.description}
+                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                await this.setStateAsync({ description: e.currentTarget.value });
+                                            }}
+                                            onBlur={this.onBlurDescription} />
+                                        <label className="param-label"
+                                            htmlFor="description_input" >Description</label>
+                                    </span>
                                 </div>
                             </div>
-                            {/* this is the section for parameter list */}
+                        </div>
+                        {/* this is the section for parameter list */}
 
-                            <ListBox className="Parameter_List"
-                                style={{ height: this.state.parameterListHeight, width: "100%" }}
-                                options={this.state.parameters}
-                                value={this.state.selectedParameter}
-                                onChange={(e: { originalEvent: Event, value: any }) => {
-                                    this.setState({ selectedParameter: e.value })
+                        <ListBox className="Parameter_List"
+                            style={{ height: this.state.parameterListHeight, width: "100%" }}
+                            options={this.state.parameters}
+                            value={this.state.selectedParameter}
+                            onChange={(e: { originalEvent: Event, value: any }) => {
+                                this.setState({ selectedParameter: e.value })
+                            }}
+                            filter={false}
+                            optionLabel={"uniqueName"}
+                            itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
+                                return (
+                                    <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
+                                );
+                            }}
+
+                        />
+                    </div>
+                </div>
+                {/* this is the section for the area below the splitter */}
+                <TabView id="tabControl" className="tabControl"
+                    activeIndex={this.state.activeTabIndex}
+                    onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
+                    <TabPanel header="Bash Script">
+                        <div className="divEditor">
+                            <AceEditor ref={this.bashEditor}
+                                mode="sh"
+                                focus={this.state.bashFocus}
+                                name="aceBashEditor"
+                                theme={aceTheme}
+                                className="aceBashEditor bw-ace"
+                                showGutter={true} showPrintMargin={false}
+                                value={this.state.bashScript}
+                                editorProps={{ $blockScrolling: this.state.bashScript.split("\n").length + 5 }}
+                                setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
+                                onFocus={() => console.log("bash ACE Editor onFocus")}
+                                onChange={this.onChangedBashScript}
+                                onBlur={async () => {
+                                    {/* on Blur we parse the bash script and update the model with the results*/ }
+                                    await this.parseBashUpdateUi();
                                 }}
+                            />
+                        </div>
+                    </TabPanel >
+                    <TabPanel header="JSON" >
+                        <div className="divEditor">
+                            <AceEditor mode="sh"
+                                name="aceJSON"
+                                theme={aceTheme}
+                                className="aceJSONEditor bw-ace"
+                                showGutter={true}
+                                showPrintMargin={false}
+                                value={this.state.JSON}
+                                setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
+                                onChange={(newVal: string) => {
+                                    this.setState({ JSON: newVal });
+                                }}
+                                onBlur={async () => {
+                                    {/* on Blur we parse the bash script and update the model with the results*/ }
+                                    await this.parseJSONUpdateUi();
+                                }}
+                            />
+                        </div>
+                    </TabPanel >
+                    <TabPanel header="VS Code Debug Config" >
+                        <div className="divEditor">
+                            <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
+                                value={this.state.debugConfig}
+                                readOnly={true}
+                                setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
+                            />
+                        </div>
+                    </TabPanel >
+                    <TabPanel header="Input JSON" >
+                        <div className="divEditor">
+                            <AceEditor mode="sh" name="aceJSON"
+                                theme={aceTheme}
+                                className="aceJSONEditor bw-ace"
+                                showGutter={true}
+                                showPrintMargin={false}
+                                value={this.state.inputJson}
+                                readOnly={true}
+                                setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
+                            />
+                        </div>
+                    </TabPanel >
+                    <TabPanel header={`Messages (${this.state.Errors.length})`}>
+                        <div className="error-message-tab-panel">
+                            <div className="bw-error-header">
+                                <span className="bw-header-span bw-header-col1">Severity</span>
+                                <span className="bw-header-span bw-header-col2">Message</span>
+                            </div>
+
+                            <ListBox className="bw-error-listbox"
+                                options={this.state.Errors}
+                                value={this.state.selectedError}
+                                onChange={(e: { originalEvent: Event, value: any }) => {
+                                    if (e !== undefined && e.value !== null && e.value !== undefined) {
+                                        const error: BWError = e.value;
+                                        this.setState({ selectedError: e.value, selectedParameter: error.Parameter })
+                                    }
+
+                                }}
+
                                 filter={false}
-                                optionLabel={"uniqueName"}
-                                itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
+                                optionLabel={"key"}
+                                itemTemplate={(errorMessage: IErrorMessage): JSX.Element | undefined => {
                                     return (
-                                        <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
-                                    );
+                                        <BWError ErrorMessage={errorMessage}
+                                            clicked={(error: BWError) => this.setState({ selectedParameter: error.Parameter })} />
+                                    )
                                 }}
 
                             />
                         </div>
-                        {/* this is the section for the area below the splitter */}
-                        <TabView id="tabControl" className="tabControl"
-                            activeIndex={this.state.activeTabIndex}
-                            onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
-                            <TabPanel header="Bash Script">
-                                <div className="divEditor">
-                                    <AceEditor ref={this.bashEditor}
-                                        mode="sh"
-                                        focus={this.state.bashFocus}
-                                        name="aceBashEditor"
-                                        theme={aceTheme}
-                                        className="aceBashEditor bw-ace"
-                                        showGutter={true} showPrintMargin={false}
-                                        value={this.state.bashScript}
-                                        editorProps={{ $blockScrolling: this.state.bashScript.split("\n").length + 5 }}
-                                        setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
-                                        onFocus={() => console.log("bash ACE Editor onFocus")}
-                                        onChange={this.onChangedBashScript}
-                                        onBlur={async () => {
-                                            {/* on Blur we parse the bash script and update the model with the results*/ }
-                                            await this.parseBashUpdateUi();
-                                        }}
-                                    />
-                                </div>
-                            </TabPanel >
-                            <TabPanel header="JSON" >
-                                <div className="divEditor">
-                                    <AceEditor mode="sh"
-                                        name="aceJSON"
-                                        theme={aceTheme}
-                                        className="aceJSONEditor bw-ace"
-                                        showGutter={true}
-                                        showPrintMargin={false}
-                                        value={this.state.JSON}
-                                        setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
-                                        onChange={(newVal: string) => {
-                                            this.setState({ JSON: newVal });
-                                        }}
-                                        onBlur={async () => {
-                                            {/* on Blur we parse the bash script and update the model with the results*/ }
-                                            await this.parseJSONUpdateUi();
-                                        }}
-                                    />
-                                </div>
-                            </TabPanel >
-                            <TabPanel header="VS Code Debug Config" >
-                                <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON" theme={aceTheme} className="aceJSONEditor bw-ace" showGutter={true} showPrintMargin={false}
-                                        value={this.state.debugConfig}
-                                        readOnly={true}
-                                        setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
-                                    />
-                                </div>
-                            </TabPanel >
-                            <TabPanel header="Input JSON" >
-                                <div className="divEditor">
-                                    <AceEditor mode="sh" name="aceJSON"
-                                        theme={aceTheme}
-                                        className="aceJSONEditor bw-ace"
-                                        showGutter={true}
-                                        showPrintMargin={false}
-                                        value={this.state.inputJson}
-                                        readOnly={true}
-                                        setOptions={{ autoScrollEditorIntoView: false, highlightActiveLine: true, fontSize: 14 }}
-                                    />
-                                </div>
-                            </TabPanel >
-                            <TabPanel header={`Messages (${this.state.Errors.length})`}>
-                                <div className="error-message-tab-panel">
-                                    <div className="bw-error-header">
-                                        <span className="bw-header-span bw-header-col1">Severity</span>
-                                        <span className="bw-header-span bw-header-col2">Message</span>
-                                    </div>
-
-                                    <ListBox className="bw-error-listbox"
-                                        options={this.state.Errors}
-                                        value={this.state.selectedError}
-                                        onChange={(e: { originalEvent: Event, value: any }) => {
-                                            if (e !== undefined && e.value !== null && e.value !== undefined) {
-                                                const error: BWError = e.value;
-                                                this.setState({ selectedError: e.value, selectedParameter: error.Parameter })
-                                            }
-
-                                        }}
-
-                                        filter={false}
-                                        optionLabel={"key"}
-                                        itemTemplate={(errorMessage: IErrorMessage): JSX.Element | undefined => {
-                                            return (
-                                                <BWError ErrorMessage={errorMessage}
-                                                    clicked={(error: BWError) => this.setState({ selectedParameter: error.Parameter })} />
-                                            )
-                                        }}
-
-                                    />
-                                </div>
-                            </TabPanel >
-                        </TabView>
-                    </SplitPane>
-                </div >
-            </div >
+                    </TabPanel >
+                </TabView>
+            </SplitPane>
         );
     }
 }

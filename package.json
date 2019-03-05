@@ -6,6 +6,7 @@
     "homepage": ".",
     "dependencies": {
         "@babel/runtime": "^7.3.1",
+        "@fortawesome/fontawesome-free": "^5.7.2",
         "@types/lodash-es": "^4.17.2",
         "@types/shortid": "0.0.29",
         "classnames": "^2.2.6",
@@ -19,6 +20,7 @@
         "primeflex": "^1.0.0-rc.1",
         "primeicons": "^1.0.0",
         "primereact": "^3.1.0",
+        "rc-menu": "^7.4.21",
         "react": "^16.8.2",
         "react-ace": "^6.4.0",
         "react-dom": "^16.8.2",
@@ -64,6 +66,7 @@
         "electron": "^4.0.5",
         "electron-builder": "^20.38.5",
         "foreman": "^3.0.1",
+        "node-sass": "^4.11.0",
         "react-scripts": "^2.1.5",
         "ts-loader": "^5.3.0",
         "tslint": "^5.11.0",
