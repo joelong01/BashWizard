@@ -1,7 +1,8 @@
 @import '../Themes/vott-theme.scss';
 
 .title-bar {
-    color: #ccc;
+    color: $main-fg-color;
+    background-color:$main-bg-color;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -39,14 +40,14 @@
         }
 
         li {
-            color: #ccc;
+            color:$main-fg-color;
             list-style: none;
             padding: 0.4em 0.8em;
             display: inline-block;
 
             &:hover {
                 color: #fff;
-                background-color: $lighter-2;
+                background-color: $button-hover-bg-color;
                 cursor: pointer;
             }
         }
@@ -71,7 +72,7 @@
     }
 
     &-accelerator {
-        color: #999;
+        color: $button-fg-color;
         text-align: right;
         margin-left: 2em;
     }
@@ -88,7 +89,7 @@
   margin-bottom: 0;
   padding-left: 0; // Override default ul/ol
   list-style: none;
-  color: #ccc;
+  color:$main-fg-color;
   font-size: 12px;
 
   &-hidden, &-submenu-hidden {
@@ -108,25 +109,28 @@
   }
 
   &-item-group-title {
-    color: #999;
+    color: $button-fg-color;
     line-height: 1.5;
     padding: 8px 10px;
   }
 
   &-item-active,
   &-submenu-active > &-submenu-title {
-    background-color: $lighter-2;
+    background-color: $button-hover-bg-color;
+    color: $button-hover-fg-color;
     cursor: pointer;
+
+
   }
 
   &-item-selected {
-    background-color: $lighter-3;
+    background-color: red;
     // fix chrome render bug
     transform: translateZ(0);
   }
 
   &-submenu-selected {
-    background-color: $lighter-3;
+    background-color:red;
   }
 
   & > li {
@@ -160,23 +164,23 @@
     overflow: hidden;
     padding: 0;
     line-height: 0;
-    border-top: 1px solid $lighter-2;
-    border-bottom: 1px solid $darker-2;
+    border-top: 1px solid $main-fg-color;
+    border-bottom: 1px solid $main-fg-color;
   }
 
   &-submenu {
     &-popup {
       position: absolute;
-      background-color: #272B30;
-      border: 1px solid $darker-1;
-      box-shadow: 0px 2px 10px $darker-5;
+      background-color: $main-bg-color;
+      border: 1px solid $toolbar-bg-color;
+      box-shadow: 0px 2px 5px $toolbar-bg-color;
 
       .submenu-title-wrapper {
         padding-right: 20px;
       }
     }
     > .rc-menu {
-      background-color: $lighter-1;
+      background-color: $main-bg-color;
     }
   }
 

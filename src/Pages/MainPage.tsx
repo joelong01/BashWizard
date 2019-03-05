@@ -27,6 +27,7 @@ import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
 import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
+import { callbackify } from 'util';
 
 
 //
@@ -391,7 +392,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
         const geDiv: HTMLElement | null = window.document.getElementById("div-global-entry");
         if (toolbar !== null && geDiv !== null) {
-            let height = (toolbar.clientHeight + geDiv.clientHeight + 39); // where 5 is the margin between the list and the splitter +34 for the captionmenu
+            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter 
             const htStyle: string = `calc(100% - ${height}px)`
             this.setState({ parameterListHeight: htStyle });
         }
@@ -639,128 +640,130 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             title={"Bash Wizard " + this.state.SaveFileName}>
                         </TitleBar>
                     }
-                    <Growl ref={this.growl} />
-                    {
-                        this.state.showYesNoDialog && <YesNoDialog ref={this.yesNoDlg} />
-                    }
-                    <Toolbar className="toolbar" id="toolbar">
-                        <div className="p-toolbar-group-left">
-                            <button className="bw-button p-component"
-                                onClick={this.onNew}>
-                                <ReactSVG className="svg-file-new"
-                                    src={require("../Images/fileNew.svg")}
+                    <div className="top-non-titlebar">
+                        <Growl ref={this.growl} />
+                        {
+                            this.state.showYesNoDialog && <YesNoDialog ref={this.yesNoDlg} />
+                        }
+                        <Toolbar className="toolbar" id="toolbar">
+                            <div className="p-toolbar-group-left">
+                                <button className="bw-button p-component"
+                                    onClick={this.onNew}>
+                                    <ReactSVG className="svg-file-new"
+                                        src={require("../Images/fileNew.svg")}
+                                    />
+                                    <span className="bw-button-span p-component">New Script</span>
+                                </button>
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.activeTabIndex > 1}
+                                    label="Refresh" icon="pi pi-refresh"
+                                    onClick={this.onRefresh}
+                                    style={{ marginRight: '.25em' }} />
+                                <SplitButton model={this.state.ButtonModel}
+                                    menuStyle={{ width: "16.5em" }}
+                                    className="p-button-secondary"
+                                    label="Add Parameter" icon="pi pi-plus"
+                                    onClick={() => this.scriptModel.addParameter(ParameterType.Custom)}
+                                    style={{ marginRight: '.25em' }}
                                 />
-                                <span className="bw-button-span p-component">New Script</span>
-                            </button>
-                            <Button className="p-button-secondary"
-                                disabled={this.state.activeTabIndex > 1}
-                                label="Refresh" icon="pi pi-refresh"
-                                onClick={this.onRefresh}
-                                style={{ marginRight: '.25em' }} />
-                            <SplitButton model={this.state.ButtonModel}
-                                menuStyle={{ width: "16.5em" }}
-                                className="p-button-secondary"
-                                label="Add Parameter" icon="pi pi-plus"
-                                onClick={() => this.scriptModel.addParameter(ParameterType.Custom)}
-                                style={{ marginRight: '.25em' }}
-                            />
-                            <Button className="p-button-secondary"
-                                disabled={this.state.parameters.length === 0}
-                                label="Delete Parameter"
-                                icon="pi pi-trash"
-                                onClick={async () => await this.onDeleteParameter()}
-                                style={{ marginRight: '.25em' }} />
-                            <Button className="p-button-secondary"
-                                disabled={this.state.parameters.length === 0}
-                                label="Expand All"
-                                icon="pi pi-eye"
-                                onClick={() => {
-                                    this.scriptModel.generateBashScript = false;
-                                    this.state.parameters.map((p) => p.collapsed = false);
-                                    this.scriptModel.generateBashScript = true;
-                                }}
-                                style={{ marginRight: '.25em' }} />
-                            <Button className="p-button-secondary"
-                                disabled={this.state.parameters.length === 0}
-                                label="Collapse All" icon="pi pi-eye-slash"
-                                onClick={() => {
-                                    this.scriptModel.generateBashScript = false;
-                                    this.state.parameters.map((p) => p.collapsed = true);
-                                    this.scriptModel.generateBashScript = true;
-                                }}
-                                style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Delete Parameter"
+                                    icon="pi pi-trash"
+                                    onClick={async () => await this.onDeleteParameter()}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Expand All"
+                                    icon="pi pi-eye"
+                                    onClick={() => {
+                                        this.scriptModel.generateBashScript = false;
+                                        this.state.parameters.map((p) => p.collapsed = false);
+                                        this.scriptModel.generateBashScript = true;
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    disabled={this.state.parameters.length === 0}
+                                    label="Collapse All" icon="pi pi-eye-slash"
+                                    onClick={() => {
+                                        this.scriptModel.generateBashScript = false;
+                                        this.state.parameters.map((p) => p.collapsed = true);
+                                        this.scriptModel.generateBashScript = true;
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
 
-                        </div>
-                        <div className="p-toolbar-group-right">
-                            <ToggleButton className="p-button-secondary"
-                                onIcon="pi pi-circle-on"
-                                onLabel="Dark Mode"
-                                offIcon="pi pi-circle-off"
-                                offLabel="Light Mode"
-                                checked={this.state.theme === BashWizardTheme.Dark}
-                                onChange={async (e: { originalEvent: Event, value: boolean }) => {
-                                    this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
-                                    await this.setStateAsync({ theme: this.mySettings.theme });
-                                    await this.saveSettings();
-                                }}
-                                style={{ marginRight: '.25em' }} />
-                            <Button className="p-button-secondary"
-                                label=""
-                                icon="pi pi-question"
-                                onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
-                                style={{ marginRight: '.25em' }} />
-                        </div>
-                    </Toolbar>
-                    {/* this is the section for entering script name and description */}
-                    <div className="DIV_globalEntry" id="div-global-entry">
-                        <div className="p-grid grid-global-entry">
-                            <div className="p-col-fixed column-global-entry">
-                                <span className="p-float-label">
-                                    <InputText id="scriptName"
-                                        className="param-input"
-                                        spellCheck={false}
-                                        value={this.state.scriptName}
-                                        onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                            await this.setStateAsync({ scriptName: e.currentTarget.value });
-                                        }}
-                                        onBlur={this.onBlurScriptName} />
-                                    <label htmlFor="scriptName" className="param-label">Script Name</label>
-                                </span>
                             </div>
-                            <div className="p-col-fixed column-global-entry">
-                                <span className="p-float-label">
-                                    <InputText className="param-input"
-                                        id="description_input"
-                                        spellCheck={false}
-                                        value={this.state.description}
-                                        onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                            await this.setStateAsync({ description: e.currentTarget.value });
-                                        }}
-                                        onBlur={this.onBlurDescription} />
-                                    <label className="param-label"
-                                        htmlFor="description_input" >Description</label>
-                                </span>
+                            <div className="p-toolbar-group-right">
+                                <ToggleButton className="p-button-secondary"
+                                    onIcon="pi pi-circle-on"
+                                    onLabel="Dark Mode"
+                                    offIcon="pi pi-circle-off"
+                                    offLabel="Light Mode"
+                                    checked={this.state.theme === BashWizardTheme.Dark}
+                                    onChange={async (e: { originalEvent: Event, value: boolean }) => {
+                                        this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
+                                        await this.setStateAsync({ theme: this.mySettings.theme });
+                                        await this.saveSettings();
+                                    }}
+                                    style={{ marginRight: '.25em' }} />
+                                <Button className="p-button-secondary"
+                                    label=""
+                                    icon="pi pi-question"
+                                    onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
+                                    style={{ marginRight: '.25em' }} />
+                            </div>
+                        </Toolbar>
+                        {/* this is the section for entering script name and description */}
+                        <div className="DIV_globalEntry" id="div-global-entry">
+                            <div className="p-grid grid-global-entry">
+                                <div className="p-col-fixed column-global-entry">
+                                    <span className="p-float-label">
+                                        <InputText id="scriptName"
+                                            className="param-input"
+                                            spellCheck={false}
+                                            value={this.state.scriptName}
+                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                await this.setStateAsync({ scriptName: e.currentTarget.value });
+                                            }}
+                                            onBlur={this.onBlurScriptName} />
+                                        <label htmlFor="scriptName" className="param-label">Script Name</label>
+                                    </span>
+                                </div>
+                                <div className="p-col-fixed column-global-entry">
+                                    <span className="p-float-label">
+                                        <InputText className="param-input"
+                                            id="description_input"
+                                            spellCheck={false}
+                                            value={this.state.description}
+                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
+                                                await this.setStateAsync({ description: e.currentTarget.value });
+                                            }}
+                                            onBlur={this.onBlurDescription} />
+                                        <label className="param-label"
+                                            htmlFor="description_input" >Description</label>
+                                    </span>
+                                </div>
                             </div>
                         </div>
+                        {/* this is the section for parameter list */}
+
+                        <ListBox className="Parameter_List"
+                            style={{ height: this.state.parameterListHeight, width: "100%" }}
+                            options={this.state.parameters}
+                            value={this.state.selectedParameter}
+                            onChange={(e: { originalEvent: Event, value: any }) => {
+                                this.setState({ selectedParameter: e.value })
+                            }}
+                            filter={false}
+                            optionLabel={"uniqueName"}
+                            itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
+                                return (
+                                    <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
+                                );
+                            }}
+
+                        />
                     </div>
-                    {/* this is the section for parameter list */}
-
-                    <ListBox className="Parameter_List"
-                        style={{ height: this.state.parameterListHeight, width: "100%" }}
-                        options={this.state.parameters}
-                        value={this.state.selectedParameter}
-                        onChange={(e: { originalEvent: Event, value: any }) => {
-                            this.setState({ selectedParameter: e.value })
-                        }}
-                        filter={false}
-                        optionLabel={"uniqueName"}
-                        itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
-                            return (
-                                <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
-                            );
-                        }}
-
-                    />
                 </div>
                 {/* this is the section for the area below the splitter */}
                 <TabView id="tabControl" className="tabControl"

@@ -7,13 +7,46 @@ $lighter-1: rgba(255,255,255,0.05);
 $lighter-2: rgba(255,255,255,0.10);
 $lighter-3: rgba(255,255,255,0.15);
 $lighter-4: rgba(255,255,255,0.20);
-$lighter-5: rgba(255,255,255,0.35);
+$lighter-5: rgba(165, 165, 165, 1);;
 
 $darker-1: rgba(0,0,0,0.05);
 $darker-2: rgba(0,0,0,0.10);
 $darker-3: rgba(0,0,0,0.15);
 $darker-4: rgba(0,0,0,0.20);
 $darker-5: rgba(0,0,0,0.25);
+
+$main-bg-color: #353535;
+$main-fg-color: #a5a5a5;
+$main-border-color: #a5a5a5;
+$highlight-fg-color: #e5e5e5;
+$highlight-border-color: #e5e5e5;
+$toolbar-bg-color: #252525;
+$toolbar-border-color: #a5a5a5;
+$button-bg-color: #252525;
+$button-fg-color: #a5a5a5;
+$button-border-color: #252525;
+$button-hover-bg-color: #555555;
+$button-hover-fg-color: #e5e5e5;
+$button-hover-border-color: #e5e5e5;
+$button-selected-fg-color: #e5e5e5;
+$button-selected-bg-color: #454545;
+$button-selected-border-color: #e5e5e5;
+
+
+/*
+$lighter-1: rgba(165, 165, 165, 1);
+$lighter-2: rgba(165, 165, 165, 1);
+$lighter-3: rgba(165, 165, 165, 1);
+$lighter-4: rgba(165, 165, 165, 1);
+$lighter-5: rgba(229, 229, 229, 1);
+
+$darker-1:rgba(85, 85, 85, 1);
+$darker-2:rgba(69, 69, 69, 1);
+$darker-3:rgba(53, 53, 53, 1);
+$darker-4:rgba(37, 37, 37, 1);
+$darker-5:rgba(0, 0, 0, 1);
+*/
+
 
 .bg-darker-1 {
     background-color: $darker-1;

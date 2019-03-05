@@ -7,11 +7,17 @@
 
 .DIV_Top {
     width: 100%;
-    margin: 0.25em 0.25em 0.25em 0.25em;
+    margin: 0em;
     position: relative;
     background-color: transparent;
 
 }
+.top-non-titlebar{
+    margin: 0em .25em .25em .25em;
+    width: calc( 100% - .5em);
+    height: calc(100% - 34px);
+}
+
 .Parameter_List {
     overflow: auto;
     position: relative;

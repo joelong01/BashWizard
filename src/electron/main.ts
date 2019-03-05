@@ -216,8 +216,8 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             submenu: [
                 { label: "New...", accelerator: "CmdOrCtrl+N", click: onNew },
                 { label: "Open...", accelerator: "CmdOrCtrl+O", click: onOpen },
-                { label: "Save", accelerator: "CmdOrCtrl+s", click: onSave },
-                { label: "Save As...", accelerator: "CmdOrCtrl+SHIFT+s", click: onSaveAs },
+                { label: "Save", accelerator: "CmdOrCtrl+S", click: onSave },
+                { label: "Save As...", accelerator: "CmdOrCtrl+SHIFT+S", click: onSaveAs },
                 { type: "separator" },
                 { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
                 { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked },
