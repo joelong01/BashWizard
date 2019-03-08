@@ -96,7 +96,7 @@ function createWindow() {
         'y': mainWindowState.y,
         'width': mainWindowState.width,
         'height': mainWindowState.height,
-        frame: false,
+        frame: process.platform === "darwin",
         darkTheme: true
     };
     // Create the browser window.

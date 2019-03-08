@@ -48,7 +48,13 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         }
     }
 
-    public render() {
+    public render(): JSX.Element | null {
+        if (this.remote){
+            if (this.remote.process.platform === "darwin"){
+                // dont render on a mac
+                return null;
+            }
+        }
         return (
             <div className="title-bar bg-lighter-3">
                 <div className="title-bar-icon">
@@ -112,7 +118,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         switch (itemType) {
             case "submenu":
                 return (
-                    <SubMenu title={menuItem.label} key={menuItem.label} popupOffset={[0, 0]}>
+                    <SubMenu title={menuItem.label} key={menuItem.label} popupOffset={[0, 0]} triggerSubMenuAction={"hover"}>
                         {this.renderMenu(menuItem["submenu"])}
                     </SubMenu>
                 );
