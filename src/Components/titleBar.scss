@@ -6,8 +6,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    min-height: 34px;
-    height: 34px;
+
 
     &-menu {
         flex: 1;
@@ -28,11 +27,6 @@
     }
 
     &-controls {
-        display: flex;
-        flex: 1;
-        flex-direction: row;
-        justify-content: flex-end;
-
 
         ul {
             margin: 0;
