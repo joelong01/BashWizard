@@ -73,47 +73,47 @@ body.dark .menu-item {
 }
 
 body.dark .rc-menu {
-  color:$main-fg-color;
+    color:$main-fg-color;
 
 
-  &-item-group-title {
-    color: $button-fg-color;
-  }
-
-  &-item-active,
-  &-submenu-active > &-submenu-title {
-    background-color: $button-hover-bg-color;
-    color: $button-hover-fg-color;
-  }
-
-  &-item-selected {
-    background-color: red;
-}
-
-  &-submenu-selected {
-    background-color:red;
-  }
-
-
-  &-item, &-submenu-title {
-   // Disabled state sets text to gray and nukes hover/tab effects
-    &.rc-menu-item-disabled, &.rc-menu-submenu-disabled {
-      color: #777 !important;
+    &-item-group-title {
+      color: $button-fg-color;
     }
-  }
-  & > &-item-divider {
-    border-top: 1px solid $main-fg-color;
-    border-bottom: 1px solid $main-fg-color;
+
+    &-item-active,
+    &-submenu-active > &-submenu-title {
+      background-color: $button-hover-bg-color;
+      color: $button-hover-fg-color;
+    }
+
+    &-item-selected {
+      background-color: red;
   }
 
-  &-submenu {
-    &-popup {
+    &-submenu-selected {
+      background-color:red;
+    }
+
+
+    &-item, &-submenu-title {
+     // Disabled state sets text to gray and nukes hover/tab effects
+      &.rc-menu-item-disabled, &.rc-menu-submenu-disabled {
+        color: #777 !important;
+      }
+    }
+    & > &-item-divider {
+      border-top: 2px solid red;
+      border-bottom: 2px solid red;
+    }
+
+    &-submenu {
+      &-popup {
+          background-color: $main-bg-color;
+        border: 1px solid $toolbar-bg-color;
+        box-shadow: 0px 2px 5px $toolbar-bg-color;
+      }
+      > .rc-menu {
         background-color: $main-bg-color;
-      border: 1px solid $toolbar-bg-color;
-      box-shadow: 0px 2px 5px $toolbar-bg-color;
-    }
-    > .rc-menu {
-      background-color: $main-bg-color;
+      }
     }
   }
-}
