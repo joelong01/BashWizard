@@ -16,6 +16,7 @@ import BashWizardMainService from "./bwMainService";
 import fs, { FSWatcher } from "fs";
 import { IAsyncMessage } from "../Models/commonModel"
 import windowStateKeeper from "electron-window-state"
+import {TitleBarHelper} from "./titlebarHelper"
 
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -23,6 +24,7 @@ import windowStateKeeper from "electron-window-state"
 export let g_mainWindow: BrowserWindow;
 let g_ipcMainProxy: IpcMainProxy;
 let g_bwService:BashWizardMainService;
+let g_tbHelper: TitleBarHelper;
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'false'; // we do not load remote content -- only load from localhost
 //
@@ -124,6 +126,8 @@ function createWindow() {
         g_mainWindow.destroy();
     });
 
+
+
     registerContextMenu(g_mainWindow);
 
 
@@ -135,6 +139,9 @@ function createWindow() {
     g_ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
     g_bwService = new BashWizardMainService(g_mainWindow);
     g_ipcMainProxy.registerProxy("BashWizardMainService", g_bwService);
+
+    g_tbHelper = new TitleBarHelper(g_mainWindow);
+
 }
 
 function onReloadApp() {

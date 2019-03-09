@@ -12,6 +12,7 @@ export interface ITitleBarState {
     maximized: boolean;
     minimized: boolean;
     menu: any;
+    fullScreen: boolean;
 }
 
 export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
@@ -20,6 +21,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         maximized: false,
         minimized: false,
         menu: undefined,
+        fullScreen: false
     };
 
     private menu: Menu = React.createRef();
@@ -39,7 +41,22 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
                 maximized: this.currentWindow.isMaximized(),
                 menu: this.remote.Menu.getApplicationMenu(),
             });
+            const ipcRenderer: Electron.IpcRenderer = (window as any).require("electron").ipcRenderer as Electron.IpcRenderer;
+            if (ipcRenderer !== null) {
+                ipcRenderer.on("window-position-changed", this.onWindowsPosChanged);
+            }
+
         }
+
+    }
+
+    private onWindowsPosChanged = (event: any, message: string): void => {
+        console.log(`onWindowsPosChanged: ${message}`)
+        if (this.state.fullScreen && message === "maximized") {
+            // when you are maximized and go into full screen, you get another maximized event.
+            return;
+        }
+        this.setState({ maximized: message === "maximized", minimized: message === "minimized", fullScreen: message === "enter-full-screen" })
     }
 
     public componentDidUpdate(prevProps: Readonly<ITitleBarProps>) {
@@ -48,15 +65,30 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         }
     }
 
-    public render(): JSX.Element | null {
-        if (this.remote){
-            if (this.remote.process.platform === "darwin"){
-                // dont render on a mac
-                return null;
+    private get onMacOrBrowser(): boolean {
+        if (this.remote) {
+            if (this.remote.process.platform === "darwin") {
+                return true;
             }
+
+            return false;
+        }
+        return true;
+    }
+
+    public render(): JSX.Element | null {
+        if (this.onMacOrBrowser) {
+            return null;
+        }
+
+        //
+        //  if the screen is maximized or we are running on a mac, make the titlebar have 0px height
+        let tbHeight: string = "34px";
+        if (this.state.fullScreen) {
+            tbHeight = "0px";
         }
         return (
-            <div className="title-bar bg-lighter-3">
+            <div className="title-bar bg-lighter-3" style={{ visibility: this.state.fullScreen ? "collapse" : "visible", height: tbHeight, minHeight: tbHeight }}>
                 <div className="title-bar-icon">
                     {typeof (this.props.icon) === "string" && <i className={`${this.props.icon}`}></i>}
                     {typeof (this.props.icon) !== "string" && this.props.icon}
@@ -66,7 +98,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
                         <Menu ref={this.menu}
                             mode="horizontal"
                             selectable={false}
-                            triggerSubMenuAction="click"
+                            triggerSubMenuAction="hover"
                             onClick={this.onMenuItemSelected}>
                             {this.renderMenu(this.state.menu)}
                         </Menu>
@@ -99,6 +131,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
             </div>
         );
     }
+
 
     private renderMenu = (menu: Electron.Menu) => {
         if (!menu) {

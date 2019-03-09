@@ -1,0 +1,119 @@
+$color-yellow: #ffbb00;
+$color-green: #7cbb00;
+$color-blue: #00a1f1;
+$color-red: #f65314;
+
+$lighter-1: rgba(255,255,255,0.05);
+$lighter-2: rgba(255,255,255,0.10);
+$lighter-3: rgba(255,255,255,0.15);
+$lighter-4: rgba(255,255,255,0.20);
+$lighter-5: rgba(165, 165, 165, 1);;
+
+$darker-1: rgba(0,0,0,0.05);
+$darker-2: rgba(0,0,0,0.10);
+$darker-3: rgba(0,0,0,0.15);
+$darker-4: rgba(0,0,0,0.20);
+$darker-5: rgba(0,0,0,0.25);
+
+$main-bg-color: #353535;
+$main-fg-color: #a5a5a5;
+$main-border-color: #a5a5a5;
+$highlight-fg-color: #e5e5e5;
+$highlight-border-color: #e5e5e5;
+$toolbar-bg-color: #252525;
+$toolbar-border-color: #a5a5a5;
+$button-bg-color: #252525;
+$button-fg-color: #a5a5a5;
+$button-border-color: #252525;
+$button-hover-bg-color: #555555;
+$button-hover-fg-color: #e5e5e5;
+$button-hover-border-color: #e5e5e5;
+$button-selected-fg-color: #e5e5e5;
+$button-selected-bg-color: #454545;
+$button-selected-border-color: #e5e5e5;
+
+
+body.dark .title-bar {
+    color: $main-fg-color;
+    background-color:$main-bg-color;
+
+
+
+    &-controls {
+
+
+        li {
+            color:$main-fg-color;
+
+
+            &:hover {
+                color: #fff;
+                background-color: $button-hover-bg-color;
+
+            }
+        }
+
+        .btn-window-close {
+            &:hover {
+                background-color: $color-red;
+                color: #fff;
+            }
+        }
+    }
+}
+
+body.dark .menu-item {
+
+    &-accelerator {
+        color: $button-fg-color;
+        text-align: right;
+        margin-left: 2em;
+    }
+
+}
+
+body.dark .rc-menu {
+    color:$main-fg-color;
+
+
+    &-item-group-title {
+      color: $button-fg-color;
+    }
+
+    &-item-active,
+    &-submenu-active > &-submenu-title {
+      background-color: $button-hover-bg-color;
+      color: $button-hover-fg-color;
+    }
+
+    &-item-selected {
+      background-color: red;
+  }
+
+    &-submenu-selected {
+      background-color:red;
+    }
+
+
+    &-item, &-submenu-title {
+     // Disabled state sets text to gray and nukes hover/tab effects
+      &.rc-menu-item-disabled, &.rc-menu-submenu-disabled {
+        color: #777 !important;
+      }
+    }
+    & > &-item-divider {
+      border-top: 2px solid red;
+      border-bottom: 2px solid red;
+    }
+
+    &-submenu {
+      &-popup {
+          background-color: $main-bg-color;
+        border: 1px solid $toolbar-bg-color;
+        box-shadow: 0px 2px 5px $toolbar-bg-color;
+      }
+      > .rc-menu {
+        background-color: $main-bg-color;
+      }
+    }
+  }

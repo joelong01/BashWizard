@@ -27,7 +27,6 @@ import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
 import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
-import { callbackify } from 'util';
 
 
 //
@@ -392,7 +391,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         const toolbar: HTMLElement | null = window.document.getElementById("toolbar");
         const geDiv: HTMLElement | null = window.document.getElementById("div-global-entry");
         if (toolbar !== null && geDiv !== null) {
-            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter 
+            let height = (toolbar.clientHeight + geDiv.clientHeight + 5); // where 5 is the margin between the list and the splitter
             const htStyle: string = `calc(100% - ${height}px)`
             this.setState({ parameterListHeight: htStyle });
         }

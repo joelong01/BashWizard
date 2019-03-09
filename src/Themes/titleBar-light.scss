@@ -1,0 +1,119 @@
+$color-yellow: #ffbb00;
+$color-green: #7cbb00;
+$color-blue: #00a1f1;
+$color-red: #f65314;
+
+$lighter-1: rgba(255,255,255,0.05);
+$lighter-2: rgba(255,255,255,0.10);
+$lighter-3: rgba(255,255,255,0.15);
+$lighter-4: rgba(255,255,255,0.20);
+$lighter-5: rgba(165, 165, 165, 1);;
+
+$darker-1: rgba(0,0,0,0.05);
+$darker-2: rgba(0,0,0,0.10);
+$darker-3: rgba(0,0,0,0.15);
+$darker-4: rgba(0,0,0,0.20);
+$darker-5: rgba(0,0,0,0.25);
+
+$main-bg-color: white;
+$main-fg-color: black;
+$main-border-color: black;
+$highlight-fg-color: lightblue;
+$highlight-border-color: darkblue;
+$toolbar-bg-color: lightgray;
+$toolbar-border-color: darkgray;
+$button-bg-color: lightgray;
+$button-fg-color: black;
+$button-border-color: blue;
+$button-hover-bg-color: darkgray;
+$button-hover-fg-color: white;
+$button-hover-border-color: blue;
+$button-selected-fg-color: red;
+$button-selected-bg-color: yellow;
+$button-selected-border-color: purple;
+
+
+.title-bar {
+    color: $main-fg-color;
+    background-color:$main-bg-color;
+
+    &-icon svg {
+        fill: $main-fg-color;
+    }
+
+    &-controls {
+        li {
+            color:$main-fg-color;
+
+
+            &:hover {
+                color: #fff;
+                background-color: $button-hover-bg-color;
+
+            }
+        }
+
+        .btn-window-close {
+            &:hover {
+                background-color: $color-red;
+                color: #fff;
+            }
+        }
+    }
+}
+
+.menu-item {
+
+    &-accelerator {
+        color: $button-fg-color;
+        text-align: right;
+        margin-left: 2em;
+    }
+
+}
+
+.rc-menu {
+  color:$main-fg-color;
+
+
+  &-item-group-title {
+    color: $button-fg-color;
+  }
+
+  &-item-active,
+  &-submenu-active > &-submenu-title {
+    background-color: $button-hover-bg-color;
+    color: $button-hover-fg-color;
+  }
+
+  &-item-selected {
+    background-color: red;
+}
+
+  &-submenu-selected {
+    background-color:red;
+  }
+
+
+  &-item, &-submenu-title {
+   // Disabled state sets text to gray and nukes hover/tab effects
+    &.rc-menu-item-disabled, &.rc-menu-submenu-disabled {
+      color: #777 !important;
+    }
+  }
+  & > &-item-divider {
+    border-top: 1px solid $main-fg-color;
+    border-bottom: 1px solid $main-fg-color;
+  }
+
+  &-submenu {
+    &-popup {
+        background-color: $main-bg-color;
+      border: 1px solid $toolbar-bg-color;
+      box-shadow: 0px 2px 5px $toolbar-bg-color;
+    }
+    > .rc-menu {
+      background-color: $main-bg-color;
+    }
+  }
+}
