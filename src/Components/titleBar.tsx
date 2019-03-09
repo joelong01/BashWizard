@@ -98,7 +98,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
                         <Menu ref={this.menu}
                             mode="horizontal"
                             selectable={false}
-                            triggerSubMenuAction="click"
+                            triggerSubMenuAction="hover"
                             onClick={this.onMenuItemSelected}>
                             {this.renderMenu(this.state.menu)}
                         </Menu>
