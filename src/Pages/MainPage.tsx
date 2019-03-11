@@ -721,8 +721,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             className="param-input"
                                             spellCheck={false}
                                             value={this.state.scriptName}
-                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                await this.setStateAsync({ scriptName: e.currentTarget.value });
+                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                                                this.setState({ scriptName: e.currentTarget.value });
                                             }}
                                             onBlur={this.onBlurScriptName} />
                                         <label htmlFor="scriptName" className="param-label">Script Name</label>
@@ -734,8 +734,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             id="description_input"
                                             spellCheck={false}
                                             value={this.state.description}
-                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                await this.setStateAsync({ description: e.currentTarget.value });
+                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                                                this.setState({ description: e.currentTarget.value });
                                             }}
                                             onBlur={this.onBlurDescription} />
                                         <label className="param-label"

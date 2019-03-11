@@ -141,6 +141,9 @@ export class ScriptModel {
             if (!param.requiresInputString && param.valueIfSet === "$2") {
                 errors.push({ severity: "error", Parameter: param, message: `parameter \"${param.longParameter}\" has Required Input String = false but has set the Value if Set to $2. This is an invalid combination`, key: uniqueId("ERROR") });
             }
+            if (param.type === ParameterType.LoggingSupport && this.ScriptName === "") {
+                errors.push({ severity: "error", Parameter: param, message: `If you are using logging support, you must specify a script name.`, key: uniqueId("ERROR") });
+            }
         }
 
         //
@@ -266,6 +269,7 @@ export class ScriptModel {
                 name += ".sh";
             }
             this.ScriptName = name;
+            this.clearErrorsAndValidateParameters(ValidationOptions.ClearErrors);
             this.propertyChangedEvent.dispatch({ scriptName: this.ScriptName, bashScript: this.toBash(), JSON: this.stringify() });
         }
     }
