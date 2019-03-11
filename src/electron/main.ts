@@ -259,7 +259,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                     label: "Learn More",
                     click() {
                         require("electron").shell.openExternal(
-                            "https://github.com/joelong01/bw-react"
+                            "https://github.com/joelong01/bw-react/blob/master/README.md"
                         );
                     }
                 }

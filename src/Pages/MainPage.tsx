@@ -646,13 +646,11 @@ class MainPage extends React.Component<{}, IMainPageState> {
                         }
                         <Toolbar className="toolbar" id="toolbar">
                             <div className="p-toolbar-group-left">
-                                <button className="bw-button p-component"
-                                    onClick={this.onNew}>
-                                    <ReactSVG className="svg-file-new"
-                                        src={require("../Images/fileNew.svg")}
-                                    />
-                                    <span className="bw-button-span p-component">New Script</span>
-                                </button>
+                               
+                                <Button className="p-button-secondary"
+                                    label="New File" icon="fas fa-file-medical"
+                                    onClick={this.onNew}
+                                    style={{ marginRight: '.25em' }} />
                                 <Button className="p-button-secondary"
                                     disabled={this.state.activeTabIndex > 1}
                                     label="Refresh" icon="pi pi-refresh"
@@ -690,23 +688,38 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         this.scriptModel.generateBashScript = true;
                                     }}
                                     style={{ marginRight: '.25em' }} />
+                                <SplitButton model=
+                                    {
+                                        [
+                                            {
+                                                label: 'Dark Mode',
+                                                icon: "pi pi-circle-on",
+                                                checked: this.state.theme === BashWizardTheme.Dark,
+                                                command: async () => {
+                                                    this.setState({theme: BashWizardTheme.Dark});
+                                                    this.mySettings.theme = BashWizardTheme.Dark;
+                                                    await this.saveSettings();
 
-                            </div>
-                            <div className="p-toolbar-group-right">
-                                <ToggleButton className="p-button-secondary"
-                                    onIcon="pi pi-circle-on"
-                                    onLabel="Dark Mode"
-                                    offIcon="pi pi-circle-off"
-                                    offLabel="Light Mode"
-                                    checked={this.state.theme === BashWizardTheme.Dark}
-                                    onChange={async (e: { originalEvent: Event, value: boolean }) => {
-                                        this.mySettings.theme = e.value ? BashWizardTheme.Dark : BashWizardTheme.Light
-                                        await this.setStateAsync({ theme: this.mySettings.theme });
-                                        await this.saveSettings();
-                                    }}
-                                    style={{ marginRight: '.25em' }} />
+                                                }
+                                            },
+                                            {
+                                                label: 'Light Mode',
+                                                icon: "pi pi-circle-off",
+                                                checked: this.state.theme === BashWizardTheme.Light,
+                                                command: async () => {
+                                                    this.setState({theme: BashWizardTheme.Light});
+                                                    this.mySettings.theme = BashWizardTheme.Light;
+                                                    await this.saveSettings();
+                                                }
+                                            }
+                                        ]
+                                    }
+                                    className="p-button-secondary"
+                                    onClick={() => this.setState({theme: this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light: BashWizardTheme.Dark })}
+                                    label={this.state.theme === BashWizardTheme.Dark ? "Dark Mode" : "Light Mode"}>
+                                </SplitButton>
                                 <Button className="p-button-secondary"
-                                    label=""
+                                    label="Help"
                                     icon="pi pi-question"
                                     onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
                                     style={{ marginRight: '.25em' }} />
@@ -721,8 +734,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             className="param-input"
                                             spellCheck={false}
                                             value={this.state.scriptName}
-                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                await this.setStateAsync({ scriptName: e.currentTarget.value });
+                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                                                this.setState({ scriptName: e.currentTarget.value });
                                             }}
                                             onBlur={this.onBlurScriptName} />
                                         <label htmlFor="scriptName" className="param-label">Script Name</label>
@@ -734,8 +747,8 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                             id="description_input"
                                             spellCheck={false}
                                             value={this.state.description}
-                                            onChange={async (e: React.FormEvent<HTMLInputElement>) => {
-                                                await this.setStateAsync({ description: e.currentTarget.value });
+                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                                                this.setState({ description: e.currentTarget.value });
                                             }}
                                             onBlur={this.onBlurDescription} />
                                         <label className="param-label"

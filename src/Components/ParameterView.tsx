@@ -175,7 +175,10 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                         <div className="p-grid parameter-item-grid">
                             <div className="p-col-fixed param-column">
                                 <span className="p-float-label">
-                                    <InputText id="default" spellCheck={false} value={this.state.default} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} disabled={this.state.type !== ParameterType.Custom} />
+                                    <InputText id="default" spellCheck={false}
+                                        value={this.state.default} className="param-input"
+                                        onBlur={this.onBlur} onChange={this.updateInputText}
+                                        disabled={this.state.type !== ParameterType.Custom && this.state.type !== ParameterType.LoggingSupport} />
                                     <label htmlFor="default" className="param-label">Default</label>
                                 </span>
                             </div>

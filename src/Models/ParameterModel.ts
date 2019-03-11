@@ -146,6 +146,30 @@ export class ParameterModel {
                 this.requiredParameter = false;
                 this.modelUpdate = false;
             }
+
+            //
+            //  we weant to turn something like "./logDir" into "./logDir/" or ./logDir into ./logDir/
+            if (this.Type === ParameterType.LoggingSupport) {
+                let temp: string = this.Default;
+                let quotes: boolean = false;
+                if (temp.startsWith("\"")) {
+                    quotes = true;
+                    temp = temp.slice(1);
+                }
+                if (temp.endsWith("\"") && quotes) {
+                    temp = temp.slice(0, -1);
+                }
+
+                if (!temp.endsWith("/")) {
+                    temp += "/";
+                }
+                if (quotes) {
+                    temp = "\""  + temp + "\"";
+                }
+
+                this.Default = temp;
+            }
+
             this.NotifyPropertyChanged("default")
         }
     }
