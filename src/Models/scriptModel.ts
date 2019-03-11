@@ -576,9 +576,9 @@ export class ScriptModel {
     }
 
     private getShortName = (longname: string): string => {
-        for (const c of longname) {
+        for (let c of longname) {
 
-            if (c === "") {
+            if (c === "" || c === "-") {
                 continue;
             }
             if (!this.shortParameterExists(c)) {
@@ -858,11 +858,12 @@ export class ScriptModel {
                 //
                 //  attempt to autofill short name and variable name
                 //
-
-                model.shortParameter = this.getShortName(model.longParameter);
                 if (model.shortParameter === "") {
-                    this.ErrorModel.addError({ severity: "warn", message: "Unable to auto generate a Short Parameter", Parameter: model, key: uniqueId("ERROR") });
-                    return;
+                    model.shortParameter = this.getShortName(model.longParameter);
+                    if (model.shortParameter === "") {
+                        this.ErrorModel.addError({ severity: "warn", message: "Unable to auto generate a Short Parameter", Parameter: model, key: uniqueId("ERROR") });
+                        return;
+                    }
                 }
 
                 if (model.variableName === "") {

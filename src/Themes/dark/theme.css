@@ -16,6 +16,7 @@
     --button-selected-fg-color: #e5e5e5;
     --button-selected-bg-color: #454545;
     --button-selected-border-color: #e5e5e5;
+    --list-item-background: #7c7c7c;
 }
 
 body.dark .DIV_Top {
@@ -95,7 +96,7 @@ body.dark .p-listbox .p-listbox-list .p-listbox-item {
 
 body.dark .p-listbox .p-listbox-list .p-listbox-item.p-highlight {
     color: var(--button-selected-fg-color);
-    background-color: var(--button-selected-bg-color);
+    background-color: var(--list-item-background);
 }
 
 body.dark .p-listbox .p-listbox-list .p-listbox-item:focus {
