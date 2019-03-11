@@ -127,18 +127,14 @@ If there is an error parsing the Bash Script, there will be an entry on the mess
 
 If you have an error message from parsing the Bash Script, fix it and then hit Refresh again to make the error go away.
 
-You can also copy and paste a script into the Bash Script text box and then hit this button
-
-![Refresh](refresh.png)
-
-which will parse the script and then regenerate it back into the Bash Script text box.  This is useful when upgrading the Bash Wizard version.
+You can also copy and paste a script into the Bash Script text box and then hit the Refresh button, which will parse the script and then regenerate it back into the Bash Script text box.  This is useful when upgrading the Bash Wizard version.
 
 
 ## Starting with JSON
 
 If you select the JSON tab
 
-![Tabs](Tabs.png)
+![Tabs](readme/tabs.png)
 
 you can copy or paste in the JSON format of the parameters.  If you edit the JSON in Bash Wizard, you can click on the Refresh button while the JSON tab is visible and Bash Wizard will
 
@@ -193,21 +189,56 @@ and these lines are added after the user code:
     echo "ended: $time"
 } | tee -a "${LOG_FILE}"
 ```
-Note that Bash Wizard will enforce that the default value for logging support ends
+Note that Bash Wizard will enforce that the default value for logging support ends with with a "/"
 
-#### Accepts Input File
-This will add a parameter to your script (Long Name: input-file) and generate code to parse a JSON file using jq to pull out the variable values. this option
+#### Input File Support
+![Logging](readme/inputFileSupport.png)
+This will add a parameter to your script (Long Name: input-file) and generate code to parse a JSON file using jq to pull out the variable values.  As an example, you might have a script that creates an Azure Resource Group whose usage function looks like
 
-![Input JSON](readme/input%20json.png)
+```bash
+function usage() {
+    echoWarning "Parameters can be passed in the command line or in the input file. The command line overrides the setting in the input file."
+    echo "creates an Azure Resource Group"
+    echo ""
+    echo "Usage: $0  -r|--resource-group -g|--log-directory -l|--data-center-location -i|--input-file -v|--verify -c|--create -d|--delete " 1>&2
+    echo ""
+    echo " -r | --resource-group           Optional     Azure Resource Group"
+    echo " -g | --log-directory            Optional     directory for the log file. the log file name will be based on the script name"
+    echo " -l | --data-center-location     Optional     the location of the VMs"
+    echo " -i | --input-file               Optional     filename that contains the JSON values to drive the script. command line overrides file"
+    echo " -v | --verify                   Optional     if set will verify that the resource group is created"
+    echo " -c | --create                   Optional     creates the resource"
+    echo " -d | --delete                   Optional     deletes the resource group"
+    echo ""
+    exit 1
+}
+```
 
-will show this dialog
+the input file in in the "Input JSON" tab, and would look like
+```json
+{
+    "createResourceGroup.sh": {
+        "resource-group": "myResourceGroup",
+        "log-directory": "\"../Logs/\"",
+        "data-center-location": "westus2",
+        "input-file": "",
+        "verify": "false",
+        "create": "false",
+        "delete": "false"
+    }
+}
+```
+ An example of using input-file would be
+```bash
+./createResourceGroup --input-file ./inputFile.json
+```
 
-![Input JSON Dialog](readme/input%20json%20dialog.png)
+Any parameter on the command line overrides what is in the file -- e.g.
+```bash
+./createResourceGroup --input-file ./inputFile.json --data-center-location eastus
+```
 
-Copy this JSON and save into a file that you pass in as the --input-file parameter.  You can then edit the JSON to specify the values you want to pass in to the script.
-**Note**: when you do this, the input parameters are parsed twice:
-first to find the --input-file parameter and second to override anything in the input file with whatever is passed in on the command line.  This way you can set the values to whatever you normally use inside the file, but override as needed
-on the command line.
+would create a ResourceGroup in "eastus" eventhough the config file said to create it in "westus2".
 
 #### Create, Validate, Delete Pattern
 
@@ -313,28 +344,28 @@ which only calls the verify function.
 
 Visual Studio Code has an extension for debugging Bash Scripts: https://marketplace.visualstudio.com/items?itemName=rogalmic.bash-debug
 
-This has proven to be incredibly useful and it is highly recommended.  To use the extension in VS Code, you have to create a debug configuration.  I found the easiest way to do this is to have a configuration per file where I pass the input.
-To make this easier, Bash Wizard has this feature:
+This has proven to be incredibly useful and it is highly recommended.  To use the extension in VS Code, you have to create a debug configuration.  To make this easier, Bash Wizard has has the "VS Code Debug Config" tab which can be copied and pasted into the VS Code debug config.  It is often easiest to have a debug setting per file and in the config pass only the --input-file setting.
 
-![Debug Config](readme/debug%20config.png)
-
-when you click on this, you'll get a dialog where you can copy the JSON and paste it into your debug config in VS Code.  It will look something like:
 
 ```json
 {
     "type": "bashdb",
     "request": "launch",
-    "name": "Debug ",
+    "name": "Debug createResourceGroup.sh",
     "cwd": "${workspaceFolder}",
-    "program": "${workspaceFolder}/BashScripts/",
+    "program": "${workspaceFolder}//createResourceGroup.sh",
     "args": [
-        "--log-directory",
-        "./",
-        "--input-file",
+        "--resource-group",
         "",
-        "--create",
-        "false",
+        "--log-directory",
+        "../Logs/",
+        "--data-center-location",
+        "westus2",
+        "--input-file",
+        "../Data/cseAzureAutomationConfig.json",
         "--verify",
+        "false",
+        "--create",
         "false",
         "--delete",
         "false",
@@ -343,5 +374,4 @@ when you click on this, you'll get a dialog where you can copy the JSON and past
 
 ```
 
-Edit the JSON to remove parameters you don't care about.  If you support input-file, then that is typically the only one you need to set in the debug config.
-
+Edit the JSON to remove parameters you don't care about.

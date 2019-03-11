@@ -4,6 +4,19 @@
 .p-component {
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
 }
+.fa-file-medical {
+    padding-left: 0.5em;
+}
+.p-button-secondary{
+    font-size: 1em;
+}
+
+.mode-toggle-button {
+    font-size: 1em;
+    font-weight: normal;
+    margin-top: .5em;
+    border-width: 1px;
+}
 
 .DIV_Top {
     width: 100%;
