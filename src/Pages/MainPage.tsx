@@ -1,13 +1,10 @@
 
 import React from 'react';
-import svgFiles from "../Images/images"
 import { ParameterView } from '../Components/ParameterView';
-import { ParameterModel } from '../Models/ParameterModel';
 import SplitPane from 'react-split-pane';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
-import { ToggleButton } from "primereact/togglebutton"
 import { InputText } from "primereact/inputtext"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
@@ -20,8 +17,11 @@ import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer } from "electron";
-import { IErrorMessage, ParameterType, IAsyncMessage, IBashWizardSettings, BashWizardTheme, IMainPageUiState } from "../Models/commonModel";
-import { ScriptModel } from "../Models/scriptModel";
+import { IAsyncMessage, IBashWizardSettings, BashWizardTheme} from "../Models/commonModel";
+import { IErrorMessage, ParameterType,  IScriptModelState } from "bash-models/dist/commonModel";
+import {ScriptModel} from "bash-models/dist/scriptModel"
+import {ParameterModel} from "bash-models/dist/ParameterModel"
+
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
@@ -32,7 +32,7 @@ import "../Themes/dark/theme.css"
 //
 //  represents the properties that will impact the UI
 //
-interface IMainPageState extends IMainPageUiState {
+interface IMainPageState extends IScriptModelState {
 
 
     // this data is for UI only and doesn't impact the model
@@ -142,9 +142,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 icon: "pi pi-globe",
                 command: () => {
                     this.scriptModel.startBatchChanges();
-                    this.scriptModel.addParameter(ParameterType.VerboseSupport);
-                    this.scriptModel.addParameter(ParameterType.LoggingSupport);
-                    this.scriptModel.addParameter(ParameterType.InputFileSupport);
+                    this.scriptModel.addParameter(ParameterType.Verbose);
+                    this.scriptModel.addParameter(ParameterType.Logging);
+                    this.scriptModel.addParameter(ParameterType.InputFile);
                     this.scriptModel.addParameter(ParameterType.Create);
                     this.scriptModel.addParameter(ParameterType.Verify);
                     this.scriptModel.addParameter(ParameterType.Delete);
@@ -160,7 +160,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 label: 'Add Verbose Support',
                 icon: "pi pi-camera",
                 command: () => {
-                    this.scriptModel.addParameter(ParameterType.VerboseSupport);
+                    this.scriptModel.addParameter(ParameterType.Verbose);
 
                 }
             },
@@ -168,7 +168,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 label: 'Add Logging Support',
                 icon: "pi pi-pencil",
                 command: () => {
-                    this.scriptModel.addParameter(ParameterType.LoggingSupport);
+                    this.scriptModel.addParameter(ParameterType.Logging);
 
                 }
             },
@@ -176,7 +176,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 label: 'Add Input File Support',
                 icon: "pi pi-list",
                 command: () => {
-                    this.scriptModel.addParameter(ParameterType.InputFileSupport)
+                    this.scriptModel.addParameter(ParameterType.InputFile)
                 }
             },
             {
@@ -492,7 +492,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     //
     //  this is called by the models
-    public onScriptModelChanged = async (newState: Partial<IMainPageUiState>) => {
+    public onScriptModelChanged = async (newState: Partial<IScriptModelState>) => {
         // console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
         await this.setStateAsync(newState);
     }
@@ -646,7 +646,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                         }
                         <Toolbar className="toolbar" id="toolbar">
                             <div className="p-toolbar-group-left">
-                               
+
                                 <Button className="p-button-secondary"
                                     label="New File" icon="fas fa-file-medical"
                                     onClick={this.onNew}

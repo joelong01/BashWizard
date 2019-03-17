@@ -1,6 +1,6 @@
 import React from "react";
-import { IErrorMessage } from '../Models/commonModel';
-import { ParameterModel } from "../Models/ParameterModel"
+import { IErrorMessage } from 'bash-models/dist/commonModel';
+import { ParameterModel } from "bash-models/dist/ParameterModel"
 
 interface IErrorProps {
     ErrorMessage: IErrorMessage;

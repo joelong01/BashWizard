@@ -1,6 +1,8 @@
 import React from 'react';
-import { ParameterModel } from '../Models/ParameterModel';
-import { ParameterType, IGrowlCallback, IParameterUiState } from "../Models/commonModel"
+import { ParameterModel } from 'bash-models/dist/ParameterModel';
+import { ParameterType } from "bash-models/dist/commonModel"
+import {IParameterState} from "bash-models/dist/commonModel"
+import {IGrowlCallback} from "../Models/commonModel"
 
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
@@ -15,7 +17,7 @@ export interface IParameterProperties {
     GrowlCallback: IGrowlCallback;
 }
 
-interface IParameterState extends IParameterUiState {
+interface IMainPageState extends IParameterState {
 
     Model: ParameterModel;
     GrowlCallback: IGrowlCallback;
@@ -25,7 +27,7 @@ interface IParameterState extends IParameterUiState {
     label: string;
 }
 
-export class ParameterView extends React.PureComponent<IParameterProperties, IParameterState> {
+export class ParameterView extends React.PureComponent<IParameterProperties, IMainPageState> {
     private refParameterForm = React.createRef<HTMLDivElement>();
     private refLongName = React.createRef<InputText>();
     constructor(props: IParameterProperties) {
@@ -66,7 +68,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     }
 
 
-    private setStateAsync = (name: keyof IParameterUiState, value: any): Promise<void> => {
+    private setStateAsync = (name: keyof IMainPageState, value: any): Promise<void> => {
         return new Promise((resolve, reject) => {
             const o: object = {}
             o[name] = value;
@@ -85,7 +87,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
     //  2. this updates the model (model.longParameter) => event fired to all subscribers
     //  3. the model tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
-    public onPropertyChanged = async (model: ParameterModel, name: keyof IParameterUiState) => {
+    public onPropertyChanged = async (model: ParameterModel, name: keyof IMainPageState) => {
        await this.setStateAsync(name, model[name]);
     }
 
@@ -178,7 +180,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IPa
                                     <InputText id="default" spellCheck={false}
                                         value={this.state.default} className="param-input"
                                         onBlur={this.onBlur} onChange={this.updateInputText}
-                                        disabled={this.state.type !== ParameterType.Custom && this.state.type !== ParameterType.LoggingSupport} />
+                                        disabled={this.state.type !== ParameterType.Custom && this.state.type !== ParameterType.Logging} />
                                     <label htmlFor="default" className="param-label">Default</label>
                                 </span>
                             </div>
