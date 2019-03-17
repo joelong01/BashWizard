@@ -1,8 +1,6 @@
 import { IpcRendererProxy } from "../ipcRendererProxy";
-import { IBashWizardMainService } from "../Models/commonModel"
+import { IBashWizardMainService, IBashWizardSettings } from "../Models/bwCommonModels"
 import { FileFilter } from 'electron';
-import { IBashWizardSettings } from "../Models/commonModel"
-
 
 const PROXY_NAME = "BashWizardMainService";
 
