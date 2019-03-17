@@ -17,10 +17,10 @@ import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer } from "electron";
-import { IAsyncMessage, IBashWizardSettings, BashWizardTheme} from "../Models/commonModel";
-import { IErrorMessage, ParameterType,  IScriptModelState } from "bash-models/dist/commonModel";
-import {ScriptModel} from "bash-models/dist/scriptModel"
-import {ParameterModel} from "bash-models/dist/ParameterModel"
+import { IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/bwCommonModels";
+import { IErrorMessage, ParameterType, IScriptModelState } from "bash-models/commonModel";
+import { ScriptModel } from "bash-models/scriptModel"
+import { ParameterModel } from "bash-models/ParameterModel"
 
 import { ListBox } from "primereact/listbox"
 import { BWError } from "../Components/bwError"
@@ -696,7 +696,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                                 icon: "pi pi-circle-on",
                                                 checked: this.state.theme === BashWizardTheme.Dark,
                                                 command: async () => {
-                                                    this.setState({theme: BashWizardTheme.Dark});
+                                                    this.setState({ theme: BashWizardTheme.Dark });
                                                     this.mySettings.theme = BashWizardTheme.Dark;
                                                     await this.saveSettings();
 
@@ -707,7 +707,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                                 icon: "pi pi-circle-off",
                                                 checked: this.state.theme === BashWizardTheme.Light,
                                                 command: async () => {
-                                                    this.setState({theme: BashWizardTheme.Light});
+                                                    this.setState({ theme: BashWizardTheme.Light });
                                                     this.mySettings.theme = BashWizardTheme.Light;
                                                     await this.saveSettings();
                                                 }
@@ -715,7 +715,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                         ]
                                     }
                                     className="p-button-secondary"
-                                    onClick={() => this.setState({theme: this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light: BashWizardTheme.Dark })}
+                                    onClick={() => this.setState({ theme: this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light : BashWizardTheme.Dark })}
                                     label={this.state.theme === BashWizardTheme.Dark ? "Dark Mode" : "Light Mode"}>
                                 </SplitButton>
                                 <Button className="p-button-secondary"

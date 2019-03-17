@@ -1,9 +1,7 @@
 import React from 'react';
-import { ParameterModel } from 'bash-models/dist/ParameterModel';
-import { ParameterType } from "bash-models/dist/commonModel"
-import {IParameterState} from "bash-models/dist/commonModel"
-import {IGrowlCallback} from "../Models/commonModel"
-
+import { ParameterModel } from 'bash-models/ParameterModel';
+import { ParameterType, IParameterState, } from "bash-models/commonModel"
+import { IGrowlCallback } from "../Models/bwCommonModels"
 import { InputText } from "primereact/inputtext"
 import { Checkbox } from "primereact/checkbox"
 import { Button } from "primereact/button"
@@ -88,7 +86,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IMa
     //  3. the model tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
     public onPropertyChanged = async (model: ParameterModel, name: keyof IMainPageState) => {
-       await this.setStateAsync(name, model[name]);
+        await this.setStateAsync(name, model[name]);
     }
 
     //
@@ -208,7 +206,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IMa
                                 <Checkbox id="requiredParameter" checked={this.state.requiredParameter} onChange={this.requiredParameterChanged} disabled={this.state.type !== ParameterType.Custom} />
                             </div>
                             <div className="p-col-fixed param-column" >
-                                <label className="p-checkbox-label" style={{visibility: "collapse"}}>{`id: ${this.state.Model.uniqueName.toString()}`}</label>
+                                <label className="p-checkbox-label" style={{ visibility: "collapse" }}>{`id: ${this.state.Model.uniqueName.toString()}`}</label>
                             </div>
 
                         </div>

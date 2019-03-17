@@ -14,7 +14,7 @@ import { IpcMainProxy } from "./ipcMainProxy";
 import BashWizardMainService from "./bwMainService";
 
 import fs, { FSWatcher } from "fs";
-import { IAsyncMessage } from "../Models/commonModel"
+import { IAsyncMessage } from "../Models/bwCommonModels"
 import windowStateKeeper from "electron-window-state"
 import {TitleBarHelper} from "./titlebarHelper"
 

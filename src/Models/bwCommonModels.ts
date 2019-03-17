@@ -1,11 +1,11 @@
 import { GrowlMessage } from 'primereact/growl';
-import  {IScriptModelState} from "bash-models/dist/commonModel";
+import { IScriptModelState } from "bash-models/commonModel";
 import { FileFilter } from "electron";
 
 
 
 
-export type NotifyScriptModelChanged = <K extends keyof IScriptModelState>(newState: Pick<IScriptModelState, K> | IScriptModelState ) => void;
+export type NotifyScriptModelChanged = <K extends keyof IScriptModelState>(newState: Pick<IScriptModelState, K> | IScriptModelState) => void;
 
 export interface IBashWizardMainService {
 

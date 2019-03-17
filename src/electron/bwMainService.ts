@@ -1,7 +1,7 @@
 import electron, { BrowserWindow, dialog, FileFilter, Menu } from "electron";
 import fs from "fs";
 import path from "path";
-import { IBashWizardMainService, IBashWizardSettings, BashWizardTheme } from "../Models/commonModel";
+import { IBashWizardMainService, IBashWizardSettings, BashWizardTheme } from "../Models/bwCommonModels";
 
 
 
