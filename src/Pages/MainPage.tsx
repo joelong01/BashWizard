@@ -61,6 +61,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private mainServiceProxy: BashWizardMainServiceProxy | null;
     private scriptModel: ScriptModel;
     private currentWatchFile: string = "";
+    private isElectronEnabled: boolean | undefined = undefined;
     private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
     private mySettings: IBashWizardSettings = {
         autoSave: false,
@@ -194,6 +195,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private getIpcRenderer(): IpcRenderer | undefined {
+        console.count("this.getIpcRenderer")
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.indexOf(' electron/') === -1) {
             return undefined;
@@ -206,26 +208,31 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return undefined;
     }
     private setupCallbacks = () => {
+        console.count("setuCallbacks")
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
             ipcRenderer.on("on-new", async (event: any, message: any) => {
+                console.count ("on-new")
                 this.reset(); // this gets verified in the main process
             });
 
             ipcRenderer.on("on-open", async (event: any, message: any[]) => {
+                console.count ("on-open")
                 await this.setBashScript(message[0], message[1]);
             });
 
             ipcRenderer.on("on-save", async (event: any, message: any[]) => {
+                console.count ("on-save")
                 await this.onSave(false);
             });
 
             ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
-                console.log("onSaveAs. this.state=%o", this.state);
+                console.count(`onSaveAs. this.state=${this.state}`);
                 await this.onSave(true);
             });
 
             ipcRenderer.on("on-setting-changed", async (event: any, message: object) => {
+                console.count("on-settings-changed")
                 Object.keys(message).map((key) => {
                     console.log(`new Setting [${key}=${message[key]}]`)
                     this.mySettings[key] = message[key];
@@ -234,6 +241,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             });
 
             ipcRenderer.on('asynchronous-reply', async (event: string, msg: string) => {
+                console.count("async-reply")
                 const msgObj: IAsyncMessage = JSON.parse(msg);
                 if (msgObj.event === "file-changed") {
                     if (this.state.SaveFileName.endsWith(msgObj.fileName)) {
@@ -253,6 +261,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (this.savingFile) {
             return;
         }
+        console.count("onSave")
         try {
             this.savingFile = true; // we don't want notifications of changes that we started
             if (this.state.SaveFileName === "" || alwaysPrompt === true) {
@@ -315,6 +324,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (ipcRenderer === undefined) {
             return;
         }
+        console.count("watchFile")
 
         if (this.state.SaveFileName === this.currentWatchFile) {
             return; // we are already watching it.
@@ -356,9 +366,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
         this.setState({ autoUpdate: this.mySettings.autoUpdate });
 
     }
-
-
-
 
     public componentDidMount = () => {
 
@@ -579,7 +586,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     get electronEnabled(): boolean {
-        return (this.getIpcRenderer() !== undefined);
+        if (this.isElectronEnabled === undefined) {
+            this.isElectronEnabled = (this.getIpcRenderer() !== undefined);
+        }
+        return (this.isElectronEnabled === true);
     }
 
     public onChangedBashScript = async (value: string, event?: any): Promise<void> => {
@@ -613,7 +623,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-        // console.count("MainPage::render()");
+       // console.count("MainPage::render()");
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
         //
         //  this does the theming
@@ -634,7 +644,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                     {(this.electronEnabled) &&
                         <TitleBar
                             icon={<ReactSVG className="svg-file-new"
-                                src={require("../Images/vsCodeDebugInfo.svg")}
+                                src={require("../Images/app-icons/bashwizard.svg")}
                             />}
                             title={"Bash Wizard " + this.state.SaveFileName}>
                         </TitleBar>
