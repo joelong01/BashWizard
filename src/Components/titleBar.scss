@@ -10,15 +10,12 @@
     align-items: center;
 
 
-    &-menu {
-        flex: 1;
-    }
     &-main {
         -webkit-app-region: drag;
         -webkit-user-select: none;
-        flex: 2;
+        flex: 1;
         text-align: center;
-        font-size: 0.80em;
+        font-size: 1.0em;
     }
 
     &-icon {
@@ -40,7 +37,7 @@
             list-style: none;
             padding: 0.4em 0.8em;
             display: inline-block;
-
+            font-size: 1em;
             &:hover {
                 cursor: pointer;
             }

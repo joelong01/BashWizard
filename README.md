@@ -26,8 +26,8 @@ There are 4 different versions of the Bash Wizard
 
 1. in https://github.com/joelong01/Bash-Wizard there is a Windows Store application.
 2. also in https://github.com/joelong01/Bash-Wizard is a command line tool writting in .NET Core/Standard
-3. https://github.com/joelong01/bw-react is a React Web application
-4. https://github.com/joelong01/bw-react also creates an Electron app that will generate a rich client that will run on Windows, MacOS, and Linux.
+3. https://github.com/joelong01/BashWizard is a React Web application
+4. https://github.com/joelong01/BashWizard also creates an Electron app that will generate a rich client that will run on Windows, MacOS, and Linux.
 
 the screen shots in this document are from the Electron version of the application.
 

@@ -12,19 +12,19 @@ import {
 } from "electron";
 import { IpcMainProxy } from "./ipcMainProxy";
 import BashWizardMainService from "./bwMainService";
-
+import path from "path";
 import fs, { FSWatcher } from "fs";
 import { IAsyncMessage } from "../Models/bwCommonModels"
 import windowStateKeeper from "electron-window-state"
-import {TitleBarHelper} from "./titlebarHelper"
+
 
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 export let g_mainWindow: BrowserWindow;
 let g_ipcMainProxy: IpcMainProxy;
-let g_bwService:BashWizardMainService;
-let g_tbHelper: TitleBarHelper;
+let g_bwService: BashWizardMainService;
+
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'false'; // we do not load remote content -- only load from localhost
 //
@@ -99,7 +99,8 @@ function createWindow() {
         'width': mainWindowState.width,
         'height': mainWindowState.height,
         frame: process.platform === "darwin",
-        darkTheme: true
+        darkTheme: true,
+        icon: path.join(__dirname, "..src/images/app-icons/png/bashwizard_64x64.png")
     };
     // Create the browser window.
 
@@ -140,8 +141,6 @@ function createWindow() {
     g_bwService = new BashWizardMainService(g_mainWindow);
     g_ipcMainProxy.registerProxy("BashWizardMainService", g_bwService);
 
-    g_tbHelper = new TitleBarHelper(g_mainWindow);
-
 }
 
 function onReloadApp() {
@@ -157,7 +156,7 @@ export async function onToggleDevTools(sender: any, show: boolean) {
     }
     console.log(`OnToggleDevTools [show=${show}`)
 
-    await g_bwService.updateSetting({showDebugger: show});
+    await g_bwService.updateSetting({ showDebugger: show });
 
 }
 
@@ -208,10 +207,10 @@ function onAlwaysLoadChecked(menuItem: MenuItem, browserWindow: BrowserWindow, e
 
 }
 async function checkedShowDebugger(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
-    const show:boolean = menuItem.checked;
+    const show: boolean = menuItem.checked;
     console.log(`OnToggleDevTools [show=${show}`)
 
-    await g_bwService.updateSetting({showDebugger: show});
+    await g_bwService.updateSetting({ showDebugger: show });
 }
 
 function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
@@ -239,7 +238,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
             submenu: [
                 { role: "reload" },
                 { role: "forcereload" },
-                { role: "toggledevtools", label: "Show Dev Tools", type:"checkbox", checked:false,  accelerator: "F12"  },
+                { role: "toggledevtools", label: "Show Dev Tools", type: "checkbox", checked: false, accelerator: "F12" },
                 { type: "separator" },
                 { role: "resetzoom" },
                 { role: "zoomin" },
@@ -259,7 +258,7 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                     label: "Learn More",
                     click() {
                         require("electron").shell.openExternal(
-                            "https://github.com/joelong01/bw-react/blob/master/README.md"
+                            "https://github.com/joelong01/BashWizard/blob/master/README.md"
                         );
                     }
                 }
