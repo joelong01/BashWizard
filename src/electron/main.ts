@@ -26,6 +26,11 @@ let g_ipcMainProxy: IpcMainProxy;
 let g_bwService: BashWizardMainService;
 
 
+function disableHardwareAcceleration() {
+    console.log('disabling hardware acceleration')
+    app.disableHardwareAcceleration();
+}
+
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'false'; // we do not load remote content -- only load from localhost
 //
 //  this receives messages from the renderer to update the settings in the main app
@@ -102,6 +107,8 @@ function createWindow() {
         darkTheme: true,
         icon: path.join(__dirname, "..src/images/app-icons/png/bashwizard_64x64.png")
     };
+
+
     // Create the browser window.
 
     if (process.env.ELECTRON_START_URL) {
@@ -342,11 +349,13 @@ function registerContextMenu(browserWindow: BrowserWindow): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", () => {
+    console.log("on Ready called")
     createWindow();
 });
 
 // Quit when all windows are closed.
 app.on("window-all-closed", () => {
+
     // On OS X it is common for applications and their menu bar
     // to stay active until the user quits explicitly with Cmd + Q
     if (process.platform !== "darwin") {
@@ -361,6 +370,15 @@ app.on("activate", () => {
         createWindow();
     }
 });
+
+app.on("gpu-process-crashed", () => {
+    console.error("GPU CRASHED!!")
+});
+
+app.on("will-finish-launching", () => {
+    console.log("will-finish-launching")
+    disableHardwareAcceleration();
+})
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

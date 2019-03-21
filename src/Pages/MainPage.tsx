@@ -27,6 +27,7 @@ import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
 import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
+import ScriptNameDescription from '../Components/scriptNameDescription';
 
 
 //
@@ -56,6 +57,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
     private bashEditor: React.RefObject<AceEditor> = React.createRef<AceEditor>();
+    private myNameDescriptionCtrl: React.RefObject<ScriptNameDescription> = React.createRef<ScriptNameDescription>();
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
     private mainServiceProxy: BashWizardMainServiceProxy | null;
@@ -212,17 +214,17 @@ class MainPage extends React.Component<{}, IMainPageState> {
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
             ipcRenderer.on("on-new", async (event: any, message: any) => {
-                console.count ("on-new")
+                console.count("on-new")
                 this.reset(); // this gets verified in the main process
             });
 
             ipcRenderer.on("on-open", async (event: any, message: any[]) => {
-                console.count ("on-open")
+                console.count("on-open")
                 await this.setBashScript(message[0], message[1]);
             });
 
             ipcRenderer.on("on-save", async (event: any, message: any[]) => {
-                console.count ("on-save")
+                console.count("on-save")
                 await this.onSave(false);
             });
 
@@ -500,8 +502,20 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //
     //  this is called by the models
     public onScriptModelChanged = async (newState: Partial<IScriptModelState>) => {
-        // console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
+         console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
         await this.setStateAsync(newState);
+
+        //
+        //  this is a workaround for an electron on windows problem i'm seeing where there is a huge typing lag
+        //  by putting the state in a smaller component, the lag goes away
+        if (newState.description !== undefined) {
+            this.myNameDescriptionCtrl.current!.Description = newState.description;
+        }
+
+        if (newState.scriptName !== undefined) {
+            this.myNameDescriptionCtrl.current!.ScriptName = newState.scriptName;
+        }
+
     }
 
 
@@ -623,7 +637,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-       // console.count("MainPage::render()");
+        console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] ` );
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
         //
         //  this does the theming
@@ -736,37 +750,19 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </div>
                         </Toolbar>
                         {/* this is the section for entering script name and description */}
-                        <div className="DIV_globalEntry" id="div-global-entry">
-                            <div className="p-grid grid-global-entry">
-                                <div className="p-col-fixed column-global-entry">
-                                    <span className="p-float-label">
-                                        <InputText id="scriptName"
-                                            className="param-input"
-                                            spellCheck={false}
-                                            value={this.state.scriptName}
-                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
-                                                this.setState({ scriptName: e.currentTarget.value });
-                                            }}
-                                            onBlur={this.onBlurScriptName} />
-                                        <label htmlFor="scriptName" className="param-label">Script Name</label>
-                                    </span>
-                                </div>
-                                <div className="p-col-fixed column-global-entry">
-                                    <span className="p-float-label">
-                                        <InputText className="param-input"
-                                            id="description_input"
-                                            spellCheck={false}
-                                            value={this.state.description}
-                                            onChange={(e: React.FormEvent<HTMLInputElement>) => {
-                                                this.setState({ description: e.currentTarget.value });
-                                            }}
-                                            onBlur={this.onBlurDescription} />
-                                        <label className="param-label"
-                                            htmlFor="description_input" >Description</label>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        <ScriptNameDescription
+                            ref={this.myNameDescriptionCtrl}
+                            description={this.state.description}
+                            scriptName={this.state.scriptName}
+                            onBlur={(key: "Name" | "Description", value: string) => {
+                                if (key == "Name") {
+                                    this.scriptModel.scriptName = value;
+                                } else {
+                                    this.scriptModel.description = value;
+                                }
+                            }}
+
+                        />
                         {/* this is the section for parameter list */}
 
                         <ListBox className="Parameter_List"
