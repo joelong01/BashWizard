@@ -136,6 +136,18 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
 
     }
+    public shouldComponentUpdate(nextProps: Readonly<{}>, nextState: Readonly<IMainPageState>) {
+        for (var prop in nextState) {
+            if (this.state[prop] !== nextState[prop]) {
+                if (prop === "JSON" || prop === "bashScript") {
+                    continue;
+                }
+                return true;
+            }
+        }
+        return false;
+
+    }
 
     private getButtonModel(): any[] {
         return [
