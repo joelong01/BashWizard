@@ -15,7 +15,7 @@ export interface IParameterProperties {
     GrowlCallback: IGrowlCallback;
 }
 
-interface IMainPageState extends IParameterState {
+interface IParameterViewState extends IParameterState {
 
     Model: ParameterModel;
     GrowlCallback: IGrowlCallback;
@@ -25,7 +25,7 @@ interface IMainPageState extends IParameterState {
     label: string;
 }
 
-export class ParameterView extends React.PureComponent<IParameterProperties, IMainPageState> {
+export class ParameterView extends React.PureComponent<IParameterProperties, IParameterViewState> {
     private refParameterForm = React.createRef<HTMLDivElement>();
     private refLongName = React.createRef<InputText>();
     constructor(props: IParameterProperties) {
@@ -66,7 +66,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IMa
     }
 
 
-    private setStateAsync = (name: keyof IMainPageState, value: any): Promise<void> => {
+    private setStateAsync = (name: keyof IParameterViewState, value: any): Promise<void> => {
         return new Promise((resolve, reject) => {
             const o: object = {}
             o[name] = value;
@@ -85,7 +85,7 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IMa
     //  2. this updates the model (model.longParameter) => event fired to all subscribers
     //  3. the model tries to find a reasonable shortParameter and variable name
     //  4. ...which results in this onPropertyChanged callback being called, and the UI needs to update
-    public onPropertyChanged = async (model: ParameterModel, name: keyof IMainPageState) => {
+    public onPropertyChanged = async (model: ParameterModel, name: keyof IParameterViewState) => {
         await this.setStateAsync(name, model[name]);
     }
 
@@ -184,7 +184,12 @@ export class ParameterView extends React.PureComponent<IParameterProperties, IMa
                             </div>
                             <div className="p-col-fixed param-column">
                                 <span className="p-float-label">
-                                    <InputText id="description" spellCheck={false} value={this.state.description} className="param-input" onBlur={this.onBlur} onChange={this.updateInputText} />
+                                    <InputText id="description"
+                                        spellCheck={false}
+                                        value={this.state.description}
+                                        className="param-input"
+                                        onBlur={this.onBlur}
+                                        onChange={this.updateInputText} />
                                     <label htmlFor="description" className="param-label">Description</label>
                                 </span>
                             </div>

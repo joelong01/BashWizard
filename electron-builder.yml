@@ -10,7 +10,7 @@ files:
   - filter:
       - build/  # copy this directory to the asar directory that electron-builder use to look for the main entry file
 mac:
-  icon: src/images/app-icons/icon.icns
+  icon: src/images/app-icons/mac/bashwizard.icns
   target: dmg
   identity: null  # don't sign the app
   darkModeSupport: true
@@ -20,4 +20,4 @@ linux:
   target:
     - snap
 publish: null
-electronVersion: 4.1.0
+electronVersion: 4.1.1
