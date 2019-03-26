@@ -28,8 +28,7 @@ import ReactSVG from "react-svg";
 import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
 import ScriptNameDescription from '../Components/scriptNameDescription';
-import MonacoEditor from 'react-monaco-editor';
-import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
+
 
 //
 //  represents the properties that will impact the UI
@@ -64,7 +63,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private mainServiceProxy: BashWizardMainServiceProxy | null;
     private scriptModel: ScriptModel;
     private currentWatchFile: string = "";
-    private myEditors: monacoEditor.editor.IStandaloneCodeEditor[] = [];
     private isElectronEnabled: boolean | undefined = undefined;
     private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
     private mySettings: IBashWizardSettings = {
@@ -76,7 +74,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     constructor(props: {}) {
         super(props);
-        // console.clear();
+        console.clear();
         //
         //  send settings to the main app to update the browser UI
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
@@ -151,19 +149,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     }
 
-    public shouldComponentUpdate(nextProps: Readonly<{}>, nextState: Readonly<IMainPageState>) {
-        for (var prop in nextState) {
-            if (this.state[prop] !== nextState[prop]) {
-                if (prop === "JSON" || prop === "bashScript") {
-                    continue;
-                }
-                return true;
-            }
-        }
-        return false;
-
-    }
-
     private getButtonModel(): any[] {
         return [
 
@@ -224,7 +209,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private getIpcRenderer(): IpcRenderer | undefined {
-        //console.count("this.getIpcRenderer")
+        console.count("this.getIpcRenderer")
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.indexOf(' electron/') === -1) {
             return undefined;
@@ -237,7 +222,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return undefined;
     }
     private setupCallbacks = () => {
-        //console.count("setuCallbacks")
+        console.count("setuCallbacks")
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
             ipcRenderer.on("on-new", async (event: any, message: any) => {
@@ -432,8 +417,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
             this.setState({ parameterListHeight: htStyle });
         }
 
-        this.myEditors.map((editor) => editor.layout())
-
     };
     private saveSettings = async (): Promise<void> => {
         if (this.electronEnabled && this.mainServiceProxy !== null) {
@@ -531,7 +514,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //
     //  this is called by the models
     public onScriptModelChanged = async (newState: Partial<IScriptModelState>) => {
-        // console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
+         console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
         await this.setStateAsync(newState);
 
         //
@@ -666,13 +649,11 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-        //  console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] ` );
+        console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] ` );
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
         //
         //  this does the theming
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
-
-        const monacoOptions: monacoEditor.editor.IEditorConstructionOptions = { selectOnLineNumbers: true };
         return (
             <SplitPane className="Splitter"
                 split="horizontal"
@@ -820,7 +801,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                     onTabChange={((e: { originalEvent: Event, index: number }) => this.setState({ activeTabIndex: e.index }))}>
                     <TabPanel header="Bash Script">
                         <div className="divEditor">
-                            {/*  <AceEditor ref={this.bashEditor}
+                            <AceEditor ref={this.bashEditor}
                                 mode="sh"
                                 focus={this.state.bashFocus}
                                 name="aceBashEditor"
@@ -833,30 +814,15 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 onFocus={() => console.log("bash ACE Editor onFocus")}
                                 onChange={this.onChangedBashScript}
                                 onBlur={async () => {
+                                    {/* on Blur we parse the bash script and update the model with the results*/ }
                                     await this.parseBashUpdateUi();
                                 }}
-                            /> */}
-                            <MonacoEditor
-                                options={{ language: "shell" }}
-                                theme={this.state.theme === BashWizardTheme.Dark ? "vs-dark" : "vs-light"}
-                                width={"100%"}
-                                height={"100%"}
-                                value={this.state.bashScript}
-                                editorDidMount={(editor: monacoEditor.editor.IStandaloneCodeEditor, monaco) => {
-                                    this.myEditors.push(editor);
-                                    editor.layout();
-                                    editor.focus();
-                                    monaco.languages.getLanguages().map((lang) => console.log("shell: %o", lang))
-                                }}
-                                onChange={(value: string, event: monacoEditor.editor.IModelContentChangedEvent) => this.setState({ bashScript: value })}
-
                             />
-
                         </div>
                     </TabPanel >
                     <TabPanel header="JSON" >
                         <div className="divEditor">
-                            {/* <AceEditor mode="sh"
+                            <AceEditor mode="sh"
                                 name="aceJSON"
                                 theme={aceTheme}
                                 className="aceJSONEditor bw-ace"
@@ -868,24 +834,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                     this.setState({ JSON: newVal });
                                 }}
                                 onBlur={async () => {
+                                    {/* on Blur we parse the bash script and update the model with the results*/ }
                                     await this.parseJSONUpdateUi();
                                 }}
-                            /> */}
-                            <MonacoEditor
-                                theme={this.state.theme === BashWizardTheme.Dark ? "vs-dark" : "vs-light"}
-                                language={"json"}
-                                width={"100%"}
-                                height={"100%"}
-                                value={this.state.JSON}
-                                options={{ selectOnLineNumbers: true }}
-                                editorDidMount={(editor: monacoEditor.editor.IStandaloneCodeEditor, monaco) => {
-                                    this.myEditors.push(editor);
-                                    editor.focus();
-                                    editor.layout();
-                                    monaco.languages.getLanguages().map((lang) => console.log("json: %o", lang))
-                                }}
-                                onChange={(value: string, event: monacoEditor.editor.IModelContentChangedEvent) => this.setState({ JSON: value })}
-
                             />
                         </div>
                     </TabPanel >
