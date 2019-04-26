@@ -757,7 +757,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 <Button className="p-button-secondary"
                                     label="Help"
                                     icon="pi pi-question"
-                                    onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
+                                    onClick={() => window.open("https://github.com/joelong01/BashWizard/blob/master/README.md")}
                                     style={{ marginRight: '.25em' }} />
                             </div>
                         </Toolbar>

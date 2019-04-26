@@ -93,7 +93,7 @@ Bash Wizard has some functionality for catching errors when entering parameters.
 
 1.  Long Names and Short Names can never overlap.  So if you enter a parameter with the same Long Name or Short Name as another parameter you'll get the following in the "Messages" tab:
 
-![Same Name](readme/same%20names.PNG)
+![Same Name](readme/same%20names.png)
 
 You can click on the error to select the parameter that has the problem.
 
