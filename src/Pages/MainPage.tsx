@@ -16,7 +16,7 @@ import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
-import { IpcRenderer } from "electron";
+import { IpcRenderer, Rectangle } from "electron";
 import { IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/bwCommonModels";
 import { IErrorMessage, ParameterType, IScriptModelState } from "bash-models/commonModel";
 import { ScriptModel } from "bash-models/scriptModel"
@@ -39,8 +39,6 @@ interface IMainPageState extends IScriptModelState {
     // this data is for UI only and doesn't impact the model
     selectedParameter?: ParameterModel;
     theme: BashWizardTheme;
-    autoSave: boolean;
-    autoUpdate: boolean;
     showYesNoDialog: boolean;
     dialogMessage: string;
     selectedError: IErrorMessage | undefined;
@@ -65,6 +63,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private currentWatchFile: string = "";
     private isElectronEnabled: boolean | undefined = undefined;
     private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
+    private myTitleBar: React.RefObject<TitleBar> = React.createRef<TitleBar>();
     private mySettings: IBashWizardSettings = {
         autoSave: false,
         theme: BashWizardTheme.Light,
@@ -85,6 +84,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             this.mainServiceProxy = new BashWizardMainServiceProxy();
             this.mainServiceProxy.getAndApplySettings().then((settings: IBashWizardSettings) => {
                 this.mySettings = settings;
+                console.log("settings: %o", this.mySettings);
             })
         } else {
             // browser stores this in a cookie
@@ -92,9 +92,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
             if (saved !== "" && saved !== null && saved !== undefined) {
                 try {
                     this.mySettings = JSON.parse(saved);
+                    //  console.log("cookie settings: %o", this.mySettings);
                 }
                 catch (er) { // swollow errors and use defaults
-                    console.log(`error loading cookie: ${er}`);
+                    // console.log(`error loading cookie: ${er}`);
                 }
             }
         }
@@ -113,10 +114,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 description: "",
                 parameters: params,
                 Errors: [],
-
                 theme: this.mySettings.theme,
-                autoSave: this.mySettings.autoSave,
-                autoUpdate: this.mySettings.autoUpdate,
                 debugConfig: "",
                 inputJson: "",
                 parameterListHeight: "calc(100% - 115px)",
@@ -130,11 +128,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 Loaded: false,
                 bashFocus: false,
                 ButtonModel: this.getButtonModel(),
-
-
             }
 
-
+        console.log("after setting state: state = %o", this.state)
     }
     public shouldComponentUpdate(nextProps: Readonly<{}>, nextState: Readonly<IMainPageState>) {
         for (var prop in nextState) {
@@ -209,7 +205,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private getIpcRenderer(): IpcRenderer | undefined {
-        console.count("this.getIpcRenderer")
+        // console.count("this.getIpcRenderer")
         const userAgent = navigator.userAgent.toLowerCase();
         if (userAgent.indexOf(' electron/') === -1) {
             return undefined;
@@ -222,46 +218,54 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return undefined;
     }
     private setupCallbacks = () => {
-        console.count("setuCallbacks")
+        // console.count("setuCallbacks")
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
             ipcRenderer.on("on-new", async (event: any, message: any) => {
-                console.count("on-new")
+                // console.count("on-new")
                 this.reset(); // this gets verified in the main process
             });
 
             ipcRenderer.on("on-open", async (event: any, message: any[]) => {
-                console.count("on-open")
-                await this.setBashScript(message[0], message[1]);
+                // console.count("on-open")
+                //
+                //  you'd think that you could write code like
+                //  await this.setBashScript(message[0], message[1]);
+                //  which just calls this.setState({bashScript: message[1], scriptName: message[0]}}
+                //  followed by a call to await this.parseBashAndUpdateUi...and it would be the same
+                //  thing -- but it isn't.  I think there are some timing issues with async await and react
+                //  or there are some subtle bugs in this program someplace
+                this.setBashScript(message[0], message[1]);
+
             });
 
             ipcRenderer.on("on-save", async (event: any, message: any[]) => {
-                console.count("on-save")
+                // console.count("on-save")
                 await this.onSave(false);
             });
 
             ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
-                console.count(`onSaveAs. this.state=${this.state}`);
+                // console.count(`onSaveAs. this.state=${this.state}`);
                 await this.onSave(true);
             });
 
             ipcRenderer.on("on-setting-changed", async (event: any, message: object) => {
-                console.count("on-settings-changed")
+                // console.count("on-settings-changed")
                 Object.keys(message).map((key) => {
-                    console.log(`new Setting [${key}=${message[key]}]`)
+                    // console.log(`new Setting [${key}=${message[key]}]`)
                     this.mySettings[key] = message[key];
                 });
                 await this.saveSettings();
             });
 
             ipcRenderer.on('asynchronous-reply', async (event: string, msg: string) => {
-                console.count("async-reply")
+                // console.count("async-reply")
                 const msgObj: IAsyncMessage = JSON.parse(msg);
                 if (msgObj.event === "file-changed") {
                     if (this.state.SaveFileName.endsWith(msgObj.fileName)) {
                         await this.onFileChanged(this.state.SaveFileName);
                     } else {
-                        console.log(`rejecting file change nofification for ${msgObj.fileName}`);
+                        //   console.log(`rejecting file change nofification for ${msgObj.fileName}`);
                     }
 
                 }
@@ -270,12 +274,19 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
         }
     }
+    private setTitleBarTitle(newTitle: string) {
+        if (newTitle === "") {
+            this.myTitleBar.current!.Title = "Bash Wizard";
+        }
+        else {
+            this.myTitleBar.current!.Title = "Bash Wizard - " + newTitle;
+        }
+    }
 
     private onSave = async (alwaysPrompt: boolean): Promise<void> => {
         if (this.savingFile) {
             return;
         }
-        console.count("onSave")
         try {
             this.savingFile = true; // we don't want notifications of changes that we started
             if (this.state.SaveFileName === "" || alwaysPrompt === true) {
@@ -287,6 +298,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             }
             await this.mainServiceProxy!.writeText(this.state.SaveFileName, this.scriptModel.bashScript);
             this.watchFile(); // this has to be done after .writeText, otherwise the file might not exist
+            this.setTitleBarTitle(this.state.SaveFileName);
         }
         catch (error) {
             this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error saving the file.  Details: \n" + error });
@@ -298,36 +310,32 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     //
-    //  this starts in the render process and then calls to the main process.
-    //  setBashScript is called from the main process and then data is pushed to the render process
-    private onLoadFile = async (): Promise<boolean> => {
-
-        try {
-            const newFileName = await this.mainServiceProxy!.getOpenFile("Bash Wizard", [{ name: "Bash Scripts", extensions: ["sh"] }]);
-            if (newFileName !== "" || newFileName !== undefined) {
-                const contents: string = await this.mainServiceProxy!.readText(newFileName);
-                if (contents !== "") {
-                    const ret: boolean = await this.setBashScript(newFileName, contents); // calls setState on the filenmae
-                    if (ret) {
-                        this.watchFile();
-                    }
-                    return ret;
-                }
-            }
-        }
-        catch (error) {
-            this.growl.current!.show({ severity: "error", summary: "Error Message", detail: "Error loading the file.  Details: \n" + error });
-        }
-        return false;
-    }
-
-    //
     //  called when the main process opens a file, reads the contents, and sends it back to the render process
-    private setBashScript = async (filename: string, contents: string): Promise<boolean> => {
+    private setBashScript = async (filename: string, contents: string) => {
+
+        this.setState({ bashScript: contents, SaveFileName: filename }, () => {
+            this.parseBashUpdateUi().then(() => {
+                this.setTitleBarTitle(this.state.SaveFileName);
+            })
+            this.watchFile().then(() => {
+                //   console.log("finished opening file " + this.state.SaveFileName)
+            })
+        })
+
+        /*
+
+            it looks like there is a subtle bug in the way await setStateAsync works as the
+            below code doesn't work, but the above code does.  Only part of the parameter data
+            gets updated in the UI with the below code.
+
+        console.log("setBashScript called");
         await this.setStateAsync({ bashScript: contents, SaveFileName: filename });
         this.watchFile();
         await this.parseBashUpdateUi();
+        this.setTitleBarTitle(this.state.SaveFileName);
         return true;
+
+        */
     }
 
     //
@@ -338,7 +346,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (ipcRenderer === undefined) {
             return;
         }
-        console.count("watchFile")
+        // console.count("watchFile")
 
         if (this.state.SaveFileName === this.currentWatchFile) {
             return; // we are already watching it.
@@ -354,11 +362,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     private onFileChanged = async (filename: string) => {
-        console.log("onFileChanged called.")
         if (this.savingFile) {
             return;
         }
-        console.log("onFileChanged:mySettings: %o", this.mySettings);
         let response: IYesNoResponse = {
             answer: this.mySettings.autoUpdate ? YesNo.Yes : YesNo.No
         };
@@ -373,16 +379,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
         if (response.answer === YesNo.Yes) {
             const contents: string = await this.mainServiceProxy!.readText(filename);
             if (contents !== "") {
-                await this.setBashScript(filename, contents);
+                this.setBashScript(filename, contents);
             }
         }
 
-        this.setState({ autoUpdate: this.mySettings.autoUpdate });
 
     }
 
     public componentDidMount = () => {
-
         window.addEventListener<"resize">('resize', this.handleResize);
         this.setupCallbacks();
         //
@@ -395,6 +399,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }, 250);
 
         this.reset(); // will create models
+
     }
     public componentWillUnmount = () => {
         window.removeEventListener<"resize">('resize', this.handleResize);
@@ -453,7 +458,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             if (index !== -1) {
                 //
                 //  highlight the item previous to the deleted one, unless it was the first one
-                console.log("deleting parameter: %s", this.state.selectedParameter.longParameter);
+                // console.log("deleting parameter: %s", this.state.selectedParameter.longParameter);
                 let toSelect: ParameterModel | undefined = this.state.parameters[index === 0 ? 0 : index - 1]; // might be undefined
                 this.selectParameter(toSelect); // select a new one (or nothing)
                 await this.deleteParameter(toDelete) // delte the one we want
@@ -472,9 +477,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
 
         this.scriptModel = this.createScriptModel();
-        if (this.electronEnabled) {
+        const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
+        if (ipcRenderer !== undefined) {
+            ipcRenderer.send("asynchronous-message", { eventType: "unwatch", fileName: this.currentWatchFile });
+            this.currentWatchFile = "";
             if (this.mainServiceProxy !== null) {
-                this.mainServiceProxy.setWindowTitle("");
+
+                this.setTitleBarTitle("");
             }
         }
         this.setState({
@@ -484,6 +493,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
             debugConfig: "",
             inputJson: "",
             Errors: [],
+            SaveFileName: "",
 
             // these do not get replaced
             scriptName: "",
@@ -491,14 +501,16 @@ class MainPage extends React.Component<{}, IMainPageState> {
             parameters: [],
 
         });
+
+        if (this.myNameDescriptionCtrl.current !== null) {
+            this.myNameDescriptionCtrl.current.Description = "";
+            this.myNameDescriptionCtrl.current.ScriptName = "";
+        }
+
+        this.savingFile = false;
+
     }
 
-    private onBlurDescription = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        this.scriptModel.description = this.state.description;
-    }
-    private onBlurScriptName = async (e: React.FocusEvent<InputText & HTMLInputElement>) => {
-        this.scriptModel.scriptName = this.state.scriptName;
-    }
 
     private deleteParameter = async (parameter: ParameterModel) => {
 
@@ -514,7 +526,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
     //
     //  this is called by the models
     public onScriptModelChanged = async (newState: Partial<IScriptModelState>) => {
-         console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
+        // console.log("MainPage::onScriptModelChanged  newState: %o]", newState);
         await this.setStateAsync(newState);
 
         //
@@ -528,6 +540,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
             this.myNameDescriptionCtrl.current!.ScriptName = newState.scriptName;
         }
 
+        if (this.mySettings.autoSave) {
+            this.onSave(false);
+        }
     }
 
 
@@ -623,6 +638,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //  we are going to queue up changes for one second, and then save them all
         //
         await this.setStateAsync({ bashScript: value });
+        //  console.log (`onChangedBashScript: [autoSave=${this.mySettings.autoSave}]`)
         if (!this.updateTimerSet && this.mySettings.autoSave && this.state.SaveFileName !== "" && this.mainServiceProxy !== null) {
 
             this.updateTimerSet = true;
@@ -638,7 +654,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
                 }
                 catch (e) {
-                    console.log("Error saving file: " + e.message);
+                    //  console.log("Error saving file: " + e.message);
                 }
                 finally {
                     this.updateTimerSet = false;
@@ -649,8 +665,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
     }
 
     public render = () => {
-        console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] ` );
+        // console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] `);
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
+        console.log (`[theme=${aceTheme} [state.theme=${this.state.theme}] [settings.theme=${this.mySettings.theme}]`)
         //
         //  this does the theming
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
@@ -669,6 +686,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 <div className="DIV_Top">
                     {(this.electronEnabled) &&
                         <TitleBar
+                            ref={this.myTitleBar}
                             icon={<ReactSVG className="svg-file-new"
                                 src={require("../Images/app-icons/bashwizard.svg")}
                             />}
@@ -757,7 +775,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 <Button className="p-button-secondary"
                                     label="Help"
                                     icon="pi pi-question"
-                                    onClick={() => window.open("https://github.com/joelong01/Bash-Wizard")}
+                                    onClick={() => window.open("https://github.com/joelong01/BashWizard/blob/master/README.md")}
                                     style={{ marginRight: '.25em' }} />
                             </div>
                         </Toolbar>
@@ -787,6 +805,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             filter={false}
                             optionLabel={"uniqueName"}
                             itemTemplate={(parameter: ParameterModel): JSX.Element | undefined => {
+                                //  console.log("binding model to view: %o", parameter)
                                 return (
                                     <ParameterView Model={parameter} label={parameter.uniqueName} key={parameter.uniqueName} GrowlCallback={this.growlCallback} />
                                 );
@@ -811,7 +830,6 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                 value={this.state.bashScript}
                                 editorProps={{ $blockScrolling: this.state.bashScript.split("\n").length + 5 }}
                                 setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
-                                onFocus={() => console.log("bash ACE Editor onFocus")}
                                 onChange={this.onChangedBashScript}
                                 onBlur={async () => {
                                     {/* on Blur we parse the bash script and update the model with the results*/ }

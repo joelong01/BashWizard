@@ -14,6 +14,7 @@ export class BashWizardMainService implements IBashWizardMainService {
     }
     public setWindowTitle(name: string):Promise<void> {
         return new Promise<void>((resolve,reject) => {
+            console.log ("setting window title to: " + name)
             this.myBrowserWindow.setTitle("Bash Wizard: " + name);
             resolve();
         });

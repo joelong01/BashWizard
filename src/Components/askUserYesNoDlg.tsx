@@ -35,7 +35,6 @@ export class YesNoDialog extends React.PureComponent<IYesNoDialogProps, IYesNoDi
 
     constructor(props: IYesNoDialogProps) {
         super(props);
-        console.log("created YesNoDialog");
         this.state = {
             message: this.props.message,
             Notify: this.props.Notify,
