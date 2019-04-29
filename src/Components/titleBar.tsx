@@ -11,6 +11,7 @@ export interface ITitleBarState {
     isElectron: boolean;
     maximized: boolean;
     minimized: boolean;
+    title?: string;
     menu: any;
     fullScreen: boolean;
 }
@@ -21,7 +22,8 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         maximized: false,
         minimized: false,
         menu: undefined,
-        fullScreen: false
+        fullScreen: false,
+        title: this.props.title
     };
 
     private menu: Menu = React.createRef();
@@ -51,7 +53,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
     }
 
     private onWindowsPosChanged = (event: any, message: string): void => {
-        console.log(`onWindowsPosChanged: ${message}`)
+        // console.log(`onWindowsPosChanged: ${message}`)
         if (this.state.fullScreen && message === "maximized") {
             // when you are maximized and go into full screen, you get another maximized event.
             return;
@@ -76,6 +78,14 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         return true;
     }
 
+    public get Title(): string | undefined {
+        return this.state.title;
+    }
+    public set Title(newTitle: string | undefined) {
+        this.setState({ title: newTitle })
+    }
+
+
     public render(): JSX.Element | null {
         if (this.onMacOrBrowser) {
             return null;
@@ -87,6 +97,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         if (this.state.fullScreen) {
             tbHeight = "0px";
         }
+        // console.log("Titlebar title: " + this.state.title)
         return (
             <div className="title-bar bg-lighter-3" style={{ visibility: this.state.fullScreen ? "collapse" : "visible", height: tbHeight, minHeight: tbHeight }}>
                 <div className="title-bar-icon">
@@ -104,7 +115,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
                         </Menu>
                     }
                 </div>
-                <div className="title-bar-main">{this.props.title || "Welcome"}</div>
+                <div className="title-bar-main">{this.state.title || "Bash Wizard"}</div>
                 <div className="title-bar-controls">
                     {this.props.children}
                     {this.state.isElectron &&
@@ -196,9 +207,9 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         this.setState({ menu: { ...this.state.menu } as Electron.Menu });
     }
 
-    private syncTitle = (): void => {
+    public syncTitle = (): void => {
         if (this.state.isElectron) {
-            this.currentWindow.setTitle(`${this.props.title} - VoTT`);
+            this.currentWindow.setTitle(`${this.props.title}`);
         }
     }
 

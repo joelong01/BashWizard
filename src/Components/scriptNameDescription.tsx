@@ -25,7 +25,6 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
             scriptName: this.props.scriptName,
             onBlur: this.props.onBlur
         }
-        console.log(`ctor: [scriptName=${this.state.scriptName}]`)
     }
 
 
@@ -55,7 +54,6 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
 
 
     public render = () => {
-        console.log(`ScriptNameDescription::render: [scriptName=${this.state.scriptName}]`)
         return (
             <div className="DIV_globalEntry" id="div-global-entry">
                 <div className="p-grid grid-global-entry">
