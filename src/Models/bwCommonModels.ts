@@ -41,3 +41,15 @@ export interface IAsyncMessage {
     type: string;
 }
 
+export interface IConvertMessage {
+    fileName: string;
+    script: string;
+    directory: string;
+    fullFile: string;
+}
+
+export interface IOpenMessage {
+    fileName: string;
+    contents: string;
+}
+
