@@ -5,10 +5,10 @@ All Great.
 
 But sometimes you just need a simple bash script. And when you do, it can be difficult to bootstrap a robust and well written script that meets some minimum expectations level.
 
-This is where Bash Wizard comes in handy. Bash Wizard is a Windows Application that generates Bash scripts based upon "parameters" that are entered into the tool. The features supported by Bash Wizard are:
+This is where Bash Wizard comes in handy. Bash Wizard is a Chromium Application that generates Bash scripts based upon "parameters" that are entered into the tool. Bash Wizard supports the following features:
 
 1. For each parameter a default can be specified and the variable is declared in the script
-2. creates EchoInfo, EchoWarning, EchoError functions to enable colorizing output
+2. creates EchoInfo, EchoWarning, EchoError, and EchoIfVerbose functions to enable colorizing output and creating scripts that do not spew.
 3. Creates an Usage() function that tells the user how to use the script
 4. Creates an EchoInput() function that will be called by the script to show the user what parameters were passed in
 5. Parses the command line and sets the appropriate variable based on what was passed in
@@ -20,17 +20,10 @@ This is where Bash Wizard comes in handy. Bash Wizard is a Windows Application t
 
 9. Has built in support to create a tee so that all output is captured in a log file, which will be created for you based on a passed in log directory
 10. Generates the JSON file for the Bash Debug Extension in Visual Studio Code
-11. a Verbose parameter is supported
+11. a Verbose parameter is supported so that the caller of the script can decide if they want to spew output or not
+12. a "Create, Verify, Delete" pattern is supported.
 
-There are 4 different versions of the Bash Wizard
-
-1. in https://github.com/joelong01/Bash-Wizard there is a Windows Store application.
-2. also in https://github.com/joelong01/Bash-Wizard is a command line tool writting in .NET Core/Standard
-3. https://github.com/joelong01/BashWizard is a React Web application
-4. https://github.com/joelong01/BashWizard also creates an Electron app that will generate a rich client that will run on Windows, MacOS, and Linux.
-
-the screen shots in this document are from the Electron version of the application.
-
+Bash Wizard is built on top of an NPM package called "bash-models" located at https://github.com/joelong01/bash-models this does all of the manipulations of a bash file -- parsing, validating, creating, etc.
 
 # Dependencies
 
