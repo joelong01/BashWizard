@@ -14,8 +14,9 @@ import { IpcMainProxy } from "./ipcMainProxy";
 import BashWizardMainService from "./bwMainService";
 import path from "path";
 import fs, { FSWatcher } from "fs";
-import { IAsyncMessage } from "../Models/bwCommonModels"
+import { IAsyncMessage, IConvertMessage, IOpenMessage } from "../Models/bwCommonModels"
 import windowStateKeeper from "electron-window-state"
+
 
 
 
@@ -191,9 +192,10 @@ async function onOpen(menuItem: MenuItem, browserWindow: BrowserWindow, event: E
 
     if (fileName !== null && fileName !== "") {
         const contents: string = await g_bwService.readText(fileName);
-        const msg: string[] = [];
-        msg.push(fileName);
-        msg.push(contents);
+        const msg: IOpenMessage = {
+            fileName: fileName,
+            contents: contents
+        }
         g_mainWindow.webContents.send('on-open', msg);
     }
 }
@@ -205,6 +207,37 @@ function onSave(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event):
 function onSaveAs(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
     g_mainWindow.webContents.send('on-save-as', "");
 }
+async function onUpdateDirectory(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): Promise<void> {
+
+    const dir: string = await g_bwService.selectDirectory("Bash Wizard", [{ extensions: ["sh"], name: "Bash Script" }]);
+    if (dir !== undefined && dir !== "" && dir !== null) {
+        const files: string[] = fs.readdirSync(dir);
+        files.forEach(async file => {
+            if (file.endsWith(".sh")) {
+                try {
+
+                    let fileToConvert: string = dir + "/" + file;
+                    fileToConvert = path.normalize(fileToConvert);
+                    console.log(`Reading file ${fileToConvert}`);
+                    const contents: string = await g_bwService.readText(fileToConvert);
+                    const msg: IConvertMessage = {
+                        fileName: file,
+                        script: contents,
+                        directory: dir,
+                        fullFile: fileToConvert
+                    };
+                    g_mainWindow.webContents.send('on-convert', msg);
+                }
+                catch (e) {
+                    console.log(`error converting ${file} in ${dir} error: ${e}`)
+
+                }
+            }
+        })
+
+    }
+}
+
 function onAutoSaveChecked(menuItem: MenuItem, browserWindow: BrowserWindow, event: Event): void {
     g_mainWindow.webContents.send('on-setting-changed', { autoSave: menuItem.checked });
 
@@ -234,6 +267,8 @@ function createMainMenu(browserWindow: BrowserWindow, autoSave: boolean): void {
                 { type: "separator" },
                 { label: "Auto Save", type: "checkbox", checked: autoSave, click: onAutoSaveChecked, id: "auto-save" },
                 { label: "Auto Load", type: "checkbox", checked: false, id: "auto-load", click: onAlwaysLoadChecked },
+                { type: "separator" },
+                { label: "Update Directory", click: onUpdateDirectory, id: "update-directory" },
                 { type: "separator" },
                 { role: "reload" },
                 { type: "separator" },

@@ -12,9 +12,9 @@ export class BashWizardMainService implements IBashWizardMainService {
     constructor(private browserWindow: BrowserWindow) {
         this.myBrowserWindow = browserWindow;
     }
-    public setWindowTitle(name: string):Promise<void> {
-        return new Promise<void>((resolve,reject) => {
-            console.log ("setting window title to: " + name)
+    public setWindowTitle(name: string): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            console.log("setting window title to: " + name)
             this.myBrowserWindow.setTitle("Bash Wizard: " + name);
             resolve();
         });
@@ -32,6 +32,21 @@ export class BashWizardMainService implements IBashWizardMainService {
             }
 
             return resolve(fileNames[0]);
+        });
+    }
+
+    public selectDirectory(dlgTitle: string, exts: FileFilter[]): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            const dirs = dialog.showOpenDialog({
+                properties: ['openDirectory'],
+                title: dlgTitle,
+            });
+
+            if (dirs === undefined ) {
+                return reject;
+            }
+
+            return resolve(dirs[0]);
         });
     }
 
@@ -179,12 +194,7 @@ export class BashWizardMainService implements IBashWizardMainService {
 
         menu.getMenuItemById("auto-save").checked = settings.autoSave;
         menu.getMenuItemById("auto-load").checked = settings.autoUpdate;
-      /*   menu.getMenuItemById("toggle-dev-tools").checked = (settings.showDebugger == true);
-        if (settings.showDebugger) {
-            this.myBrowserWindow.webContents.openDevTools();
-        } else {
-            this.myBrowserWindow.webContents.closeDevTools();
-        } */
+
     }
 
 

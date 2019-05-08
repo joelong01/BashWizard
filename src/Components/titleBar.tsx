@@ -11,7 +11,6 @@ export interface ITitleBarState {
     isElectron: boolean;
     maximized: boolean;
     minimized: boolean;
-    title?: string;
     menu: any;
     fullScreen: boolean;
 }
@@ -23,7 +22,6 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         minimized: false,
         menu: undefined,
         fullScreen: false,
-        title: this.props.title
     };
 
     private menu: Menu = React.createRef();
@@ -78,14 +76,6 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
         return true;
     }
 
-    public get Title(): string | undefined {
-        return this.state.title;
-    }
-    public set Title(newTitle: string | undefined) {
-        this.setState({ title: newTitle })
-    }
-
-
     public render(): JSX.Element | null {
         if (this.onMacOrBrowser) {
             return null;
@@ -115,7 +105,7 @@ export class TitleBar extends React.Component<ITitleBarProps, ITitleBarState> {
                         </Menu>
                     }
                 </div>
-                <div className="title-bar-main">{this.state.title || "Bash Wizard"}</div>
+                <div className="title-bar-main">{this.props.title || "UNSET TITLE - YOU SHOULD FIX THIS"}</div>
                 <div className="title-bar-controls">
                     {this.props.children}
                     {this.state.isElectron &&

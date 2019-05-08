@@ -129,6 +129,12 @@ If you have an error message from parsing the Bash Script, fix it and then hit R
 
 You can also copy and paste a script into the Bash Script text box and then hit the Refresh button, which will parse the script and then regenerate it back into the Bash Script text box.  This is useful when upgrading the Bash Wizard version.
 
+If you select the menu option "Auto Save" in the "File" menu, then whenever the Bash Script changes, the file will be automatically saved.  If the "Auto Update" option is selected, any changes outside of Bash Wizard will cause Bash Wizard to load the file, reparse it and display the results.
+
+**NOTE:  this can yield (possibly) unexpected results if non-user code is modified outside of Bash Wizard - those modifications will simply be thrown away.**
+
+If you have a directory with multiple Bash Wizard scripts in it, you can select the File.Update Directory menu.  Select a directory to convert and Bash Wizard will go through all the files ending in .sh and attempt to convert them to the current version of Bash Wizard.
+
 
 ## Starting with JSON
 

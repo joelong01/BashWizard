@@ -17,7 +17,7 @@ import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
 import { IpcRenderer, Rectangle } from "electron";
-import { IAsyncMessage, IBashWizardSettings, BashWizardTheme } from "../Models/bwCommonModels";
+import { IAsyncMessage, IBashWizardSettings, BashWizardTheme, IConvertMessage, IOpenMessage } from "../Models/bwCommonModels";
 import { IErrorMessage, ParameterType, IScriptModelState } from "bash-models/commonModel";
 import { ScriptModel } from "bash-models/scriptModel"
 import { ParameterModel } from "bash-models/ParameterModel"
@@ -48,6 +48,7 @@ interface IMainPageState extends IScriptModelState {
     SaveFileName: string;
     bashFocus: boolean; // used to set the AceEditor with the bashscript visible
     Loaded: boolean;
+    title: string; // the titlebar title
 
 }
 
@@ -88,16 +89,20 @@ class MainPage extends React.Component<{}, IMainPageState> {
             })
         } else {
             // browser stores this in a cookie
-            let saved: string = this.cookie.get("settings")
-            if (saved !== "" && saved !== null && saved !== undefined) {
-                try {
-                    this.mySettings = JSON.parse(saved);
-                    //  console.log("cookie settings: %o", this.mySettings);
-                }
-                catch (er) { // swollow errors and use defaults
-                    // console.log(`error loading cookie: ${er}`);
-                }
+            try {
+                const cookieSettings = this.cookie.get("settings")
+                Object.keys(this.mySettings).forEach(key => {
+                    try {
+                        this.mySettings[key] = cookieSettings[key];  // this makes sure that if we delete/add something to the settings, we pick up only what we are looking for
+                    }
+                    catch{ }
+                })
             }
+            catch (er) { // if there is an error, delete the cookie
+                console.log(`error loading cookie: ${er}`);
+                this.cookie.delete("settings");
+            }
+
         }
 
 
@@ -120,7 +125,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 parameterListHeight: "calc(100% - 115px)",
                 showYesNoDialog: false,
                 dialogMessage: "",
-
+                title: "Bash Wizard",
                 selectedError: undefined,
                 selectedParameter: undefined,
                 activeTabIndex: 0,
@@ -226,16 +231,10 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 this.reset(); // this gets verified in the main process
             });
 
-            ipcRenderer.on("on-open", async (event: any, message: any[]) => {
+            ipcRenderer.on("on-open", async (event: any, msg: IOpenMessage) => {
                 // console.count("on-open")
-                //
-                //  you'd think that you could write code like
-                //  await this.setBashScript(message[0], message[1]);
-                //  which just calls this.setState({bashScript: message[1], scriptName: message[0]}}
-                //  followed by a call to await this.parseBashAndUpdateUi...and it would be the same
-                //  thing -- but it isn't.  I think there are some timing issues with async await and react
-                //  or there are some subtle bugs in this program someplace
-                this.setBashScript(message[0], message[1]);
+
+                this.setBashScript(msg.fileName, msg.contents);
 
             });
 
@@ -248,8 +247,43 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 // console.count(`onSaveAs. this.state=${this.state}`);
                 await this.onSave(true);
             });
+            ipcRenderer.on("on-convert", async (event: any, message: IConvertMessage) => {
+                console.log("on convert: %o", message)
+                const fileName:string = message.fileName;
+                const script:string = message.script;
+                const fullFilePath: string = message.fullFile;
 
-            ipcRenderer.on("on-setting-changed", async (event: any, message: object) => {
+                const sm:ScriptModel = new ScriptModel();
+
+                sm.parseBash(script);
+                if (sm.parameters.length > 0){
+                    await this.mainServiceProxy!.writeText(fullFilePath, sm.bashScript);
+                    this.growl.current!.show({
+                        severity: "info",
+                        detail: `converted file ${fileName}`,
+                        closable: true,
+                        life: 10000
+
+                    });
+                } else {
+                    this.growl.current!.show({
+                        severity: "warn",
+                        detail: `attempted to convert file ${fileName}, but found no parameters`,
+                        closable: true,
+                        life: 10000
+
+                    });
+                }
+                if (sm.ErrorModel.Errors.length > 0){
+                    this.growl.current!.show({
+                        severity: "error",
+                        detail: `file ${fileName} has ${sm.ErrorModel.Errors.length} errors!`,
+                        closable: true,
+                        life: 10000
+                    });
+                }
+            });
+            ipcRenderer.on("on-setting-changed", async (event: any, message: Partial<IBashWizardSettings>) => {
                 // console.count("on-settings-changed")
                 Object.keys(message).map((key) => {
                     // console.log(`new Setting [${key}=${message[key]}]`)
@@ -275,12 +309,15 @@ class MainPage extends React.Component<{}, IMainPageState> {
         }
     }
     private setTitleBarTitle(newTitle: string) {
+        let t: string;
         if (newTitle === "") {
-            this.myTitleBar.current!.Title = "Bash Wizard";
+            t = "Bash Wizard";
         }
         else {
-            this.myTitleBar.current!.Title = "Bash Wizard - " + newTitle;
+            t = "Bash Wizard - " + newTitle;
         }
+
+        this.setState({ title: t })
     }
 
     private onSave = async (alwaysPrompt: boolean): Promise<void> => {
@@ -424,6 +461,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
     };
     private saveSettings = async (): Promise<void> => {
+        console.log("saving settings %o", this.mySettings)
         if (this.electronEnabled && this.mainServiceProxy !== null) {
             await this.mainServiceProxy.saveAndApplySettings(this.mySettings);
         }
@@ -663,11 +701,18 @@ class MainPage extends React.Component<{}, IMainPageState> {
             }, 1000);
         }
     }
+    //
+    //  when the them is updated, we need to set the state, set the settings, and save the settings, call this to make sure all happen
+    private async updateTheme(newTheme: BashWizardTheme): Promise<void> {
+        this.setState({ theme: newTheme });
+        this.mySettings.theme = newTheme;
+        await this.saveSettings();
+    }
 
     public render = () => {
         // console.log(`MainPage::render() [ScriptName=${this.state.scriptName}] `);
         const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
-        console.log (`[theme=${aceTheme} [state.theme=${this.state.theme}] [settings.theme=${this.mySettings.theme}]`)
+        console.log(`[theme=${aceTheme} [state.theme=${this.state.theme}] [settings.theme=${this.mySettings.theme}]`)
         //
         //  this does the theming
         document.body.classList.toggle('dark', this.state.theme === BashWizardTheme.Dark)
@@ -690,7 +735,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             icon={<ReactSVG className="svg-file-new"
                                 src={require("../Images/app-icons/bashwizard.svg")}
                             />}
-                            title={"Bash Wizard " + this.state.SaveFileName}>
+                            title={this.state.title}>
                         </TitleBar>
                     }
                     <div className="top-non-titlebar">
@@ -749,27 +794,18 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                                 label: 'Dark Mode',
                                                 icon: "pi pi-circle-on",
                                                 checked: this.state.theme === BashWizardTheme.Dark,
-                                                command: async () => {
-                                                    this.setState({ theme: BashWizardTheme.Dark });
-                                                    this.mySettings.theme = BashWizardTheme.Dark;
-                                                    await this.saveSettings();
-
-                                                }
+                                                command: async () => { await this.updateTheme(BashWizardTheme.Dark) }
                                             },
                                             {
                                                 label: 'Light Mode',
                                                 icon: "pi pi-circle-off",
                                                 checked: this.state.theme === BashWizardTheme.Light,
-                                                command: async () => {
-                                                    this.setState({ theme: BashWizardTheme.Light });
-                                                    this.mySettings.theme = BashWizardTheme.Light;
-                                                    await this.saveSettings();
-                                                }
+                                                command: async () => { await this.updateTheme(BashWizardTheme.Light) }
                                             }
                                         ]
                                     }
                                     className="p-button-secondary"
-                                    onClick={() => this.setState({ theme: this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light : BashWizardTheme.Dark })}
+                                    onClick={async () => this.updateTheme(this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light : BashWizardTheme.Dark)}
                                     label={this.state.theme === BashWizardTheme.Dark ? "Dark Mode" : "Light Mode"}>
                                 </SplitButton>
                                 <Button className="p-button-secondary"
