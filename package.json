@@ -10,7 +10,7 @@
         "@fortawesome/fontawesome-free": "^5.8.1",
         "@types/lodash-es": "^4.17.3",
         "@types/shortid": "0.0.29",
-        "bash-models": "^1.1.1",
+        "bash-models": "^1.1.2",
         "classnames": "^2.2.6",
         "electron-titlebar-windows": "^3.0.0",
         "electron-window-state": "^5.0.3",

@@ -8,7 +8,7 @@ import "../Themes/dark/theme.css"
 import { BashWizardTheme } from '../Models/bwCommonModels';
 
 
-interface IAceState {
+interface IAceWrapperProps {
     readonly: boolean;
     theme: BashWizardTheme;
     value: string;
@@ -21,42 +21,31 @@ interface IAceState {
 
 }
 
-export class AceWrapper extends React.PureComponent<IAceState, IAceState> {
-    constructor(props: IAceState) {
+export class AceWrapper extends React.PureComponent<IAceWrapperProps, {}> {
+    constructor(props: IAceWrapperProps) {
         super(props);
-        this.state = {
-            readonly: this.props.readonly,
-            theme: this.props.theme,
-            value: this.props.value,
-            mode: this.props.mode,
-            focus: this.props.focus,
-            onChange: this.props.onChange,
-            onBlur: this.props.onBlur,
-            name: this.props.name
-
-        }
     }
 
     public render() {
-        const aceTheme = (this.state.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
+        const aceTheme = (this.props.theme === BashWizardTheme.Dark) ? "twilight" : "xcode";
         return (
             <AceEditor
-                mode={this.state.mode}
-                focus={this.state.focus}
+                mode={this.props.mode}
+                focus={this.props.focus}
                 name="aceBashEditor"
                 theme={aceTheme}
                 className="aceBashEditor bw-ace"
                 showGutter={true} showPrintMargin={false}
-                value={this.state.value}
-                editorProps={{ $blockScrolling: this.state.value.split("\n").length + 5 }}
+                value={this.props.value}
+                editorProps={{ $blockScrolling: this.props.value.split("\n").length + 5 }}
                 setOptions={{ autoScrollEditorIntoView: true, vScrollBarAlwaysVisible: true, highlightActiveLine: true, fontSize: 14, highlightSelectedWord: true, selectionStyle: "text" }}
                 onChange={(newValue: string, event?: any) => {
                     this.setState({ value: newValue })
-                    if (this.state.onChange !== undefined) {
-                        this.state.onChange(newValue, event);
+                    if (this.props.onChange !== undefined) {
+                        this.props.onChange(newValue, event);
                     }
                 }}
-                onBlur={this.state.onBlur}
+                onBlur={this.props.onBlur}
             />
         )
     }
