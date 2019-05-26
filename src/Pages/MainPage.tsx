@@ -117,6 +117,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 bashScript: "",
                 scriptName: "",
                 description: "",
+                autoInstallDependencies: false,
                 parameters: params,
                 Errors: [],
                 theme: this.mySettings.theme,
