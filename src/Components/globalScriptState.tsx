@@ -1,29 +1,28 @@
 import React from 'react';
 import { InputText } from "primereact/inputtext"
+import { Checkbox } from "primereact/checkbox"
 
 
-interface IDescriptionName {
+interface IGlobalScriptState {
+    autoInstallDependencies:boolean;
     description: string;
     scriptName: string;
     onBlur?: (key: "Name" | "Description", value: string) => void;
+    onCheckedAutoInstall?: (checked:boolean) => void;
 }
 
 
-interface IGlobalStateProperties extends IDescriptionName {
 
-}
 
-interface IGlobalState extends IDescriptionName {
-
-}
-
-export class ScriptNameDescription extends React.PureComponent<IGlobalStateProperties, IGlobalState> {
-    constructor(props: IGlobalStateProperties) {
+export class GlobalScriptData extends React.PureComponent<IGlobalScriptState, IGlobalScriptState> {
+    constructor(props: IGlobalScriptState) {
         super(props);
         this.state = {
+            autoInstallDependencies: this.props.autoInstallDependencies,
             description: this.props.description,
             scriptName: this.props.scriptName,
-            onBlur: this.props.onBlur
+            onBlur: this.props.onBlur,
+            onCheckedAutoInstall: this.props.onCheckedAutoInstall
         }
     }
 
@@ -52,12 +51,24 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
         }
     }
 
+    get AutoInstallDependencies(): boolean {
+        return this.state.autoInstallDependencies;
+    }
+
+    set AutoInstallDependencies(value: boolean) {
+        if (value !== this.state.autoInstallDependencies) {
+
+            this.setState({ autoInstallDependencies: value })
+
+        }
+    }
+
 
     public render = () => {
         return (
             <div className="DIV_globalEntry" id="div-global-entry">
                 <div className="p-grid grid-global-entry">
-                    <div className="p-col-fixed column-global-entry">
+                    <div className="p-col-3 column-global-entry">
                         <span className="p-float-label">
                             <InputText id="scriptName"
                                 className="param-input"
@@ -74,10 +85,11 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
                             <label htmlFor="scriptName" className="param-label">Script Name</label>
                         </span>
                     </div>
-                    <div className="p-col-fixed column-global-entry">
+                    <div className="p-col-3 column-global-entry">
                         <span className="p-float-label">
                             <InputText className="param-input"
                                 id="description"
+
                                 spellCheck={false}
                                 value={this.state.description}
                                 onChange={(e: React.FormEvent<HTMLInputElement>) => {
@@ -89,7 +101,28 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
                                     }
                                 }} />
                             <label className="param-label"
-                                htmlFor="description_input" >Description</label>
+                                htmlFor="description" >Description</label>
+                        </span>
+                    </div>
+
+                    <div className="p-col-3 column-global-entry">
+                        <span className="p-float-label">
+                            <Checkbox className="param-input"
+                                tooltip="script will automatically install all dependencies without user interaction"
+                                id="autoInstallDependencies"
+
+                                checked={this.state.autoInstallDependencies}
+                                value="Auto Install Dependencies"
+                                onChange={(e: { originalEvent: Event; value: any; checked: boolean; }) => {
+                                    this.setState({ autoInstallDependencies: e.checked });
+                                    if (this.state.onCheckedAutoInstall !== undefined) {
+                                            this.state.onCheckedAutoInstall(e.checked)
+                                    }
+                                }}
+                               />
+                            <label className="p-checkbox-label autoinstallLabel" htmlFor="autoInstallDependencies" >
+                                Auto Install Dependencies
+                            </label>
                         </span>
                     </div>
                 </div>
@@ -99,4 +132,4 @@ export class ScriptNameDescription extends React.PureComponent<IGlobalStatePrope
     }
 }
 
-export default ScriptNameDescription;
+export default GlobalScriptData;

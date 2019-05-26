@@ -20,4 +20,3 @@ linux:
   target:
     - snap
 publish: null
-electronVersion: 4.1.1
