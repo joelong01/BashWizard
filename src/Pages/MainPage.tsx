@@ -27,7 +27,7 @@ import { BWError } from "../Components/bwError"
 import ReactSVG from "react-svg";
 import { TitleBar } from "../Components/titleBar";
 import "../Themes/dark/theme.css"
-import ScriptNameDescription from '../Components/scriptNameDescription';
+import GlobalScriptData from '../Components/globalScriptState';
 
 
 //
@@ -56,14 +56,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
     private growl = React.createRef<Growl>();
     private yesNoDlg = React.createRef<YesNoDialog>();
     private bashEditor: React.RefObject<AceEditor> = React.createRef<AceEditor>();
-    private myNameDescriptionCtrl: React.RefObject<ScriptNameDescription> = React.createRef<ScriptNameDescription>();
+    private myScriptGlobalStateCtrl: React.RefObject<GlobalScriptData> = React.createRef<GlobalScriptData>();
     private cookie: Cookie = new Cookies();
     private savingFile: boolean = false;
     private mainServiceProxy: BashWizardMainServiceProxy | null;
     private scriptModel: ScriptModel;
     private currentWatchFile: string = "";
     private isElectronEnabled: boolean | undefined = undefined;
-    private updateTimerSet: boolean = false; //used in the bash script onChange() event to update
+    private updateTimerSet: boolean = false; // used in the bash script onChange() event to update
     private myTitleBar: React.RefObject<TitleBar> = React.createRef<TitleBar>();
     private mySettings: IBashWizardSettings = {
         autoSave: false,
@@ -95,7 +95,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
                     try {
                         this.mySettings[key] = cookieSettings[key];  // this makes sure that if we delete/add something to the settings, we pick up only what we are looking for
                     }
-                    catch{ }
+                    catch {
+                        console.log("error saving cookie")
+                    }
                 })
             }
             catch (er) { // if there is an error, delete the cookie
@@ -117,6 +119,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 bashScript: "",
                 scriptName: "",
                 description: "",
+                autoInstallDependencies: false,
                 parameters: params,
                 Errors: [],
                 theme: this.mySettings.theme,
@@ -138,7 +141,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         console.log("after setting state: state = %o", this.state)
     }
     public shouldComponentUpdate(nextProps: Readonly<{}>, nextState: Readonly<IMainPageState>) {
-        for (var prop in nextState) {
+        for (let prop in nextState) {
             if (this.state[prop] !== nextState[prop]) {
                 if (prop === "JSON" || prop === "bashScript") {
                     continue;
@@ -249,14 +252,14 @@ class MainPage extends React.Component<{}, IMainPageState> {
             });
             ipcRenderer.on("on-convert", async (event: any, message: IConvertMessage) => {
                 console.log("on convert: %o", message)
-                const fileName:string = message.fileName;
-                const script:string = message.script;
+                const fileName: string = message.fileName;
+                const script: string = message.script;
                 const fullFilePath: string = message.fullFile;
 
-                const sm:ScriptModel = new ScriptModel();
+                const sm: ScriptModel = new ScriptModel();
 
                 sm.parseBash(script);
-                if (sm.parameters.length > 0){
+                if (sm.parameters.length > 0) {
                     await this.mainServiceProxy!.writeText(fullFilePath, sm.bashScript);
                     this.growl.current!.show({
                         severity: "info",
@@ -274,7 +277,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
                     });
                 }
-                if (sm.ErrorModel.Errors.length > 0){
+                if (sm.ErrorModel.Errors.length > 0) {
                     this.growl.current!.show({
                         severity: "error",
                         detail: `file ${fileName} has ${sm.ErrorModel.Errors.length} errors!`,
@@ -540,9 +543,9 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
         });
 
-        if (this.myNameDescriptionCtrl.current !== null) {
-            this.myNameDescriptionCtrl.current.Description = "";
-            this.myNameDescriptionCtrl.current.ScriptName = "";
+        if (this.myScriptGlobalStateCtrl.current !== null) {
+            this.myScriptGlobalStateCtrl.current.Description = "";
+            this.myScriptGlobalStateCtrl.current.ScriptName = "";
         }
 
         this.savingFile = false;
@@ -571,11 +574,15 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //  this is a workaround for an electron on windows problem i'm seeing where there is a huge typing lag
         //  by putting the state in a smaller component, the lag goes away
         if (newState.description !== undefined) {
-            this.myNameDescriptionCtrl.current!.Description = newState.description;
+            this.myScriptGlobalStateCtrl.current!.Description = newState.description;
         }
 
         if (newState.scriptName !== undefined) {
-            this.myNameDescriptionCtrl.current!.ScriptName = newState.scriptName;
+            this.myScriptGlobalStateCtrl.current!.ScriptName = newState.scriptName;
+        }
+
+        if (newState.autoInstallDependencies !== undefined) {
+            this.myScriptGlobalStateCtrl.current!.AutoInstallDependencies = (newState.autoInstallDependencies === true);
         }
 
         if (this.mySettings.autoSave) {
@@ -730,13 +737,13 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
                 <div className="DIV_Top">
                     {(this.electronEnabled) &&
+
                         <TitleBar
                             ref={this.myTitleBar}
                             icon={<ReactSVG className="svg-file-new"
                                 src={require("../Images/app-icons/bashwizard.svg")}
                             />}
-                            title={this.state.title}>
-                        </TitleBar>
+                            title={this.state.title} />
                     }
                     <div className="top-non-titlebar">
                         <Growl ref={this.growl} />
@@ -806,8 +813,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                                     }
                                     className="p-button-secondary"
                                     onClick={async () => this.updateTheme(this.state.theme === BashWizardTheme.Dark ? BashWizardTheme.Light : BashWizardTheme.Dark)}
-                                    label={this.state.theme === BashWizardTheme.Dark ? "Dark Mode" : "Light Mode"}>
-                                </SplitButton>
+                                    label={this.state.theme === BashWizardTheme.Dark ? "Dark Mode" : "Light Mode"} />
                                 <Button className="p-button-secondary"
                                     label="Help"
                                     icon="pi pi-question"
@@ -816,16 +822,21 @@ class MainPage extends React.Component<{}, IMainPageState> {
                             </div>
                         </Toolbar>
                         {/* this is the section for entering script name and description */}
-                        <ScriptNameDescription
-                            ref={this.myNameDescriptionCtrl}
+                        <GlobalScriptData
+                            ref={this.myScriptGlobalStateCtrl}
                             description={this.state.description}
                             scriptName={this.state.scriptName}
+                            autoInstallDependencies={this.state.autoInstallDependencies}
                             onBlur={(key: "Name" | "Description", value: string) => {
-                                if (key == "Name") {
+                                if (key === "Name") {
                                     this.scriptModel.scriptName = value;
                                 } else {
                                     this.scriptModel.description = value;
                                 }
+                            }}
+
+                            onCheckedAutoInstall={(checked: boolean) => {
+                                this.scriptModel.autoInstallDependencies = checked;
                             }}
 
                         />

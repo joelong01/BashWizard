@@ -50,9 +50,11 @@
 }
 
 .column-global-entry {
-    width: 50%;
+    width: 33%;
 }
-
+.autoinstallLabel {
+    margin-left: 1.5em !important;
+}
 .grid-global-entry {
     padding-top: 0.5em;
 }
