@@ -1,7 +1,6 @@
 import React from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { Checkbox } from 'primereact/checkbox';
 
 export enum YesNo {
     Yes,
