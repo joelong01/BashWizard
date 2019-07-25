@@ -5,7 +5,6 @@ import SplitPane from 'react-split-pane';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toolbar } from 'primereact/toolbar';
 import { Button } from 'primereact/button';
-import { InputText } from "primereact/inputtext"
 import { Growl, GrowlMessage } from 'primereact/growl';
 import Cookies, { Cookie } from "universal-cookie"
 import AceEditor from 'react-ace';
@@ -16,7 +15,7 @@ import "brace/mode/json"
 import "brace/theme/xcode"
 import "brace/theme/twilight"
 import { BashWizardMainServiceProxy } from "../electron/mainServiceProxy"
-import { IpcRenderer, Rectangle } from "electron";
+import { IpcRenderer } from "electron";
 import { IAsyncMessage, IBashWizardSettings, BashWizardTheme, IConvertMessage, IOpenMessage } from "../Models/bwCommonModels";
 import { IErrorMessage, ParameterType, IScriptModelState } from "bash-models/commonModel";
 import { ScriptModel } from "bash-models/scriptModel"
@@ -229,7 +228,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         // console.count("setuCallbacks")
         const ipcRenderer: IpcRenderer | undefined = this.getIpcRenderer();
         if (ipcRenderer !== undefined) {
-            ipcRenderer.on("on-new", async (event: any, message: any) => {
+            ipcRenderer.on("on-new", async () => {
                 // console.count("on-new")
                 this.reset(); // this gets verified in the main process
             });
@@ -241,12 +240,12 @@ class MainPage extends React.Component<{}, IMainPageState> {
 
             });
 
-            ipcRenderer.on("on-save", async (event: any, message: any[]) => {
+            ipcRenderer.on("on-save", async () => {
                 // console.count("on-save")
                 await this.onSave(false);
             });
 
-            ipcRenderer.on("on-save-as", async (event: any, message: any[]) => {
+            ipcRenderer.on("on-save-as", async () => {
                 // console.count(`onSaveAs. this.state=${this.state}`);
                 await this.onSave(true);
             });
@@ -291,6 +290,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 Object.keys(message).map((key) => {
                     // console.log(`new Setting [${key}=${message[key]}]`)
                     this.mySettings[key] = message[key];
+                    return message;
                 });
                 await this.saveSettings();
             });
@@ -597,7 +597,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         //
         //   got the typings working all the way down to here, but SetState() doesn't like newState
         const o: object = newState as object;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.setState(o, () => {
                 resolve();
             });
@@ -678,7 +678,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
         return (this.isElectronEnabled === true);
     }
 
-    public onChangedBashScript = async (value: string, event?: any): Promise<void> => {
+    public onChangedBashScript = async (value: string): Promise<void> => {
         //
         //  we are going to queue up changes for one second, and then save them all
         //
@@ -728,7 +728,7 @@ class MainPage extends React.Component<{}, IMainPageState> {
                 split="horizontal"
                 defaultSize={"50%"}
                 minSize={"8em"}
-                onDragFinished={(newSize: number) => {
+                onDragFinished={() => {
                     //
                     //  we need to send a windows resize event so that the Ace Editor will change its viewport to match its new size
                     window.dispatchEvent(new Event('resize'));
