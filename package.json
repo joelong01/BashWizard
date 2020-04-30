@@ -14,7 +14,7 @@
         "classnames": "^2.2.6",
         "electron-window-state": "^5.0.3",
         "fs": "0.0.1-security",
-        "jquery": "^3.4.1",
+        "jquery": "^3.5.0",
         "lodash-es": "^4.17.15",
         "njv": "^2.0.0",
         "popper.js": "^1.15.0",
