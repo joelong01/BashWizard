@@ -65,7 +65,7 @@
         "@types/node": "^10.14.15",
         "@types/react": "^16.9.1",
         "@types/react-dom": "^16.8.5",
-        "electron": "^4.2.9",
+        "electron": "^7.2.4",
         "electron-builder": "^20.44.4",
         "electron-packager": "^13.1.1",
         "foreman": "^3.0.1",
